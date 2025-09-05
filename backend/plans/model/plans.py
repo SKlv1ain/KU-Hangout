@@ -2,6 +2,7 @@ from django.db import models
 from django.conf import settings
 from django.contrib.auth.models import AbstractUser
 from users import users
+from tags import tags
 
 # Model for plans
 class plans(models.Model):
@@ -14,5 +15,5 @@ class plans(models.Model):
     event_time = models.DateTimeField()
     max_people = models.IntegerField(default=1)
     tags = models.ManyToManyField(tags, related_name='plans')
-    people_joined = models.IntegerField(default=1)
+    people_joined = models.IntegerField(default=0)
     create_at = models.DateTimeField(auto_now_add=True)
