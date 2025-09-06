@@ -1,25 +1,38 @@
-import React, { useEffect, useState } from "react";
-import api from "./services/api";
+import React from "react";
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import Login from "./pages/Login.tsx";
+import Register from "./pages/Register.tsx";
+
+function Logout() {
+  localStorage.clear();
+  return <Navigate to="/login" />;
+}
+
+function RegisterAndLogout() {
+  localStorage.clear();
+  return <Register />;
+}
 
 function App() {
-  const [plans, setPlans] = useState([]);
-
-  useEffect(() => {
-    api.get("plans/")
-      .then((response) => setPlans(response.data))
-      .catch((error) => console.error(error));
-  }, []);
-
   return (
     <div>
-      <h1>Plans</h1>
-      <ul>
-        {plans.map((plan) => (
-          <li key={plan.id}>{plan.title}</li>
-        ))}
-      </ul>
+      <Routes>
+        <Route path="/" element={<Navigate to="/login" />} />
+        <Route path="/login" element={<Login />} />
+        <Route path="/logout" element={<Logout />} />
+        <Route path="/register" element={<RegisterAndLogout />} />
+        <Route path="*" element={<Navigate to="/login" />} />
+      </Routes>
     </div>
   );
 }
 
-export default App;
+function AppWrapper() {
+  return (
+    <BrowserRouter>
+      <App />
+    </BrowserRouter>
+  );
+}
+
+export default AppWrapper;
