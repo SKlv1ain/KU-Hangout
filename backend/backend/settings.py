@@ -43,6 +43,9 @@ INSTALLED_APPS = [
     # Third-party
     'rest_framework',
 
+    #user class
+    'users',
+
 ]
 
 MIDDLEWARE = [

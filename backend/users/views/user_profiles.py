@@ -1,8 +1,8 @@
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
 from rest_framework import status
-from plans.model import users
-from plans.serializers import UserSerializer
+from users.models import users
+from users.serializers import UserSerializer
 
 # CREATE user
 @api_view(['POST'])
