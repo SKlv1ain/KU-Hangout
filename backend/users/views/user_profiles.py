@@ -14,16 +14,26 @@ def create_user(request):
     return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST) #if not return error
 
 
-# READ user
 @api_view(['GET'])
 def get_user(request, pk):
     try:
-        user = Users.objects.get(pk=pk) #check for user primary key (user id)
+        user = Users.objects.get(pk=pk)
     except Users.DoesNotExist:
-        return Response({"error": "User not found"}, status=status.HTTP_404_NOT_FOUND) #if not find send status 404 not found
+        return Response({"error": "User not found"}, status=status.HTTP_404_NOT_FOUND)
 
     serializer = user_serializer(user)
+
+    # Check if client passed ?field=username
+    field = request.query_params.get("field", None)
+    if field:
+        if field in serializer.data:
+            return Response({field: serializer.data[field]})
+        else:
+            return Response({"error": f"Field '{field}' not found"}, status=status.HTTP_400_BAD_REQUEST)
+
+    # Default: return all
     return Response(serializer.data)
+
 
 
 # UPDATE user
@@ -39,7 +49,6 @@ def update_user(request, pk):
         serializer.save()  # password handling is inside serializer.update()
         return Response(serializer.data, status=status.HTTP_200_OK)
     return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
 
 
 # DELETE user
