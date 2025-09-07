@@ -1,13 +1,13 @@
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
 from rest_framework import status
-from users.models import users
-from users.serializers import UserSerializer
+from users.models import Users
+from users.serializers.UserSerializer import user_serializer
 
 # CREATE user
 @api_view(['POST'])
 def create_user(request):
-    serializer = UserSerializer(data=request.data)
+    serializer = user_serializer(data=request.data)
     if serializer.is_valid(): #check for validation
         serializer.save()
         return Response(serializer.data, status=status.HTTP_201_CREATED) #if valid save user profiels and send status
@@ -18,11 +18,11 @@ def create_user(request):
 @api_view(['GET'])
 def get_user(request, pk):
     try:
-        user = users.objects.get(pk=pk) #check for user primary key (user id)
-    except users.DoesNotExist:
+        user = Users.objects.get(pk=pk) #check for user primary key (user id)
+    except Users.DoesNotExist:
         return Response({"error": "User not found"}, status=status.HTTP_404_NOT_FOUND) #if not find send status 404 not found
 
-    serializer = UserSerializer(user)
+    serializer = user_serializer(user)
     return Response(serializer.data)
 
 
@@ -30,11 +30,11 @@ def get_user(request, pk):
 @api_view(['PUT'])
 def update_user(request, pk):
     try:
-        user = users.objects.get(pk=pk)
-    except users.DoesNotExist:
+        user = Users.objects.get(pk=pk)
+    except Users.DoesNotExist:
         return Response({"error": "User not found"}, status=status.HTTP_404_NOT_FOUND)
 
-    serializer = UserSerializer(user, data=request.data, partial=True)  # allow partial update
+    serializer = user_serializer(user, data=request.data, partial=True)  # allow partial update
     if serializer.is_valid():
         if 'password' in request.data:
             user.set_password(request.data['password'])
@@ -48,9 +48,16 @@ def update_user(request, pk):
 @api_view(['DELETE'])
 def delete_user(request, pk):
     try:
-        user = users.objects.get(pk=pk)
-    except users.DoesNotExist:
+        user = Users.objects.get(pk=pk)
+    except Users.DoesNotExist:
         return Response({"error": "User not found"}, status=status.HTTP_404_NOT_FOUND)
 
     user.delete()
     return Response({"message": "User deleted successfully"}, status=status.HTTP_204_NO_CONTENT) #if have user delete that user
+
+#get all users
+@api_view(['GET'])
+def list_users(request):
+    all_users = Users.objects.all()
+    serializer = user_serializer(all_users, many=True)
+    return Response(serializer.data)

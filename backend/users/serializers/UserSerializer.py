@@ -1,20 +1,20 @@
 from rest_framework import serializers
-from users.models import users
+from users.models import Users
 
-class UserSerializer(serializers.ModelSerializer):
+class user_serializer(serializers.ModelSerializer):
     """
     Class userserializer for convert python model into json format for api
     """
     class Meta:
-        model = users
-        fields = ['id', 'username', 'role', 'avg_rating', 'review_count', 'contact', 'create_at', 'password']
+        model = Users
+        fields = ['id', 'username', 'role', 'avg_rating', 'review_count', 'contact', 'password']
         extra_kwargs = {
             'password': {'write_only': True}  # don’t expose passwords in API response
         }
 
     #function for create user profiels and check for validation
     def create(self, validated_data):
-        user = users(
+        user = Users(
             username=validated_data['username'],
             role=validated_data.get('role', 'user'),
             avg_rating=validated_data.get('avg_rating', 0),
