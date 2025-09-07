@@ -27,21 +27,19 @@ def get_user(request, pk):
 
 
 # UPDATE user
-@api_view(['PUT'])
+@api_view(['PUT', 'PATCH'])
 def update_user(request, pk):
     try:
         user = Users.objects.get(pk=pk)
     except Users.DoesNotExist:
         return Response({"error": "User not found"}, status=status.HTTP_404_NOT_FOUND)
 
-    serializer = user_serializer(user, data=request.data, partial=True)  # allow partial update
+    serializer = user_serializer(user, data=request.data, partial=True)  # allow partial updates
     if serializer.is_valid():
-        if 'password' in request.data:
-            user.set_password(request.data['password'])
-            user.save()
-        serializer.save()
-        return Response(serializer.data)
+        serializer.save()  # password handling is inside serializer.update()
+        return Response(serializer.data, status=status.HTTP_200_OK)
     return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
 
 
 # DELETE user

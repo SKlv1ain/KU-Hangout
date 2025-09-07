@@ -24,3 +24,18 @@ class user_serializer(serializers.ModelSerializer):
         user.set_password(validated_data['password'])  # hash the password
         user.save()
         return user
+
+    def update(self, instance, validated_data):
+        instance.username = validated_data.get('username', instance.username)
+        instance.role = validated_data.get('role', instance.role)
+        instance.avg_rating = validated_data.get('avg_rating', instance.avg_rating)
+        instance.review_count = validated_data.get('review_count', instance.review_count)
+        instance.contact = validated_data.get('contact', instance.contact)
+
+        # handle password securely
+        password = validated_data.get('password', None)
+        if password:
+            instance.set_password(password)
+
+        instance.save()
+        return instance
