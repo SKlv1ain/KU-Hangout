@@ -1,10 +1,15 @@
+// src/services/api.js
 import axios from "axios";
 
-const api = axios.create({
-  baseURL: "http://127.0.0.1:8000/api/", // Django backend base URL
-  headers: {
-    "Content-Type": "application/json",
-  },
+const API = axios.create({
+  baseURL: "http://127.0.0.1:8000",
 });
 
-export default api;
+// POST
+export const createUser = (data) => API.post("/users/create/", data);
+
+// GET (list all users)
+export const getUsers = () => API.get("/users/list/");  // <-- fix here
+
+// GET (one user by ID)
+export const getUserById = (id) => API.get(`/users/${id}/`);
