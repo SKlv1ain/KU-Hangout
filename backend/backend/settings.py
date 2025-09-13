@@ -48,6 +48,12 @@ INSTALLED_APPS = [
     #user class
     'users',
 
+    #plans class
+    'plans',
+
+    #tags class
+    'tags',
+
 ]
 
 MIDDLEWARE = [
