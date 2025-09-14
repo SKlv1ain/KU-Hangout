@@ -1,7 +1,7 @@
 from django.urls import path
-from plans.views import homepage
+from plans.views.homepage import PlansView
 
 urlpatterns = [
-    path('today/', homepage.plans_expiring_today, name='plans-today'),
-    path('<int:plan_id>/', homepage.get_plan_by_id, name='get_plan_by_id'),
+    path('today/', PlansView.as_view()),        # GET today’s plans
+    path('today/<int:plan_id>/', PlansView.as_view()),  # GET by ID
 ]
