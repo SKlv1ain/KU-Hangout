@@ -11,5 +11,5 @@ class User(AbstractUser):
     review_count = models.IntegerField(default=0)
     contact = models.CharField(max_length=255, null=True, blank=True)
 
-    def __str__(self):
-        return self.username
+    def __str__(self) -> str:
+        return str(self.username)
