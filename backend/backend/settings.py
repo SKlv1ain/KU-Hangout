@@ -28,6 +28,8 @@ DEBUG = True
 
 ALLOWED_HOSTS = []
 
+AUTH_USER_MODEL = 'users.Users'  # App name + Model name
+
 
 # Application definition
 
@@ -39,7 +41,15 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
-    'posts',
+
+    #user class
+    'users',
+
+    #plans class
+    'plans',
+
+    #tags class
+    'tags',
 
     # Third-party
     'rest_framework',
@@ -133,3 +143,5 @@ STATIC_URL = 'static/'
 # https://docs.djangoproject.com/en/5.1/ref/settings/#default-auto-field
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+
+AUTH_USER_MODEL = 'users.Users'
