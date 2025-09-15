@@ -5,7 +5,7 @@ from django.contrib.auth.decorators import login_required
 from .models import Plan
 
 @csrf_exempt
-@login_required
+# @login_required
 def create_plan(request):
     if request.method == "POST":
         try:
