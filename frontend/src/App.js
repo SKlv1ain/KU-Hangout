@@ -2,6 +2,7 @@ import React from "react";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import Login from "./pages/Login.tsx";
 import Register from "./pages/Register.tsx";
+import PostCreateSimple from "./pages/PostCreateSimple.tsx";
 
 function Logout() {
   localStorage.clear();
@@ -21,6 +22,8 @@ function App() {
         <Route path="/login" element={<Login />} />
         <Route path="/logout" element={<Logout />} />
         <Route path="/register" element={<RegisterAndLogout />} />
+        <Route path="/create" element={<PostCreateSimple />} />
+        <Route path="/post" element={<PostCreateSimple />} />
         <Route path="*" element={<Navigate to="/login" />} />
       </Routes>
     </div>
