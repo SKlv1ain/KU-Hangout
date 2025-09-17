@@ -1,5 +1,6 @@
 from datetime import timedelta
 from django.utils import timezone
+from django.db.models import F, FloatField, ExpressionWrapper
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
@@ -9,7 +10,7 @@ from plans.serializers.plans_serializers import PlansSerializer
 
 class PlansView(APIView):
     def get(self, request, plan_id=None):
-        # GET by ID
+        # 1) GET by ID
         if plan_id:
             try:
                 plan = plans.objects.get(id=plan_id)
@@ -18,7 +19,7 @@ class PlansView(APIView):
 
             serializer = PlansSerializer(plan)
 
-            # Check for ?field=<field_name>
+            # Support ?field=<field_name>
             field = request.query_params.get("field", None)
             if field:
                 if field in serializer.data:
@@ -28,15 +29,32 @@ class PlansView(APIView):
 
             return Response(serializer.data, status=status.HTTP_200_OK)
 
-        # GET today’s plans
+        # 2) GET by filters
+        filter_type = request.query_params.get("filter", None)
         now = timezone.now()
         start_of_day = now.replace(hour=0, minute=0, second=0, microsecond=0)
-        end_of_day = start_of_day + timedelta(days=1)
 
-        today_plans = plans.objects.filter(event_time__gte=start_of_day, event_time__lt=end_of_day)
+        if filter_type == "hot":
+            # Plans with >= 60% capacity filled
+            plans_qs = plans.objects.annotate(
+                join_ratio=ExpressionWrapper(
+                    F("people_joined") * 1.0 / F("max_people"),
+                    output_field=FloatField()
+                )
+            ).filter(join_ratio__gte=0.6).order_by("-join_ratio")
 
-        if not today_plans.exists():
-            return Response({"message": "No plans expiring today"}, status=status.HTTP_200_OK)
+        elif filter_type == "new":
+            last_48h = now - timedelta(hours=48)
+            plans_qs = plans.objects.filter(create_at__gte=last_48h)
 
-        serializer = PlansSerializer(today_plans, many=True)
+        elif filter_type == "expiring":
+            end_of_day = start_of_day + timedelta(days=3)
+            plans_qs = plans.objects.filter(event_time__gte=start_of_day, event_time__lt=end_of_day)
+
+        else:
+            # Default = today’s plans
+            end_of_day = start_of_day + timedelta(days=1)
+            plans_qs = plans.objects.filter(event_time__gte=start_of_day, event_time__lt=end_of_day)
+
+        serializer = PlansSerializer(plans_qs, many=True)
         return Response(serializer.data, status=status.HTTP_200_OK)
