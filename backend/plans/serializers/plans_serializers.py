@@ -1,13 +1,10 @@
 from rest_framework import serializers
 from plans.models import Plans
-from users.models import Users
-from tags.models import tags
-
+from tags.serializers.tag_serializers import TagsSerializer  # import the new tags serializer
+from tags.models import Tags
 
 class PlansSerializer(serializers.ModelSerializer):
-    """
-    Serializer for converting Plans model to/from JSON
-    """
+    tags = TagsSerializer(many=True, required=False)  # nested serializer
 
     class Meta:
         model = Plans
@@ -22,31 +19,37 @@ class PlansSerializer(serializers.ModelSerializer):
             'event_time',
             'max_people',
             'people_joined',
-            'create_at'
+            'create_at',
+            'tags'
         ]
         extra_kwargs = {
-            'create_at': {'read_only': True}  # don’t allow overriding created_at
+            'create_at': {'read_only': True}
         }
 
-    # Create new Plan
     def create(self, validated_data):
+        tags_data = validated_data.pop('tags', [])
         plan = Plans.objects.create(**validated_data)
+        
+        # Add tags
+        for tag_data in tags_data:
+            tag_obj, created = Tags.objects.get_or_create(name=tag_data['name'])
+            plan.tags.add(tag_obj)
+        
         return plan
 
-    # Update existing Plan
     def update(self, instance, validated_data):
-        instance.title = validated_data.get('title', instance.title)
-        instance.description = validated_data.get('description', instance.description)
-        instance.location = validated_data.get('location', instance.location)
-        instance.lat = validated_data.get('lat', instance.lat)
-        instance.lng = validated_data.get('lng', instance.lng)
-        instance.event_time = validated_data.get('event_time', instance.event_time)
-        instance.max_people = validated_data.get('max_people', instance.max_people)
-        instance.people_joined = validated_data.get('people_joined', instance.people_joined)
+        tags_data = validated_data.pop('tags', None)
 
-        leader = validated_data.get('leader_id', None)
-        if leader:
-            instance.leader_id = leader
-
+        # Update plan fields
+        for attr, value in validated_data.items():
+            setattr(instance, attr, value)
         instance.save()
+
+        # Update tags if provided
+        if tags_data is not None:
+            instance.tags.clear()
+            for tag_data in tags_data:
+                tag_obj, created = tags.objects.get_or_create(name=tag_data['name'])
+                instance.tags.add(tag_obj)
+
         return instance
