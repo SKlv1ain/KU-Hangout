@@ -34,35 +34,37 @@ export default function Login() {
   };
 
   return (
-    <div style={{ maxWidth: 420, margin: "64px auto" }}>
-      <h1>Login</h1>
+    <div className="auth-container">
+      <div className="card">
+        <h1 className="title">Welcome back</h1>
 
-      {/* handleSubmit จะ validate ให้ ก่อนเรียก onSubmit */}
-      <form onSubmit={handleSubmit(onSubmit)} style={{ display: "grid", gap: 12, marginTop: 16 }}>
-        <div>
-          <label>Username</label>
-          {/* register ผูก input นี้กับ key "username" */}
-          <input {...register("username")} placeholder="yourusername" />
-          {errors.username && <p style={{ color: "crimson" }}>{errors.username.message}</p>}
-        </div>
+        {/* handleSubmit จะ validate ให้ ก่อนเรียก onSubmit */}
+        <form onSubmit={handleSubmit(onSubmit)} className="form">
+          <div className="field">
+            <label className="label">Username</label>
+            {/* register ผูก input นี้กับ key "username" */}
+            <input className="input" {...register("username")} placeholder="yourusername" />
+            {errors.username && <p className="error">{errors.username.message}</p>}
+          </div>
 
-        <div>
-          <label>Password</label>
-          <input type="password" {...register("password")} placeholder="••••••••" />
-          {errors.password && <p style={{ color: "crimson" }}>{errors.password.message}</p>}
-        </div>
+          <div className="field">
+            <label className="label">Password</label>
+            <input className="input" type="password" {...register("password")} placeholder="••••••••" />
+            {errors.password && <p className="error">{errors.password.message}</p>}
+          </div>
 
-        {/* โชว์ error ที่มาจาก server */}
-        {serverError && <p style={{ color: "crimson" }}>{serverError}</p>}
+          {/* โชว์ error ที่มาจาก server */}
+          {serverError && <p className="error" role="alert">{serverError}</p>}
 
-        <button type="submit" disabled={isSubmitting}>
-          {isSubmitting ? "Signing in..." : "Login"}
-        </button>
-      </form>
+          <button className="button primary" type="submit" disabled={isSubmitting}>
+            {isSubmitting ? "Signing in..." : "Login"}
+          </button>
+        </form>
 
-      <p style={{ marginTop: 12 }}>
-        Don’t have an account? <Link to="/register">Register</Link>
-      </p>
+        <p className="muted">
+          Don’t have an account? <Link className="link" to="/register">Register</Link>
+        </p>
+      </div>
     </div>
   );
 }

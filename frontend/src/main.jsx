@@ -3,6 +3,7 @@ import ReactDOM from "react-dom/client";
 import { BrowserRouter } from "react-router-dom"; // ให้ใช้เส้นทางแบบ SPA
 import { AuthProvider } from "@/context/AuthContext"; // ครอบทั้งแอปด้วย Auth
 import App from "./App.jsx";
+import "./styles/index.css"; // global theme (green-white)
 
 ReactDOM.createRoot(document.getElementById("root")).render(
   // BrowserRouter ครอบไว้ → ใช้ <Routes> <Route> ได้

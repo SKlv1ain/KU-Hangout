@@ -6,15 +6,18 @@ import { useAuth } from "@/context/AuthContext";
 import { Link, useNavigate } from "react-router-dom";
 
 // สคีมาสมัครสมาชิก + เช็คยืนยันรหัสผ่านให้ตรงกัน
-const schema = z.object({
-  username: z.string().min(3, "Username must be at least 3 characters"),
-  password: z.string().min(6, "Password must be at least 6 characters"),
-  confirm: z.string().min(6, "Confirm your password"),
-  contact: z.string().optional(), // ฟิลด์เพิ่มเติมตามสเปค
-}).refine((data) => data.password === data.confirm, {
-  message: "Passwords do not match",
-  path: ["confirm"],
-});
+const schema = z
+  .object({
+    username: z.string().min(3, "Username must be at least 3 characters"),
+    email: z.string().email("Enter a valid email address"),
+    password: z.string().min(6, "Password must be at least 6 characters"),
+    passwordConfirm: z.string().min(6, "Confirm your password"),
+    contact: z.string().optional(),
+  })
+  .refine((data) => data.password === data.passwordConfirm, {
+    message: "Passwords do not match",
+    path: ["passwordConfirm"],
+  });
 
 export default function Register() {
   const { register: doRegister } = useAuth();
@@ -26,10 +29,17 @@ export default function Register() {
   });
 
   // สมัครเสร็จ → โดยโค้ดนี้จะ auto-login (รับ token) แล้วโยนกลับ Home
-  const onSubmit = async ({ username, password, contact }) => {
+  const onSubmit = async ({ username, email, password, passwordConfirm, contact }) => {
     setServerError("");
     try {
-      await doRegister({ username, password, contact });
+      // ส่ง field ให้ backend ตามชื่อที่ต้องการ
+      await doRegister({
+        username,
+        email,
+        password,
+        password_confirm: passwordConfirm,
+        contact,
+      });
       navigate("/");
     } catch (err) {
       setServerError(err?.response?.data?.detail || "Registration failed");
@@ -37,43 +47,52 @@ export default function Register() {
   };
 
   return (
-    <div style={{ maxWidth: 420, margin: "64px auto" }}>
-      <h1>Register</h1>
+    <div className="auth-container">
+      <div className="card">
+        <h1 className="title">Create your account</h1>
 
-      <form onSubmit={handleSubmit(onSubmit)} style={{ display: "grid", gap: 12, marginTop: 16 }}>
-        <div>
-          <label>Username</label>
-          <input {...register("username")} placeholder="yourusername" />
-          {errors.username && <p style={{ color: "crimson" }}>{errors.username.message}</p>}
-        </div>
+        <form onSubmit={handleSubmit(onSubmit)} className="form">
+          <div className="field">
+            <label className="label">Username</label>
+            <input className="input" {...register("username")} placeholder="yourusername" />
+            {errors.username && <p className="error">{errors.username.message}</p>}
+          </div>
 
-        <div>
-          <label>Password</label>
-          <input type="password" {...register("password")} placeholder="Create a password" />
-          {errors.password && <p style={{ color: "crimson" }}>{errors.password.message}</p>}
-        </div>
+          <div className="field">
+            <label className="label">Email address</label>
+            <input className="input" type="email" {...register("email")} placeholder="you@example.com" />
+            {errors.email && <p className="error">{errors.email.message}</p>}
+          </div>
 
-        <div>
-          <label>Confirm Password</label>
-          <input type="password" {...register("confirm")} placeholder="Repeat password" />
-          {errors.confirm && <p style={{ color: "crimson" }}>{errors.confirm.message}</p>}
-        </div>
+          <div className="grid-2">
+            <div className="field">
+              <label className="label">Password</label>
+              <input className="input" type="password" {...register("password")} placeholder="Create a password" />
+              {errors.password && <p className="error">{errors.password.message}</p>}
+            </div>
+            <div className="field">
+              <label className="label">Password confirm</label>
+              <input className="input" type="password" {...register("passwordConfirm")} placeholder="Repeat password" />
+              {errors.passwordConfirm && <p className="error">{errors.passwordConfirm.message}</p>}
+            </div>
+          </div>
 
-        <div>
-          <label>Contact (optional)</label>
-          <input {...register("contact")} placeholder="Line ID, phone, etc." />
-        </div>
+          <div className="field">
+            <label className="label">Contact</label>
+            <input className="input" {...register("contact")} placeholder="Line ID, phone, etc." />
+          </div>
 
-        {serverError && <p style={{ color: "crimson" }}>{serverError}</p>}
+          {serverError && <p className="error" role="alert">{serverError}</p>}
 
-        <button type="submit" disabled={isSubmitting}>
-          {isSubmitting ? "Creating account..." : "Register"}
-        </button>
-      </form>
+          <button className="button primary" type="submit" disabled={isSubmitting}>
+            {isSubmitting ? "Creating account..." : "POST"}
+          </button>
+        </form>
 
-      <p style={{ marginTop: 12 }}>
-        Already have an account? <Link to="/login">Login</Link>
-      </p>
+        <p className="muted">
+          Already have an account? <Link to="/login" className="link">Login</Link>
+        </p>
+      </div>
     </div>
   );
 }

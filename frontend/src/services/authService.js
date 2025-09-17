@@ -2,7 +2,7 @@ import api from "./api";
 
 // สมัครสมาชิก → คาดหวัง { user, token } (ถ้า backend ต่างจากนี้ แก้จุดนี้ทีเดียว)
 export async function registerUser(payload) {
-  // payload: { username, password, contact? }
+  // payload: { username, email, password, password_confirm, contact? }
   const { data } = await api.post("/auth/register", payload);
   return data;
 }
