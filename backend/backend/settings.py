@@ -45,6 +45,7 @@ INSTALLED_APPS = [
     'rest_framework_simplejwt',
     # Local apps
     'accounts',
+    "users"
 
 ]
 
@@ -136,7 +137,7 @@ STATIC_URL = 'static/'
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
-AUTH_USER_MODEL = "accounts.User"  # app_name.model_name
+AUTH_USER_MODEL = "users.Users"  # app_name.model_name
 
 # REST Framework configuration
 REST_FRAMEWORK = {
