@@ -34,9 +34,9 @@ export function AuthProvider({ children }) {
     return u;
   }, []);
 
-  // ฟังก์ชันสมัครสมาชิก: คล้ายล็อกอิน แต่ส่ง contact ได้
-  const register = useCallback(async ({ username, password, contact }) => {
-    const data = await registerUser({ username, password, contact });
+  // ฟังก์ชันสมัครสมาชิก: ส่งทุกฟิลด์ที่ backend ต้องการ
+  const register = useCallback(async ({ username, email, password, password_confirm, contact }) => {
+    const data = await registerUser({ username, email, password, password_confirm, contact });
     if (data?.token) localStorage.setItem("kh_token", data.token);
     const u = data?.user ?? null;
     setUser(u);

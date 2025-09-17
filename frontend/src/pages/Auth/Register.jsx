@@ -42,7 +42,14 @@ export default function Register() {
       });
       navigate("/");
     } catch (err) {
-      setServerError(err?.response?.data?.detail || "Registration failed");
+      const data = err?.response?.data;
+      // แสดงข้อความ error ราย field จาก backend ถ้ามี
+      if (data && typeof data === 'object') {
+        const messages = Object.entries(data).map(([k, v]) => `${k}: ${Array.isArray(v)? v.join(', '): String(v)}`);
+        setServerError(messages.join(' | ') || "Registration failed");
+      } else {
+        setServerError("Registration failed");
+      }
     }
   };
 
