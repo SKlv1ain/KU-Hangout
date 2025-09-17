@@ -19,5 +19,7 @@ from django.urls import path, include
 
 urlpatterns = [
     path('admin/', admin.site.urls),
-    path('plans/', include('plans.urls.create_plan_url')),   # all post-related URLs
+    path('plans/', include('plans.urls.create_plan_url')),
+    path('plans/', include('plans.urls.edit_plan_url')),
+    path('plans/', include('plans.urls.delete_plan_url')),
 ]
