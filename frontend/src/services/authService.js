@@ -22,6 +22,13 @@ export async function fetchMe() {
 
 // ออกจากระบบ + ลบ token ฝั่ง client
 export async function logoutUser() {
-  try { await api.post("/auth/logout"); } catch {}
+  try { 
+    console.log("Calling logout API...");
+    const response = await api.post("/auth/logout");
+    console.log("Logout API response:", response.data);
+  } catch (error) {
+    console.error("Logout API error:", error);
+  }
   localStorage.removeItem("kh_token");
+  console.log("Token removed from localStorage");
 }

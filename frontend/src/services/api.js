@@ -6,6 +6,8 @@ const api = axios.create({
   withCredentials: true, // ถ้า backend ใช้ cookie/session ให้เปิดไว้
 });
 
+console.log("API Base URL:", api.defaults.baseURL);
+
 // Interceptor ก่อนส่ง request ทุกครั้ง → แนบ Bearer token ให้โดยอัตโนมัติ
 api.interceptors.request.use((config) => {
   const token = localStorage.getItem("kh_token");
