@@ -5,7 +5,7 @@ from users.models import Users
 from tags.models import tags
 
 # Model for plans
-class plans(models.Model):
+class Plans(models.Model):
     title = models.CharField(max_length=100)
     description = models.CharField(max_length=200)
     location = models.CharField(max_length=100)
