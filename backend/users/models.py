@@ -5,9 +5,10 @@ class Users(AbstractUser):
     ROLE_CHOICES = [
         ('user', 'User'),
         ('leader', 'Leader'),
-        ('participant', 'Participant')
+        ('participant', 'Participant'),
+        ('admin', 'Admin'),   
     ]
-    
+
     role = models.CharField(max_length=20, choices=ROLE_CHOICES, default='user')
     avg_rating = models.DecimalField(max_digits=4, decimal_places=2, default=0.00)
     review_count = models.PositiveIntegerField(default=0)
