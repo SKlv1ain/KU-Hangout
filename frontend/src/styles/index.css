@@ -1,0 +1,86 @@
+/* Green-White theme */
+:root {
+  --green-600: #16a34a;
+  --green-500: #22c55e;
+  --green-100: #dcfce7;
+  --green-50:  #f0fdf4;
+  --gray-900:  #0f172a;
+  --gray-600:  #475569;
+  --gray-200:  #e5e7eb;
+  --white:     #ffffff;
+  --radius:    12px;
+  --shadow:    0 8px 24px rgba(2, 44, 24, 0.12);
+}
+
+body {
+  font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji", "Segoe UI Emoji";
+  background: linear-gradient(180deg, var(--green-50), var(--white));
+  color: var(--gray-900);
+  margin: 0;
+}
+
+.auth-container {
+  display: grid;
+  place-items: center;
+  min-height: 100dvh;
+  padding: 24px;
+}
+
+.card {
+  width: 100%;
+  max-width: 560px;
+  background: var(--white);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  padding: 28px;
+  border: 1px solid var(--green-100);
+}
+
+.title {
+  margin: 0 0 8px;
+  font-size: 28px;
+  font-weight: 700;
+  color: var(--green-600);
+}
+
+.muted { color: var(--gray-600); margin-top: 12px; }
+.link { color: var(--green-600); text-decoration: none; }
+.link:hover { text-decoration: underline; }
+
+.form { display: grid; gap: 14px; margin-top: 16px; }
+.grid-2 { display: grid; gap: 14px; grid-template-columns: 1fr 1fr; }
+
+.field { display: grid; gap: 6px; }
+.label { font-size: 14px; color: var(--gray-600); }
+.input {
+  height: 44px;
+  padding: 0 12px;
+  border: 1px solid var(--gray-200);
+  border-radius: 10px;
+  background: var(--green-50);
+  outline: none;
+  transition: border-color .2s, box-shadow .2s, background .2s;
+}
+.input:focus {
+  border-color: var(--green-500);
+  box-shadow: 0 0 0 3px rgba(34, 197, 94, 0.2);
+  background: var(--white);
+}
+
+.button {
+  height: 46px;
+  border: none;
+  border-radius: 10px;
+  padding: 0 16px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.button.primary {
+  background: var(--green-600);
+  color: var(--white);
+}
+.button.primary:hover { background: var(--green-500); }
+.button:disabled { opacity: .6; cursor: not-allowed; }
+
+.error { color: #dc2626; font-size: 13px; margin: 2px 0 0; }
+
