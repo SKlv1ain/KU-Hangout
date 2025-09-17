@@ -49,7 +49,7 @@ class PlansSerializer(serializers.ModelSerializer):
         if tags_data is not None:
             instance.tags.clear()
             for tag_data in tags_data:
-                tag_obj, created = tags.objects.get_or_create(name=tag_data['name'])
+                tag_obj, created = Tags.objects.get_or_create(name=tag_data['name'])
                 instance.tags.add(tag_obj)
 
         return instance
