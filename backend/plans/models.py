@@ -2,7 +2,7 @@ from django.db import models
 from django.conf import settings
 from django.contrib.auth.models import AbstractUser
 from users.models import Users
-from tags.models import tags
+from tags.models import Tags
 
 # Model for plans
 class Plans(models.Model):
@@ -14,6 +14,6 @@ class Plans(models.Model):
     leader_id = models.ForeignKey(Users, related_name="leader", on_delete=models.CASCADE)
     event_time = models.DateTimeField()
     max_people = models.IntegerField(default=1)
-    tags = models.ManyToManyField(tags, related_name='plans', default=" ", null=True)
+    tags = models.ManyToManyField(Tags, related_name='plans', default=" ", null=True)
     people_joined = models.IntegerField(default=0)
     create_at = models.DateTimeField(auto_now_add=True)
