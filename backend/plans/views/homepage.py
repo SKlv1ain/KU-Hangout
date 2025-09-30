@@ -44,12 +44,18 @@ class PlansView(APIView):
             ).filter(join_ratio__gte=0.6).order_by("-join_ratio")
 
         elif filter_type == "new":
+            # return new plan
             last_48h = now - timedelta(hours=48)
             plans_qs = plans.objects.filter(create_at__gte=last_48h)
 
         elif filter_type == "expiring":
+            # return expiring plan
             end_of_day = start_of_day + timedelta(days=3)
             plans_qs = plans.objects.filter(event_time__gte=start_of_day, event_time__lt=end_of_day)
+        
+        elif filter_type == "all":
+            # return all plans
+            plans_qs = plans.objects.all().order_by("-create_at")
 
         else:
             # Default = today’s plans
