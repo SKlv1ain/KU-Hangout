@@ -28,6 +28,8 @@ DEBUG = True
 
 ALLOWED_HOSTS = []
 
+AUTH_USER_MODEL = 'users.Users'  # App name + Model name
+
 
 # Application definition
 
@@ -47,6 +49,9 @@ INSTALLED_APPS = [
     # Local apps
     'accounts',
     "users"
+
+    #user class
+    'users',
 
 ]
 
