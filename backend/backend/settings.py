@@ -48,10 +48,9 @@ INSTALLED_APPS = [
     'corsheaders',
     # Local apps
     'accounts',
-    "users"
-
-    #user class
-    'users',
+    "users",
+    'plans',
+    'tags',
 
 ]
 
@@ -99,7 +98,7 @@ DATABASES = {
         'USER': os.getenv('POSTGRES_USER', 'POSTGRES_USER'),
         'PASSWORD': os.getenv('POSTGRES_PASSWORD', 'POSTGRES_PASSWORD'),
         'HOST': os.getenv('DJANGO_DB_HOST', 'localhost'),  # ถ้ารัน Django ใน Docker ให้ใช้ 'postgres'
-        'PORT': os.getenv('DJANGO_DB_PORT', '5433'),
+        'PORT': os.getenv('DJANGO_DB_PORT', '5432'),
     }
 } 
 
@@ -160,5 +159,6 @@ REST_FRAMEWORK = {
 CORS_ALLOWED_ORIGINS = [
     'http://localhost:5173',
     'http://127.0.0.1:5173',
+    'http://localhost:3000',
 ]
 CORS_ALLOW_CREDENTIALS = True
