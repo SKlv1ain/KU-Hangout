@@ -1,5 +1,5 @@
 import { createContext, useContext, useEffect, useState, useCallback } from "react";
-import { fetchMe, loginUser, registerUser, logoutUser } from "@/services/authService";
+import { fetchMe, loginUser, registerUser, logoutUser } from "../services/authService.js";
 
 // สร้าง Context เปล่าไว้ให้ Provider เติมค่า
 const AuthContext = createContext(null);

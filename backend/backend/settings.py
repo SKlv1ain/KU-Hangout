@@ -91,16 +91,26 @@ WSGI_APPLICATION = 'backend.wsgi.application'
 
 load_dotenv(os.path.join(BASE_DIR.parent, ".env"))
 
+# Use SQLite for development (no separate database server needed)
+# For production, switch back to PostgreSQL
 DATABASES = {
     'default': {
-        'ENGINE': 'django.db.backends.postgresql',
-        'NAME': os.getenv('POSTGRES_DB', 'POSTGRES_DB'),
-        'USER': os.getenv('POSTGRES_USER', 'POSTGRES_USER'),
-        'PASSWORD': os.getenv('POSTGRES_PASSWORD', 'POSTGRES_PASSWORD'),
-        'HOST': os.getenv('DJANGO_DB_HOST', 'localhost'),  # ถ้ารัน Django ใน Docker ให้ใช้ 'postgres'
-        'PORT': os.getenv('DJANGO_DB_PORT', '5432'),
+        'ENGINE': 'django.db.backends.sqlite3',
+        'NAME': BASE_DIR / 'db.sqlite3',
     }
-} 
+}
+
+# Uncomment below for PostgreSQL (requires PostgreSQL server running)
+# DATABASES = {
+#     'default': {
+#         'ENGINE': 'django.db.backends.postgresql',
+#         'NAME': os.getenv('POSTGRES_DB', 'POSTGRES_DB'),
+#         'USER': os.getenv('POSTGRES_USER', 'POSTGRES_USER'),
+#         'PASSWORD': os.getenv('POSTGRES_PASSWORD', 'POSTGRES_PASSWORD'),
+#         'HOST': os.getenv('DJANGO_DB_HOST', 'localhost'),
+#         'PORT': os.getenv('DJANGO_DB_PORT', '5432'),
+#     }
+# }
 
 # Password validation
 # https://docs.djangoproject.com/en/5.1/ref/settings/#auth-password-validators
@@ -162,3 +172,25 @@ CORS_ALLOWED_ORIGINS = [
     'http://localhost:3000',
 ]
 CORS_ALLOW_CREDENTIALS = True
+
+# Additional CORS settings for better frontend-backend integration
+CORS_ALLOW_ALL_ORIGINS = False  # Set to True only for development if needed
+CORS_ALLOWED_HEADERS = [
+    'accept',
+    'accept-encoding',
+    'authorization',
+    'content-type',
+    'dnt',
+    'origin',
+    'user-agent',
+    'x-csrftoken',
+    'x-requested-with',
+]
+CORS_ALLOW_METHODS = [
+    'DELETE',
+    'GET',
+    'OPTIONS',
+    'PATCH',
+    'POST',
+    'PUT',
+]
