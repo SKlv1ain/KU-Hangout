@@ -5,7 +5,7 @@ import "../styles/Login.css";
 
 function PostCreateSimple() {
   const navigate = useNavigate();
-  
+
   // Form state
   const [formData, setFormData] = useState({
     title: "",
@@ -15,33 +15,35 @@ function PostCreateSimple() {
     max_people: "1",
     tags: ""
   });
-  
+
   const [loading, setLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
   const [successMessage, setSuccessMessage] = useState("");
 
-  // Activity types for dropdown
+  // Activity types (map frontend "value" to backend numeric ID)
   const activityTypes = [
-    { value: "sport", label: "🏃‍♂️ Sport & Fitness" },
-    { value: "drink", label: "🍹 Drinks & Social" },
-    { value: "study", label: "📚 Study & Academic" },
-    { value: "food", label: "🍜 Food & Dining" },
-    { value: "entertainment", label: "🎬 Entertainment & Movies" },
-    { value: "outdoor", label: "🌳 Outdoor Activities" },
-    { value: "gaming", label: "🎮 Gaming" },
-    { value: "shopping", label: "🛍️ Shopping" },
-    { value: "travel", label: "✈️ Travel & Exploration" },
-    { value: "culture", label: "🎨 Arts & Culture" },
-    { value: "music", label: "🎵 Music & Concerts" },
-    { value: "volunteer", label: "🤝 Volunteering" },
-    { value: "networking", label: "💼 Networking & Professional" },
-    { value: "hobby", label: "🎯 Hobbies & Crafts" },
-    { value: "wellness", label: "🧘‍♀️ Wellness & Mindfulness" }
+    { id: 1, value: "sport", label: "🏃‍♂️ Sport & Fitness" },
+    { id: 2, value: "drink", label: "🍹 Drinks & Social" },
+    { id: 3, value: "study", label: "📚 Study & Academic" },
+    { id: 4, value: "food", label: "🍜 Food & Dining" },
+    { id: 5, value: "entertainment", label: "🎬 Entertainment & Movies" },
+    { id: 6, value: "outdoor", label: "🌳 Outdoor Activities" },
+    { id: 7, value: "gaming", label: "🎮 Gaming" },
+    { id: 8, value: "shopping", label: "🛍️ Shopping" },
+    { id: 9, value: "travel", label: "✈️ Travel & Exploration" },
+    { id: 10, value: "culture", label: "🎨 Arts & Culture" },
+    { id: 11, value: "music", label: "🎵 Music & Concerts" },
+    { id: 12, value: "volunteer", label: "🤝 Volunteering" },
+    { id: 13, value: "networking", label: "💼 Networking & Professional" },
+    { id: 14, value: "hobby", label: "🎯 Hobbies & Crafts" },
+    { id: 15, value: "wellness", label: "🧘‍♀️ Wellness & Mindfulness" }
   ];
 
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
+  const handleInputChange = (
+    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>
+  ) => {
     const { name, value } = e.target;
-    setFormData(prev => ({
+    setFormData((prev) => ({
       ...prev,
       [name]: value
     }));
@@ -63,39 +65,41 @@ function PostCreateSimple() {
     if (!formData.tags) {
       return "Please select an activity type";
     }
-    
-    // Check if event time is at least 1 hour in the future
+
+    // Event time must be at least 1 hour in the future
     const selectedDate = new Date(formData.event_time);
     const oneHourFromNow = new Date(Date.now() + 60 * 60 * 1000);
     if (selectedDate <= oneHourFromNow) {
       return "Event time must be at least 1 hour from now";
     }
-    
+
     // Check max_people is valid
     const maxPeople = parseInt(formData.max_people);
     if (maxPeople < 1 || maxPeople > 50) {
       return "Maximum people must be between 1 and 50";
     }
-    
+
     return null;
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     const error = validateForm();
     if (error) {
       setErrorMessage(error);
       return;
     }
-    
+
     setLoading(true);
     setErrorMessage("");
     setSuccessMessage("");
 
     try {
-      // Convert selected tag string to array of objects
-      const tagsArray = formData.tags ? [{ name: formData.tags }] : [];
+      // Find the backend ID for the selected tag
+      const selectedTag = activityTypes.find(a => a.value === formData.tags);
+      const tagsArray = selectedTag ? [selectedTag.id] : [];
+
 
       const response = await createPost({
         title: formData.title,
@@ -105,8 +109,11 @@ function PostCreateSimple() {
         max_people: parseInt(formData.max_people),
         tags: tagsArray
       });
+      
 
-      setSuccessMessage(`🎉 Your "${formData.title}" plan has been created successfully!`);
+      setSuccessMessage(
+        `🎉 Your "${formData.title}" plan has been created successfully!`
+      );
 
       // Reset form
       setFormData({
@@ -118,7 +125,6 @@ function PostCreateSimple() {
         tags: ""
       });
 
-      // Optional: navigate to feed page
       // navigate("/feed");
     } catch (error: any) {
       if (error.response && error.response.data) {
@@ -129,10 +135,14 @@ function PostCreateSimple() {
         } else if (backendErrors.title) {
           setErrorMessage(backendErrors.title[0]);
         } else {
-          setErrorMessage("Failed to create plan. Please check your input and try again.");
+          setErrorMessage(
+            "Failed to create plan. Please check your input and try again."
+          );
         }
       } else {
-        setErrorMessage("Network error occurred. Please check your connection and try again.");
+        setErrorMessage(
+          "Network error occurred. Please check your connection and try again."
+        );
       }
     } finally {
       setLoading(false);
@@ -143,11 +153,12 @@ function PostCreateSimple() {
     <div className="flex justify-center items-center min-h-screen bg-gray-100 py-8">
       <div className="login-page max-w-2xl w-full mx-4">
         <h1 className="mb-6">Create New Hangout Plan 🎯</h1>
-        
+
         <div className="mb-6 p-4 bg-orange-50 border-l-4 border-orange-300 rounded-r-lg">
           <p className="text-sm text-orange-700">
-            <strong>💡 Tip:</strong> Be specific about your plan so others know exactly what to expect. 
-            The more details you provide, the better matches you'll get!
+            <strong>💡 Tip:</strong> Be specific about your plan so others know
+            exactly what to expect. The more details you provide, the better
+            matches you'll get!
           </p>
         </div>
 
@@ -187,10 +198,12 @@ function PostCreateSimple() {
               onChange={handleInputChange}
               className="form-input resize-none"
               rows={4}
-              placeholder="Describe what you're planning to do, what to expect, or any special requirements..."
+              placeholder="Describe what you're planning to do..."
               maxLength={200}
             />
-            <p className="text-sm text-gray-500 mt-1">{formData.description.length}/200 characters</p>
+            <p className="text-sm text-gray-500 mt-1">
+              {formData.description.length}/200 characters
+            </p>
           </div>
 
           <div>
@@ -201,7 +214,7 @@ function PostCreateSimple() {
               value={formData.location}
               onChange={handleInputChange}
               className="form-input"
-              placeholder="e.g., KU Library 3rd floor, Central World Food Court, Lumpini Park"
+              placeholder="e.g., KU Library, Lumpini Park"
               maxLength={100}
             />
           </div>
@@ -214,19 +227,22 @@ function PostCreateSimple() {
               value={formData.event_time}
               onChange={handleInputChange}
               className="form-input"
-              min={new Date(Date.now() + 60 * 60 * 1000).toISOString().slice(0, 16)}
+              min={new Date(Date.now() + 60 * 60 * 1000)
+                .toISOString()
+                .slice(0, 16)}
             />
           </div>
 
           <div>
-            <label className="form-label">Maximum people (including yourself)</label>
+            <label className="form-label">
+              Maximum people (including yourself)
+            </label>
             <input
               type="number"
               name="max_people"
               value={formData.max_people}
               onChange={handleInputChange}
               className="form-input"
-              placeholder="How many people can join? (1-50)"
               min="1"
               max="50"
             />
@@ -242,30 +258,17 @@ function PostCreateSimple() {
             >
               <option value="">Select an activity type</option>
               {activityTypes.map((activity) => (
-                <option key={activity.value} value={activity.value}>
+                <option key={activity.id} value={activity.value}>
                   {activity.label}
                 </option>
               ))}
             </select>
           </div>
 
-          <button
-            type="submit"
-            disabled={loading}
-            className="login-button"
-          >
+          <button type="submit" disabled={loading} className="login-button">
             {loading ? "Creating Plan..." : "Create Plan & Find People 🚀"}
           </button>
         </form>
-
-        <div className="mt-6 text-center">
-          <p className="text-sm text-gray-600">
-            Your plan will be visible to other KU students who are looking for similar activities.
-          </p>
-          <p className="text-sm text-gray-500 mt-2">
-            You can edit or cancel your plan anytime from your profile.
-          </p>
-        </div>
       </div>
     </div>
   );
