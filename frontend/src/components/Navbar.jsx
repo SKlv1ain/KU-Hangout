@@ -3,8 +3,8 @@ import Container from 'react-bootstrap/Container';
 import Navbar from 'react-bootstrap/Navbar';
 import Nav from 'react-bootstrap/Nav';
 import { Link, useLocation } from 'react-router-dom';
-import { useAuth } from '@/context/AuthContext';
-import logo from '@/assets/logo.svg';
+import { useAuth } from '../context/AuthContext.jsx';
+import logo from '../assets/logo.svg';
 
 function CustomNavbar() {
   const { user, logout } = useAuth();
