@@ -1,5 +1,5 @@
 import { Navigate } from "react-router-dom";
-import { useAuth } from "@/context/AuthContext";
+import { useAuth } from "../context/AuthContext.jsx";
 
 // ใช้ครอบหน้า/เพจที่ต้องการการยืนยันตัวตนหรือ admin-only
 export default function ProtectedRoute({ children, requireAdmin = false }) {

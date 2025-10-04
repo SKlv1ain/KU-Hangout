@@ -1,20 +1,20 @@
 from rest_framework import serializers
-from plans.model.users import users
+from users.models import Users
 
-class UserSerializer(serializers.ModelSerializer):
+class user_serializer(serializers.ModelSerializer):
     """
     Class userserializer for convert python model into json format for api
     """
     class Meta:
-        model = users
-        fields = ['id', 'username', 'role', 'avg_rating', 'review_count', 'contact', 'create_at', 'password']
+        model = Users
+        fields = ['id', 'username', 'role', 'avg_rating', 'review_count', 'contact', 'password']
         extra_kwargs = {
             'password': {'write_only': True}  # don’t expose passwords in API response
         }
 
     #function for create user profiels and check for validation
     def create(self, validated_data):
-        user = users(
+        user = Users(
             username=validated_data['username'],
             role=validated_data.get('role', 'user'),
             avg_rating=validated_data.get('avg_rating', 0),
@@ -24,3 +24,18 @@ class UserSerializer(serializers.ModelSerializer):
         user.set_password(validated_data['password'])  # hash the password
         user.save()
         return user
+
+    def update(self, instance, validated_data):
+        instance.username = validated_data.get('username', instance.username)
+        instance.role = validated_data.get('role', instance.role)
+        instance.avg_rating = validated_data.get('avg_rating', instance.avg_rating)
+        instance.review_count = validated_data.get('review_count', instance.review_count)
+        instance.contact = validated_data.get('contact', instance.contact)
+
+        # handle password securely
+        password = validated_data.get('password', None)
+        if password:
+            instance.set_password(password)
+
+        instance.save()
+        return instance
