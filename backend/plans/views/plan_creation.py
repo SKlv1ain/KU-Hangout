@@ -18,9 +18,11 @@ class PlansCreate(APIView):
     def post(self, request):
         serializer = PlansSerializer(data=request.data)
         if serializer.is_valid():
-            serializer.save(leader_id=request.user)  #auto assign leader
-            return Response(serializer.data, status=status.HTTP_201_CREATED)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+            serializer.save(leader_id=request.user)
+            return Response(serializer.data, status=201)
+        else:
+            print(serializer.errors)  # tell exactly what casue the error
+            return Response(serializer.errors, status=400)
 
     # PUT: update a plan
     def put(self, request, pk):
