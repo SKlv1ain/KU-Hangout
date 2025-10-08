@@ -2,13 +2,13 @@ import { useState } from "react";
 import { useForm } from "react-hook-form";           // ฟอร์มเบาๆ
 import { z } from "zod";                             // สคีมา validate
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useAuth } from "@/context/AuthContext";
+import { useAuth } from "../../context/AuthContext.jsx";
 import { Link, useNavigate } from "react-router-dom";
 
 // กำหนดกติกาฟอร์มด้วย zod
 const schema = z.object({
   username: z.string().min(3, "Username must be at least 3 characters"),
-  password: z.string().min(6, "Password must be at least 6 characters"),
+  password: z.string().min(8, "Password must be at least 8 characters"),
 });
 
 export default function Login() {

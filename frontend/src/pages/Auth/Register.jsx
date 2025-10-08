@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useAuth } from "@/context/AuthContext";
+import { useAuth } from "../../context/AuthContext.jsx";
 import { Link, useNavigate } from "react-router-dom";
 
 // สคีมาสมัครสมาชิก + เช็คยืนยันรหัสผ่านให้ตรงกัน
@@ -10,8 +10,8 @@ const schema = z
   .object({
     username: z.string().min(3, "Username must be at least 3 characters"),
     email: z.string().email("Enter a valid email address"),
-    password: z.string().min(6, "Password must be at least 6 characters"),
-    passwordConfirm: z.string().min(6, "Confirm your password"),
+    password: z.string().min(8, "Password must be at least 8 characters"),
+    passwordConfirm: z.string().min(8, "Confirm your password"),
     contact: z.string().optional(),
   })
   .refine((data) => data.password === data.passwordConfirm, {
