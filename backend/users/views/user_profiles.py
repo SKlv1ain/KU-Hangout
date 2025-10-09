@@ -1,8 +1,9 @@
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
+from rest_framework.permissions import AllowAny
 from users.models import Users
-from users.serializers.UserSerializer import user_serializer
+from users.serializers.UserSerializer import UserSerializer
 
 # List all users
 class UsersListView(APIView):
@@ -11,7 +12,7 @@ class UsersListView(APIView):
     """
     def get(self, request):
         all_users = Users.objects.all()
-        serializer = user_serializer(all_users, many=True)
+        serializer = UserSerializer(all_users, many=True)
         return Response(serializer.data)
 
 # Create new user
@@ -20,7 +21,7 @@ class UsersCreateView(APIView):
     POST new user
     """
     def post(self, request):
-        serializer = user_serializer(data=request.data)
+        serializer = UserSerializer(data=request.data)
         if serializer.is_valid():
             serializer.save()
             return Response(serializer.data, status=status.HTTP_201_CREATED)
@@ -41,7 +42,7 @@ class UserDetailView(APIView):
         user = self.get_object(pk)
         if not user:
             return Response({"error": "User not found"}, status=status.HTTP_404_NOT_FOUND)
-        serializer = user_serializer(user)
+        serializer = UserSerializer(user)
         field = request.query_params.get("field", None)
         if field:
             if field in serializer.data:
@@ -53,7 +54,7 @@ class UserDetailView(APIView):
         user = self.get_object(pk)
         if not user:
             return Response({"error": "User not found"}, status=status.HTTP_404_NOT_FOUND)
-        serializer = user_serializer(user, data=request.data, partial=True)
+        serializer = UserSerializer(user, data=request.data, partial=True)
         if serializer.is_valid():
             serializer.save()
             return Response(serializer.data)

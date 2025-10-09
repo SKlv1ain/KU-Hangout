@@ -15,5 +15,8 @@ class Users(AbstractUser):
     contact = models.CharField(max_length=100, blank=True, null=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
+    # New field for profile picture
+    profile_picture = models.ImageField(upload_to='profile_pictures/', blank=True, null=True)
+
     def __str__(self):
         return f"{self.username}'s profile"

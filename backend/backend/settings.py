@@ -194,3 +194,7 @@ CORS_ALLOW_METHODS = [
     'POST',
     'PUT',
 ]
+
+#add path for user profiles picture
+MEDIA_URL = '/media/'
+MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
