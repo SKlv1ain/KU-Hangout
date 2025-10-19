@@ -30,7 +30,7 @@ class PlansCreate(APIView):
         if not plan:
             return Response({"error": "Plan not found"}, status=status.HTTP_404_NOT_FOUND)
 
-        if plan.leader_id != request.user.id:  #only owner can edit
+        if plan.leader_id_id != request.user.id:  #only owner can edit
             return Response({"error": "You do not have permission to edit this plan."},
                             status=status.HTTP_403_FORBIDDEN)
 
@@ -46,11 +46,10 @@ class PlansCreate(APIView):
         if not plan:
             return Response({"error": "Plan not found"}, status=status.HTTP_404_NOT_FOUND)
 
-        if plan.leader_id != request.user.id:  #only owner can delete
-            return Response({"error": "You do not have permission to delete this plan."},
-                            status=status.HTTP_403_FORBIDDEN)
+        if plan.leader_id_id != request.user.id:
+            return Response({"error": "You do not have permission to edit this plan."},
+                    status=status.HTTP_403_FORBIDDEN)
 
         plan.delete()
-        return Response({"message": "Plan deleted successfully"},
-                        status=status.HTTP_204_NO_CONTENT)
+        return Response({"message": "Plan deleted successfully"}, status=status.HTTP_200_OK)
 
