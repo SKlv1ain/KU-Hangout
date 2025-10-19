@@ -16,7 +16,16 @@ const UserProfile = () => {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [isEditing, setIsEditing] = useState(false);
+  const [previewImage, setPreviewImage] = useState(null);
   const fileInputRef = useRef(null);
+
+  // Helper function to get full image URL
+  const getImageUrl = (imagePath) => {
+    if (!imagePath) return '/api/placeholder/150/150';
+    if (imagePath.startsWith('http')) return imagePath;
+    // Convert relative path to full URL
+    return `http://localhost:8000${imagePath}`;
+  };
 
   // Form state
   const [formData, setFormData] = useState({
@@ -95,19 +104,45 @@ const UserProfile = () => {
       return;
     }
 
+    // Show immediate preview
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      setPreviewImage(event.target.result);
+    };
+    reader.readAsDataURL(file);
+
     try {
       setUpdating(true);
       setError('');
       setSuccess('');
 
       const updatedProfile = await updateProfilePicture(profile.id, file);
+      
+      // Debug: Log the response to see what we're getting
+      console.log('Updated profile:', updatedProfile);
+      
+      // Update profile and keep the preview image until we confirm the new URL works
       setProfile(updatedProfile);
+      
+      // Force image refresh by reloading profile data
+      setTimeout(async () => {
+        try {
+          const refreshedProfile = await getCurrentUserProfile();
+          const userData = refreshedProfile.user || refreshedProfile;
+          setProfile(userData);
+          setPreviewImage(null); // Now clear the preview
+        } catch (err) {
+          console.error('Failed to refresh profile:', err);
+          // Keep the preview image if refresh fails
+        }
+      }, 500);
       setSuccess('Profile picture updated successfully!');
       
       // Clear success message after 3 seconds
       setTimeout(() => setSuccess(''), 3000);
     } catch (err) {
       setError('Failed to update profile picture: ' + err.message);
+      setPreviewImage(null); // Clear preview on error
     } finally {
       setUpdating(false);
     }
@@ -173,14 +208,19 @@ const UserProfile = () => {
               <div className="text-center mb-4">
                 <div className="position-relative d-inline-block profile-picture-container">
                   <Image
-                    src={profile.profile_picture || '/api/placeholder/150/150'}
+                    src={previewImage || getImageUrl(profile.profile_picture)}
                     alt="Profile Picture"
                     roundedCircle
                     width={150}
                     height={150}
                     className="border border-3 border-light shadow profile-picture"
-                    style={{ objectFit: 'cover' }}
+                    style={{ objectFit: 'cover', opacity: updating ? 0.7 : 1 }}
                   />
+                  {updating && (
+                    <div className="position-absolute top-50 start-50 translate-middle">
+                      <Spinner animation="border" size="sm" variant="primary" />
+                    </div>
+                  )}
                   <Button
                     variant="primary"
                     size="sm"
