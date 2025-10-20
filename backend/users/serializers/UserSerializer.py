@@ -14,6 +14,7 @@ class UserSerializer(serializers.ModelSerializer):
         fields = [
             'id',
             'username',
+            'display_name',
             'role',
             'avg_rating',
             'review_count',
@@ -26,9 +27,10 @@ class UserSerializer(serializers.ModelSerializer):
         }
 
     def create(self, validated_data):
-        profile_picture = validated_data.pop('profile_picture', None)  # extract image if provided
+        profile_picture = validated_data.pop('profile_picture', None)
         user = Users(
             username=validated_data['username'],
+            display_name=validated_data.get('display_name', ''), 
             role=validated_data.get('role', 'user'),
             avg_rating=validated_data.get('avg_rating', 0),
             review_count=validated_data.get('review_count', 0),
@@ -36,9 +38,10 @@ class UserSerializer(serializers.ModelSerializer):
         )
         user.set_password(validated_data['password'])
         if profile_picture:
-            user.profile_picture = profile_picture  # save image if uploaded
+            user.profile_picture = profile_picture
         user.save()
         return user
+
 
     def update(self, instance, validated_data):
         instance.username = validated_data.get('username', instance.username)
