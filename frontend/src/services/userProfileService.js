@@ -19,6 +19,18 @@ export async function updateUserProfile(userId, profileData) {
   return data;
 }
 
+// Update only username
+export async function updateUsername(userId, username) {
+  const data = await api.patch(`/users/${userId}/`, { username });
+  return data;
+}
+
+// Update only display name
+export async function updateDisplayName(userId, display_name) {
+  const data = await api.patch(`/users/${userId}/`, { display_name });
+  return data;
+}
+
 // Update profile picture only
 export async function updateProfilePicture(userId, imageFile) {
   const formData = new FormData();

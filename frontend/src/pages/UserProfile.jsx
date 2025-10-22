@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { 
   getCurrentUserProfile, 
   updateUserProfile, 
-  updateProfilePicture 
+  updateProfilePicture
 } from '../services/userProfileService';
 import { Container, Row, Col, Card, Form, Button, Alert, Image, Spinner } from 'react-bootstrap';
 import { Camera, User, Star, Phone, Calendar, Shield } from 'lucide-react';
@@ -45,12 +45,22 @@ const UserProfile = () => {
       setError('');
       const response = await getCurrentUserProfile();
       const userData = response.user || response; // Handle both formats
+      const storedDisplay = localStorage.getItem('kh_display_name') || '';
+      const resolvedDisplayName = (userData.display_name ?? storedDisplay) || '';
+
       setProfile(userData);
       setFormData({
         username: userData.username || '',
         contact: userData.contact || '',
-        role: userData.role || 'user'
+        role: userData.role || 'user',
+        display_name: resolvedDisplayName
       });
+      // Keep local cache in sync if backend provides the field
+      if (userData.display_name) {
+        localStorage.setItem('kh_display_name', userData.display_name);
+      } else if (!storedDisplay && resolvedDisplayName) {
+        localStorage.setItem('kh_display_name', resolvedDisplayName);
+      }
     } catch (err) {
       setError('Failed to load profile: ' + err.message);
     } finally {
@@ -76,6 +86,12 @@ const UserProfile = () => {
 
       const updatedProfile = await updateUserProfile(profile.id, formData);
       setProfile(updatedProfile);
+
+      // Persist display name locally if present
+      if (formData.display_name) {
+        localStorage.setItem('kh_display_name', formData.display_name);
+      }
+
       setSuccess('Profile updated successfully!');
       setIsEditing(false);
       
@@ -187,6 +203,8 @@ const UserProfile = () => {
     );
   }
 
+  const displayedName = (formData.display_name || formData.username || '') || '';
+
   return (
     <>
       <CustomNavbar />
@@ -245,6 +263,11 @@ const UserProfile = () => {
                     <small className="ms-2 text-muted">Uploading...</small>
                   </div>
                 )}
+                {displayedName && (
+                  <div className="mt-2">
+                    <h4 className="mb-0">{displayedName}</h4>
+                  </div>
+                )}
               </div>
 
               {/* Profile Info Cards */}
@@ -274,9 +297,8 @@ const UserProfile = () => {
                 <Row>
                   <Col md={6}>
                     <Form.Group className="mb-3">
-                      <Form.Label>
-                        <User size={16} className="me-2" />
-                        Username
+                      <Form.Label className="d-flex align-items-center">
+                        <User size={16} className="me-2" /> Username
                       </Form.Label>
                       <Form.Control
                         type="text"
@@ -284,7 +306,20 @@ const UserProfile = () => {
                         value={formData.username}
                         onChange={handleInputChange}
                         disabled={!isEditing}
-                        required
+                      />
+                    </Form.Group>
+                  </Col>
+                  <Col md={6}>
+                    <Form.Group className="mb-3">
+                      <Form.Label className="d-flex align-items-center">
+                        <User size={16} className="me-2" /> Display Name
+                      </Form.Label>
+                      <Form.Control
+                        type="text"
+                        name="display_name"
+                        value={formData.display_name || ''}
+                        onChange={handleInputChange}
+                        disabled={!isEditing}
                       />
                     </Form.Group>
                   </Col>
