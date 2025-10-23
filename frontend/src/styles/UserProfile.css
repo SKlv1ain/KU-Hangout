@@ -1,0 +1,299 @@
+/* UserProfile Styles */
+.user-profile-card {
+  border: none;
+  border-radius: 12px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  overflow: hidden;
+}
+
+.user-profile-header {
+  background: linear-gradient(135deg, var(--green-600), var(--green-500));
+  color: white;
+  padding: 20px;
+  border: none;
+}
+
+.profile-header-content {
+  display: flex;
+  align-items: flex-start;
+  gap: 16px;
+}
+
+.profile-avatar {
+  flex-shrink: 0;
+}
+
+.avatar-image {
+  width: 80px;
+  height: 80px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 3px solid rgba(255, 255, 255, 0.3);
+}
+
+.avatar-placeholder {
+  width: 80px;
+  height: 80px;
+  border-radius: 50%;
+  background-color: rgba(255, 255, 255, 0.2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 3px solid rgba(255, 255, 255, 0.3);
+}
+
+.profile-info {
+  flex: 1;
+}
+
+.profile-name {
+  font-size: 1.5rem;
+  font-weight: 600;
+  margin: 0 0 8px 0;
+}
+
+.profile-bio {
+  font-size: 0.9rem;
+  opacity: 0.9;
+  margin: 0 0 12px 0;
+  line-height: 1.4;
+}
+
+.profile-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.profile-location,
+.profile-join-date {
+  font-size: 0.8rem;
+  opacity: 0.8;
+}
+
+.profile-actions {
+  margin-top: 16px;
+}
+
+.edit-profile-btn {
+  border-radius: 8px;
+  padding: 6px 16px;
+  font-size: 0.85rem;
+  border-color: rgba(255, 255, 255, 0.5);
+  color: white;
+}
+
+.edit-profile-btn:hover {
+  background-color: rgba(255, 255, 255, 0.1);
+  border-color: rgba(255, 255, 255, 0.7);
+  color: white;
+}
+
+.user-profile-body {
+  padding: 20px;
+}
+
+.profile-stats {
+  margin-bottom: 24px;
+}
+
+.stats-title {
+  font-weight: 600;
+  color: var(--gray-900);
+  margin-bottom: 16px;
+  font-size: 0.95rem;
+}
+
+.stat-item {
+  text-align: center;
+  padding: 12px;
+  background-color: var(--green-50);
+  border-radius: 8px;
+  border: 1px solid var(--green-100);
+}
+
+.stat-number {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--green-600);
+  margin-bottom: 4px;
+}
+
+.stat-label {
+  font-size: 0.8rem;
+  color: var(--gray-600);
+  font-weight: 500;
+}
+
+.profile-rating {
+  margin-bottom: 24px;
+}
+
+.rating-title {
+  font-weight: 600;
+  color: var(--gray-900);
+  margin-bottom: 12px;
+  font-size: 0.95rem;
+}
+
+.rating-content {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.rating-stars {
+  display: flex;
+  gap: 2px;
+}
+
+.rating-stars i {
+  font-size: 1rem;
+}
+
+.rating-number {
+  font-weight: 600;
+  color: var(--gray-900);
+  font-size: 0.9rem;
+}
+
+.profile-interests {
+  margin-bottom: 24px;
+}
+
+.interests-title {
+  font-weight: 600;
+  color: var(--gray-900);
+  margin-bottom: 12px;
+  font-size: 0.95rem;
+}
+
+.interests-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.interest-badge {
+  font-size: 0.75rem;
+  padding: 6px 10px;
+  border-radius: 16px;
+  font-weight: 500;
+}
+
+.profile-social {
+  margin-bottom: 0;
+}
+
+.social-title {
+  font-weight: 600;
+  color: var(--gray-900);
+  margin-bottom: 12px;
+  font-size: 0.95rem;
+}
+
+.social-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.social-link {
+  display: inline-flex;
+  align-items: center;
+  padding: 6px 12px;
+  background-color: var(--green-50);
+  color: var(--green-600);
+  text-decoration: none;
+  border-radius: 8px;
+  font-size: 0.8rem;
+  font-weight: 500;
+  transition: all 0.3s ease;
+}
+
+.social-link:hover {
+  background-color: var(--green-100);
+  color: var(--green-700);
+  text-decoration: none;
+  transform: translateY(-1px);
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .user-profile-header {
+    padding: 16px;
+  }
+  
+  .profile-header-content {
+    flex-direction: column;
+    text-align: center;
+    gap: 12px;
+  }
+  
+  .profile-avatar {
+    align-self: center;
+  }
+  
+  .avatar-image,
+  .avatar-placeholder {
+    width: 60px;
+    height: 60px;
+  }
+  
+  .profile-name {
+    font-size: 1.3rem;
+  }
+  
+  .user-profile-body {
+    padding: 16px;
+  }
+  
+  .stat-item {
+    padding: 10px;
+  }
+  
+  .stat-number {
+    font-size: 1.3rem;
+  }
+  
+  .social-links {
+    gap: 8px;
+  }
+  
+  .social-link {
+    font-size: 0.75rem;
+    padding: 5px 10px;
+  }
+}
+
+@media (max-width: 576px) {
+  .profile-meta {
+    gap: 2px;
+  }
+  
+  .profile-location,
+  .profile-join-date {
+    font-size: 0.75rem;
+  }
+  
+  .stat-item {
+    padding: 8px;
+  }
+  
+  .stat-number {
+    font-size: 1.2rem;
+  }
+  
+  .stat-label {
+    font-size: 0.75rem;
+  }
+  
+  .interests-list {
+    gap: 6px;
+  }
+  
+  .interest-badge {
+    font-size: 0.7rem;
+    padding: 4px 8px;
+  }
+}

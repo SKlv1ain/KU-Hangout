@@ -2,6 +2,7 @@ import React from "react";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import Login from "./pages/Auth/Login.jsx";
 import Register from "./pages/Auth/Register.jsx";
+import Home from "./pages/Home.jsx";
 import PostCreateSimple from "./pages/PostCreateSimple.tsx";
 import ProtectedRoute from "./components/ProtectedRoute.jsx";
 
@@ -18,8 +19,12 @@ function RegisterAndLogout() {
 function App() {
   return (
     <div>
+      {/* Temporary: Show only Home page for testing */}
+      <Home />
+      {/* Original routes - commented out for testing */}
       <Routes>
-        <Route path="/" element={<Navigate to="/login" />} />
+        <Route path="/" element={<Navigate to="/home" />} />
+        <Route path="/home" element={<ProtectedRoute><Home /></ProtectedRoute>} />
         <Route path="/login" element={<Login />} />
         <Route path="/logout" element={<Logout />} />
         <Route path="/register" element={<RegisterAndLogout />} />
@@ -27,6 +32,7 @@ function App() {
         <Route path="/post" element={<ProtectedRoute><PostCreateSimple /></ProtectedRoute>} />
         <Route path="*" element={<Navigate to="/login" />} />
       </Routes>
+      
     </div>
   );
 }
