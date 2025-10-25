@@ -28,6 +28,8 @@ urlpatterns = [
     path("api/", include("accounts.urls")),
     # Plans CRUD (create post/plan)
     path('plans/', include('plans.urls.plan_crud_urls')),
+    # Plans for homepage
+    path('homepage/', include('plans.urls.homepage')),
     # JWT endpoints
     path('api/token/', TokenObtainPairView.as_view(), name='token_obtain_pair'),
     path('api/token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),

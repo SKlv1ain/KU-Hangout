@@ -1,46 +1,55 @@
 from rest_framework import serializers
 from plans.models import Plans
+from tags.serializers.tag_serializers import TagsSerializer  # import the new tags serializer
 from tags.models import Tags
-from tags.serializers.tag_serializers import TagsSerializer
 
 class PlansSerializer(serializers.ModelSerializer):
-    # Accept list of IDs
-    tags = serializers.PrimaryKeyRelatedField(
-        queryset=Tags.objects.all(),
-        many=True,
-        required=False
-    )
-    # Nested detail for output
-    tags_detail = TagsSerializer(source='tags', many=True, read_only=True)
+    tags = TagsSerializer(many=True, required=False)  # nested serializer
 
     class Meta:
         model = Plans
         fields = [
-            'id', 'title', 'description', 'location', 'lat', 'lng',
-            'leader_id', 'event_time', 'max_people', 'people_joined',
-            'create_at', 'tags', 'tags_detail'
+            'id',
+            'title',
+            'description',
+            'location',
+            'lat',
+            'lng',
+            'leader_id',
+            'event_time',
+            'max_people',
+            'people_joined',
+            'create_at',
+            'tags'
         ]
-        read_only_fields = ('id', 'leader_id', 'people_joined', 'create_at')
+        extra_kwargs = {
+            'create_at': {'read_only': True}
+        }
 
     def create(self, validated_data):
         tags_data = validated_data.pop('tags', [])
         plan = Plans.objects.create(**validated_data)
-
-        # Assign tags, automatically create any new ones by name
-        tag_objs = []
-        for tag in tags_data:
-            # tag here is a Tag instance if passed via ID
-            tag_objs.append(tag)
-        plan.tags.set(tag_objs)
+        
+        # Add tags
+        for tag_data in tags_data:
+            tag_obj, created = Tags.objects.get_or_create(name=tag_data['name'])
+            plan.tags.add(tag_obj)
+        
         return plan
 
     def update(self, instance, validated_data):
         tags_data = validated_data.pop('tags', None)
 
+        # Update plan fields
         for attr, value in validated_data.items():
             setattr(instance, attr, value)
         instance.save()
 
+        # Update tags if provided
         if tags_data is not None:
-            instance.tags.set(tags_data)
+            instance.tags.clear()
+            for tag_data in tags_data:
+                tag_obj, created = Tags.objects.get_or_create(name=tag_data['name'])
+                instance.tags.add(tag_obj)
+
         return instance

@@ -52,6 +52,8 @@ INSTALLED_APPS = [
     'plans',
     'tags',
 
+    #chanel for chat
+    "channels",
 ]
 
 MIDDLEWARE = [
@@ -84,7 +86,7 @@ TEMPLATES = [
 ]
 
 WSGI_APPLICATION = 'backend.wsgi.application'
-
+ASGI_APPLICATION = "backend.asgi.application"
 
 # Database
 # https://docs.djangoproject.com/en/5.1/ref/settings/#databases
@@ -188,3 +190,13 @@ CORS_ALLOW_METHODS = [
 #add path for user profiles picture
 MEDIA_URL = '/media/'
 MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
+
+# Redis backend for Channels
+CHANNEL_LAYERS = {
+    "default": {
+        "BACKEND": "channels_redis.core.RedisChannelLayer",
+        "CONFIG": {
+            "hosts": [("127.0.0.1", 6379)],
+        },
+    },
+}
