@@ -8,7 +8,7 @@ from plans.serializers.plans_serializers import PlansSerializer
 
 class PlansCreate(APIView):
     
-    permission_classes = [AllowAny]  #require JWT token
+    permission_classes = [IsAuthenticated]  #require JWT token
 
     def get_object(self, pk):
         try:
