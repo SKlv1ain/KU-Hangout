@@ -51,6 +51,7 @@ INSTALLED_APPS = [
     "users",
     'plans',
     'tags',
+    'chat',
 
     #chanel for chat
     "channels",
@@ -86,7 +87,7 @@ TEMPLATES = [
 ]
 
 WSGI_APPLICATION = 'backend.wsgi.application'
-ASGI_APPLICATION = "backend.asgi.application"
+ASGI_APPLICATION = 'backend.asgi.application'
 
 # Database
 # https://docs.djangoproject.com/en/5.1/ref/settings/#databases

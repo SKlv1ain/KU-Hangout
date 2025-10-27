@@ -1,9 +1,11 @@
 import json
 from channels.generic.websocket import AsyncWebsocketConsumer
 
-class PlanChatConsumer(AsyncWebsocketConsumer):
+class ChatConsumer(AsyncWebsocketConsumer):
     async def connect(self):
+        print("WebSocket CONNECT attempt, scope:", self.scope)
         self.plan_id = self.scope['url_route']['kwargs']['plan_id']
+        print("WebSocket connect, plan_id =", self.plan_id)
         self.room_group_name = f'plan_{self.plan_id}'
 
         # Join group
