@@ -2,13 +2,12 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
-from rest_framework.permissions import AllowAny
 from plans.models import Plans
 from plans.serializers.plans_serializers import PlansSerializer
 
 class PlansCreate(APIView):
     
-    permission_classes = [AllowAny]  #require JWT token
+    permission_classes = [IsAuthenticated]  #require JWT token
 
     def get_object(self, pk):
         try:
@@ -18,12 +17,15 @@ class PlansCreate(APIView):
 
     # POST: create a new plan
     def post(self, request):
-        serializer = PlansSerializer(data=request.data)
+        # Add leader_id to the data
+        data = request.data.copy()
+        data['leader_id'] = request.user.id
+        
+        serializer = PlansSerializer(data=data)
         if serializer.is_valid():
-            serializer.save(leader_id=request.user)
+            serializer.save()
             return Response(serializer.data, status=201)
         else:
-            print(serializer.errors)  # tell exactly what casue the error
             return Response(serializer.errors, status=400)
 
     # PUT: update a plan
