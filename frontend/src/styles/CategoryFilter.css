@@ -89,6 +89,45 @@
   color: #374151;
 }
 
+/* Custom colors for Games (purple) and Other (teal) */
+.category-btn.btn-purple {
+  background-color: #8b5cf6;
+  border-color: #8b5cf6;
+  color: white;
+}
+
+.category-btn.btn-outline-purple {
+  background-color: transparent;
+  border-color: #8b5cf6;
+  color: #8b5cf6;
+}
+
+.category-btn.btn-outline-purple:hover,
+.category-btn.btn-purple.active {
+  background-color: #7c3aed;
+  border-color: #7c3aed;
+  color: white;
+}
+
+.category-btn.btn-teal {
+  background-color: #14b8a6;
+  border-color: #14b8a6;
+  color: white;
+}
+
+.category-btn.btn-outline-teal {
+  background-color: transparent;
+  border-color: #14b8a6;
+  color: #14b8a6;
+}
+
+.category-btn.btn-outline-teal:hover,
+.category-btn.btn-teal.active {
+  background-color: #0d9488;
+  border-color: #0d9488;
+  color: white;
+}
+
 /* Responsive adjustments */
 @media (max-width: 768px) {
   .category-buttons {

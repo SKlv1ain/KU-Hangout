@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Modal, Form, Button, Row, Col, Alert } from 'react-bootstrap';
+import { createPlan } from '../services/planService.js';
 import '../styles/CreateActivityModal.css';
 
 export default function CreateActivityModal({ show, onHide, onCreateActivity }) {
@@ -11,7 +12,8 @@ export default function CreateActivityModal({ show, onHide, onCreateActivity }) 
     time: '',
     location: '',
     maxParticipants: '',
-    image: null
+    image: null,
+    imageUrl: null
   });
 
   const [errors, setErrors] = useState({});
@@ -48,9 +50,12 @@ export default function CreateActivityModal({ show, onHide, onCreateActivity }) 
   const handleImageChange = (e) => {
     const file = e.target.files[0];
     if (file) {
+      // Create preview URL from file
+      const imageUrl = URL.createObjectURL(file);
       setFormData(prev => ({
         ...prev,
-        image: file
+        image: file,
+        imageUrl: imageUrl // Store preview URL
       }));
     }
   };
@@ -100,19 +105,45 @@ export default function CreateActivityModal({ show, onHide, onCreateActivity }) 
     setIsSubmitting(true);
 
     try {
-      // Prepare activity data
+      // Prepare plan data for backend
+      const planData = {
+        title: formData.title,
+        description: formData.description,
+        location: formData.location,
+        event_time: `${formData.date}T${formData.time}:00+07:00`, // Convert to Thailand timezone (UTC+7)
+        max_people: parseInt(formData.maxParticipants),
+        tags: [formData.category] // Send tags as array of strings
+      };
+
+      console.log('Sending plan data:', planData);
+
+      // Call API to create plan
+      const response = await createPlan(planData);
+      console.log('API response:', response);
+      
+      // Prepare activity data for frontend
       const activityData = {
-        ...formData,
-        maxParticipants: parseInt(formData.maxParticipants),
-        currentParticipants: 1, // Creator is automatically included
-        creator: { username: 'testuser' }, // Mock creator
+        id: response.id,
+        title: response.title,
+        description: response.description,
+        date: formData.date,
+        time: formData.time,
+        location: response.location,
+        category: formData.category,
+        maxParticipants: response.max_people,
+        currentParticipants: response.people_joined || 1,
+        image: formData.imageUrl || null, // Use preview URL if available
+        creator: { username: 'Current User' }, // Will be updated with real user data
         isJoined: true,
         isInterested: false
       };
 
       await onCreateActivity(activityData);
       
-      // Reset form
+      // Reset form and cleanup preview URL
+      if (formData.imageUrl) {
+        URL.revokeObjectURL(formData.imageUrl);
+      }
       setFormData({
         title: '',
         description: '',
@@ -121,18 +152,50 @@ export default function CreateActivityModal({ show, onHide, onCreateActivity }) 
         time: '',
         location: '',
         maxParticipants: '',
-        image: null
+        image: null,
+        imageUrl: null
       });
       setErrors({});
       
     } catch (error) {
       console.error('Error creating activity:', error);
+      console.error('Error response:', error.response);
+      console.error('Error data:', error.response?.data);
+      
+      // Handle API errors
+      if (error.response?.data) {
+        const apiErrors = error.response.data;
+        const newErrors = {};
+        
+        // Map backend field names to frontend field names
+        if (apiErrors.title) newErrors.title = Array.isArray(apiErrors.title) ? apiErrors.title[0] : apiErrors.title;
+        if (apiErrors.description) newErrors.description = Array.isArray(apiErrors.description) ? apiErrors.description[0] : apiErrors.description;
+        if (apiErrors.location) newErrors.location = Array.isArray(apiErrors.location) ? apiErrors.location[0] : apiErrors.location;
+        if (apiErrors.event_time) newErrors.date = Array.isArray(apiErrors.event_time) ? apiErrors.event_time[0] : apiErrors.event_time;
+        if (apiErrors.max_people) newErrors.maxParticipants = Array.isArray(apiErrors.max_people) ? apiErrors.max_people[0] : apiErrors.max_people;
+        
+        // If there are field-specific errors, show them
+        if (Object.keys(newErrors).length > 0) {
+          setErrors(newErrors);
+        } else {
+          // Show general API error message
+          setErrors({ general: apiErrors.detail || apiErrors.message || 'Failed to create activity. Please check your input.' });
+        }
+      } else if (error.message) {
+        setErrors({ general: error.message });
+      } else {
+        setErrors({ general: 'Failed to create activity. Please try again.' });
+      }
     } finally {
       setIsSubmitting(false);
     }
   };
 
   const handleClose = () => {
+    // Cleanup preview URL if exists
+    if (formData.imageUrl) {
+      URL.revokeObjectURL(formData.imageUrl);
+    }
     setFormData({
       title: '',
       description: '',
@@ -141,7 +204,8 @@ export default function CreateActivityModal({ show, onHide, onCreateActivity }) 
       time: '',
       location: '',
       maxParticipants: '',
-      image: null
+      image: null,
+      imageUrl: null
     });
     setErrors({});
     onHide();
@@ -164,6 +228,13 @@ export default function CreateActivityModal({ show, onHide, onCreateActivity }) 
       
       <Modal.Body className="modal-body">
         <Form onSubmit={handleSubmit}>
+          {/* General Error Alert */}
+          {errors.general && (
+            <Alert variant="danger" className="mb-3">
+              {errors.general}
+            </Alert>
+          )}
+          
           <Row className="g-3">
             {/* Title */}
             <Col xs={12}>
@@ -345,6 +416,22 @@ export default function CreateActivityModal({ show, onHide, onCreateActivity }) 
                 <Form.Text className="text-muted">
                   Upload an image to make your activity more attractive
                 </Form.Text>
+                {/* Image Preview */}
+                {formData.imageUrl && (
+                  <div className="mt-3">
+                    <img 
+                      src={formData.imageUrl} 
+                      alt="Preview" 
+                      style={{
+                        maxWidth: '100%',
+                        maxHeight: '200px',
+                        borderRadius: '8px',
+                        border: '1px solid #dee2e6',
+                        objectFit: 'cover'
+                      }}
+                    />
+                  </div>
+                )}
               </Form.Group>
             </Col>
           </Row>

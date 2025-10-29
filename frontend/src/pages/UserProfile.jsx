@@ -5,7 +5,6 @@ import {
   updateProfilePicture
 } from '../services/userProfileService';
 import { Container, Row, Col, Card, Form, Button, Alert, Image, Spinner } from 'react-bootstrap';
-import { Camera, User, Star, Phone, Calendar, Shield } from 'lucide-react';
 import CustomNavbar from '../components/Navbar.jsx';
 import '../styles/UserProfile.css';
 
@@ -175,10 +174,10 @@ const UserProfile = () => {
 
   const getRoleIcon = (role) => {
     switch (role) {
-      case 'admin': return <Shield size={16} />;
-      case 'leader': return <Star size={16} />;
-      case 'participant': return <User size={16} />;
-      default: return <User size={16} />;
+      case 'admin': return <i className="fas fa-shield-alt"></i>;
+      case 'leader': return <i className="fas fa-star"></i>;
+      case 'participant': return <i className="fas fa-user"></i>;
+      default: return <i className="fas fa-user"></i>;
     }
   };
 
@@ -214,7 +213,7 @@ const UserProfile = () => {
           <Card className="shadow profile-card">
             <Card.Header className="bg-primary text-white">
               <h3 className="mb-0">
-                <User size={24} className="me-2" />
+                <i className="fas fa-user me-2"></i>
                 My Profile
               </h3>
             </Card.Header>
@@ -247,7 +246,7 @@ const UserProfile = () => {
                     onClick={() => fileInputRef.current?.click()}
                     disabled={updating}
                   >
-                    <Camera size={16} />
+                    <i className="fas fa-camera"></i>
                   </Button>
                   <input
                     type="file"
@@ -275,7 +274,7 @@ const UserProfile = () => {
                 <Col md={6}>
                   <Card className="h-100 border-0 bg-light profile-info-card">
                     <Card.Body className="text-center">
-                      <Star className="text-warning mb-2" size={24} />
+                      <i className="fas fa-star text-warning mb-2" style={{ fontSize: '24px' }}></i>
                       <h6 className="text-muted mb-1">Average Rating</h6>
                       <h4 className="mb-0">{profile.avg_rating || '0.00'}</h4>
                     </Card.Body>
@@ -284,7 +283,7 @@ const UserProfile = () => {
                 <Col md={6}>
                   <Card className="h-100 border-0 bg-light profile-info-card">
                     <Card.Body className="text-center">
-                      <User className="text-info mb-2" size={24} />
+                      <i className="fas fa-user text-info mb-2" style={{ fontSize: '24px' }}></i>
                       <h6 className="text-muted mb-1">Total Reviews</h6>
                       <h4 className="mb-0">{profile.review_count || 0}</h4>
                     </Card.Body>
@@ -298,7 +297,7 @@ const UserProfile = () => {
                   <Col md={6}>
                     <Form.Group className="mb-3">
                       <Form.Label className="d-flex align-items-center">
-                        <User size={16} className="me-2" /> Username
+                        <i className="fas fa-user me-2"></i> Username
                       </Form.Label>
                       <Form.Control
                         type="text"
@@ -312,7 +311,7 @@ const UserProfile = () => {
                   <Col md={6}>
                     <Form.Group className="mb-3">
                       <Form.Label className="d-flex align-items-center">
-                        <User size={16} className="me-2" /> Display Name
+                        <i className="fas fa-user-tag me-2"></i> Display Name
                       </Form.Label>
                       <Form.Control
                         type="text"
@@ -340,7 +339,7 @@ const UserProfile = () => {
 
                 <Form.Group className="mb-3">
                   <Form.Label>
-                    <Phone size={16} className="me-2" />
+                    <i className="fas fa-phone me-2"></i>
                     Contact Information
                   </Form.Label>
                   <Form.Control
@@ -355,7 +354,7 @@ const UserProfile = () => {
 
                 <Form.Group className="mb-4">
                   <Form.Label>
-                    <Calendar size={16} className="me-2" />
+                    <i className="fas fa-calendar-alt me-2"></i>
                     Member Since
                   </Form.Label>
                   <Form.Control

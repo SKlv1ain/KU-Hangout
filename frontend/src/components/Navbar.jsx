@@ -4,7 +4,7 @@ import Navbar from 'react-bootstrap/Navbar';
 import Nav from 'react-bootstrap/Nav';
 import Row from 'react-bootstrap/Row';
 import Col from 'react-bootstrap/Col';
-import { Link, useLocation } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext.jsx';
 import CompactUserProfile from './CompactUserProfile.jsx';
 import logo from '../assets/logo.svg';
@@ -12,15 +12,18 @@ import logo from '../assets/logo.svg';
 function CustomNavbar() {
   const { user, logout } = useAuth();
   const location = useLocation();
+  const navigate = useNavigate();
 
-  // Mock user for testing when AuthContext is disabled
-  const mockUser = { 
-    username: "testuser",
-    avatar: null
+  const handleLogout = async () => {
+    try {
+      await logout();
+      navigate('/login');
+    } catch (error) {
+      console.error('Logout failed:', error);
+      // Force redirect even if logout fails
+      navigate('/login');
+    }
   };
-
-  // Use mock user if AuthContext user is not available
-  const displayUser = user || mockUser;
 
   return (
     <>
@@ -50,7 +53,7 @@ function CustomNavbar() {
           <Navbar.Toggle aria-controls="basic-navbar-nav" />
           <Navbar.Collapse id="basic-navbar-nav">
             <Nav className="ms-auto">
-              {displayUser ? (
+              {user ? (
                 // แสดงเมนูสำหรับผู้ใช้ที่ล็อกอินแล้ว
                 <>
                   <Nav.Link as={Link} to="/home" className={location.pathname === '/home' ? 'active' : ''}>
@@ -59,7 +62,7 @@ function CustomNavbar() {
                   <Nav.Link as={Link} to="/profile" className={location.pathname === '/profile' ? 'active' : ''}>
                     Profile
                   </Nav.Link>
-                  <Nav.Link onClick={logout} className="text-danger">
+                  <Nav.Link onClick={handleLogout} className="text-danger">
                     Logout
                   </Nav.Link>
                 </>
@@ -80,12 +83,12 @@ function CustomNavbar() {
       </Navbar>
       
       {/* Compact User Profile - Right Top */}
-      {displayUser && (
+      {user && (
         <div className="compact-profile-container">
           <Container>
             <Row>
               <Col className="d-flex justify-content-end">
-                <CompactUserProfile user={displayUser} />
+                <CompactUserProfile user={user} />
               </Col>
             </Row>
           </Container>

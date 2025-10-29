@@ -2,7 +2,7 @@ import React from 'react';
 import { Button, Badge } from 'react-bootstrap';
 import '../styles/CategoryFilter.css';
 
-export default function CategoryFilter({ categories, selectedCategory, onCategorySelect }) {
+export default function CategoryFilter({ categories, selectedCategory, onCategorySelect, categoryCounts = {} }) {
   const defaultCategories = [
     { id: 'all', name: 'All', icon: 'fas fa-th', color: 'secondary' },
     { id: 'sports', name: 'Sports', icon: 'fas fa-running', color: 'success' },
@@ -10,12 +10,15 @@ export default function CategoryFilter({ categories, selectedCategory, onCategor
     { id: 'travel', name: 'Travel', icon: 'fas fa-map-marker-alt', color: 'info' },
     { id: 'art', name: 'Art', icon: 'fas fa-palette', color: 'danger' },
     { id: 'music', name: 'Music', icon: 'fas fa-music', color: 'primary' },
-    { id: 'movie', name: 'Movies', icon: 'fas fa-film', color: 'dark' },
-    { id: 'game', name: 'Games', icon: 'fas fa-gamepad', color: 'light' },
-    { id: 'other', name: 'Other', icon: 'fas fa-ellipsis-h', color: 'outline-secondary' }
+    { id: 'movie', name: 'Movies', icon: 'fas fa-film', color: 'secondary' },
+    { id: 'game', name: 'Games', icon: 'fas fa-gamepad', color: 'purple' },
+    { id: 'other', name: 'Other', icon: 'fas fa-ellipsis-h', color: 'teal' }
   ];
 
-  const categoriesToUse = categories || defaultCategories;
+  const categoriesToUse = categories || defaultCategories.map(cat => ({
+    ...cat,
+    count: categoryCounts[cat.id] || 0
+  }));
 
   const handleCategoryClick = (categoryId) => {
     onCategorySelect && onCategorySelect(categoryId);
@@ -31,23 +34,31 @@ export default function CategoryFilter({ categories, selectedCategory, onCategor
       </div>
       
       <div className="category-buttons">
-        {categoriesToUse.map((category) => (
-          <Button
-            key={category.id}
-            variant={selectedCategory === category.id ? category.color : `outline-${category.color}`}
-            size="sm"
-            className={`category-btn ${selectedCategory === category.id ? 'active' : ''}`}
-            onClick={() => handleCategoryClick(category.id)}
-          >
-            <i className={`${category.icon} me-1`}></i>
-            {category.name}
-            {category.count && (
-              <Badge bg="light" text="dark" className="ms-1 category-count">
-                {category.count}
-              </Badge>
-            )}
-          </Button>
-        ))}
+        {categoriesToUse.map((category) => {
+          // Handle special colors (purple, teal) that don't have Bootstrap variants
+          const isActive = selectedCategory === category.id;
+          const variant = ['purple', 'teal'].includes(category.color)
+            ? (isActive ? category.color : `outline-${category.color}`)
+            : (isActive ? category.color : `outline-${category.color}`);
+          
+          return (
+            <Button
+              key={category.id}
+              variant={variant}
+              size="sm"
+              className={`category-btn ${isActive ? 'active' : ''}`}
+              onClick={() => handleCategoryClick(category.id)}
+            >
+              <i className={`${category.icon} me-1`}></i>
+              {category.name}
+              {(category.count !== undefined && category.count !== null) && (
+                <Badge bg="light" text="dark" className="ms-1 category-count">
+                  {category.count}
+                </Badge>
+              )}
+            </Button>
+          );
+        })}
       </div>
     </div>
   );
