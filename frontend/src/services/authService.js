@@ -28,7 +28,7 @@ export async function logoutUser() {
     console.log("Logout API response:", response);
   } catch (error) {
     console.error("Logout API error:", error);
+    // Don't throw error, let AuthContext handle token removal
   }
-  localStorage.removeItem("kh_token");
-  console.log("Token removed from localStorage");
+  // Note: Token removal is handled by AuthContext
 }

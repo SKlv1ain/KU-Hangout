@@ -46,9 +46,16 @@ export function AuthProvider({ children }) {
 
   // ฟังก์ชันออกจากระบบ: เคลียร์ฝั่ง server (ถ้ามี) + ล้าง state/ token
   const logout = useCallback(async () => {
-    await logoutUser();
+    try {
+      await logoutUser();
+    } catch (error) {
+      console.error('Logout API error:', error);
+      // Continue with logout even if API call fails
+    }
+    // Always clear local state and token
     setUser(null);
     setRole(null);
+    localStorage.removeItem("kh_token");
   }, []);
 
   const isAdmin = role === "admin";
