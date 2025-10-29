@@ -1,6 +1,8 @@
 // Basic API utility for making requests
 const BASE_URL = import.meta.env.VITE_API_BASE || 'http://localhost:8000';
 
+console.log('API Base URL:', BASE_URL);
+
 const api = {
   async get(endpoint) {
     try {
@@ -32,6 +34,12 @@ const api = {
     try {
       const token = localStorage.getItem('kh_token');
       const isFormData = payload instanceof FormData;
+      const fullUrl = `${BASE_URL}${endpoint}`;
+
+      console.log('POST Request Details:');
+      console.log('- Full URL:', fullUrl);
+      console.log('- Payload:', payload);
+      console.log('- Token:', token ? 'Present' : 'Missing');
 
       const headers = {
         'X-Requested-With': 'XMLHttpRequest',
@@ -42,21 +50,29 @@ const api = {
         headers['Content-Type'] = 'application/json';
       }
 
-      const response = await fetch(`${BASE_URL}${endpoint}`, {
+      console.log('- Headers:', headers);
+
+      const response = await fetch(fullUrl, {
         method: 'POST',
         headers,
         credentials: 'include',
         body: isFormData ? payload : JSON.stringify(payload),
       });
 
+      console.log('Response Status:', response.status);
+      console.log('Response Headers:', Object.fromEntries(response.headers.entries()));
+
       const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(data?.detail || `POST ${endpoint} failed with status ${response.status}`);
+        const error = new Error(data?.detail || `POST ${endpoint} failed with status ${response.status}`);
+        error.response = { data, status: response.status };
+        throw error;
       }
 
       return data;
     } catch (err) {
+      console.error('POST Error:', err);
       if (err instanceof Error) throw err;
       throw new Error(String(err));
     }
