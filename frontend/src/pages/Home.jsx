@@ -11,6 +11,19 @@ import CreateActivityModal from '../components/CreateActivityModal.jsx';
 import { getPlans } from '../services/planService.js';
 import '../styles/Home.css';
 
+// Category mapping for display
+const defaultCategories = [
+  { id: 'all', name: 'All' },
+  { id: 'sports', name: 'Sports' },
+  { id: 'food', name: 'Food' },
+  { id: 'travel', name: 'Travel' },
+  { id: 'art', name: 'Art' },
+  { id: 'music', name: 'Music' },
+  { id: 'movie', name: 'Movies' },
+  { id: 'game', name: 'Games' },
+  { id: 'other', name: 'Other' }
+];
+
 export default function Home() {
   const { user } = useAuth();
 
@@ -22,13 +35,79 @@ export default function Home() {
   const [plans, setPlans] = useState([]);
   const [activities, setActivities] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [categoryCounts, setCategoryCounts] = useState({});
+
+          // Fetch category counts on mount
+          useEffect(() => {
+            const fetchCategoryCounts = async () => {
+              try {
+                const categories = ['all', 'sports', 'food', 'travel', 'art', 'music', 'movie', 'game', 'other'];
+                const counts = {};
+                
+                // Fetch count for each category
+                for (const category of categories) {
+                  try {
+                    const params = { filter: 'all' };
+                    if (category !== 'all') {
+                      params.category = category;
+                    }
+                    const response = await getPlans(params);
+                    counts[category] = response.length;
+                  } catch (error) {
+                    counts[category] = 0;
+                  }
+                }
+                
+                setCategoryCounts(counts);
+              } catch (error) {
+                console.error('Error fetching category counts:', error);
+              }
+            };
+
+            fetchCategoryCounts();
+          }, []); // Only fetch on mount
 
           // Fetch plans from API
           useEffect(() => {
             const fetchPlans = async () => {
               try {
                 setLoading(true);
-                const response = await getPlans({ filter: 'all' }); // Get all active plans
+                // Build query parameters
+                const params = {
+                  filter: 'all'
+                };
+                
+                // Add category filter from CategoryFilter component
+                if (selectedCategory && selectedCategory !== 'all') {
+                  params.category = selectedCategory;
+                }
+                
+                // Add category filter from Sidebar (if different from CategoryFilter)
+                // CategoryFilter takes precedence
+                if (!selectedCategory || selectedCategory === 'all') {
+                  if (filters.category && filters.category !== '') {
+                    // Map Sidebar category value to category ID
+                    const sidebarCategoryMap = {
+                      'Sports': 'sports',
+                      'Food': 'food',
+                      'Travel': 'travel',
+                      'Art': 'art',
+                      'Music': 'music',
+                      'Movies': 'movie',
+                      'Games': 'game',
+                      'Other': 'other'
+                    };
+                    const categoryId = sidebarCategoryMap[filters.category] || filters.category.toLowerCase();
+                    params.category = categoryId;
+                  }
+                }
+                
+                // Add search term if provided
+                if (searchTerm && searchTerm.trim()) {
+                  params.search = searchTerm.trim();
+                }
+                
+                const response = await getPlans(params);
                 const plansData = response.map(plan => ({
                   id: plan.id,
                   title: plan.title,
@@ -61,7 +140,7 @@ export default function Home() {
             const interval = setInterval(fetchPlans, 30000);
             
             return () => clearInterval(interval);
-          }, []);
+          }, [selectedCategory, filters, searchTerm]); // Re-fetch when category, filters, or search term changes
 
   // Event handlers
   const handleCategorySelect = (categoryId) => {
@@ -109,9 +188,68 @@ export default function Home() {
             
             setShowCreateModal(false);
             
+            // Refresh category counts
+            const fetchCategoryCounts = async () => {
+              try {
+                const categories = ['all', 'sports', 'food', 'travel', 'art', 'music', 'movie', 'game', 'other'];
+                const counts = {};
+                
+                for (const category of categories) {
+                  try {
+                    const params = { filter: 'all' };
+                    if (category !== 'all') {
+                      params.category = category;
+                    }
+                    const response = await getPlans(params);
+                    counts[category] = response.length;
+                  } catch (error) {
+                    counts[category] = 0;
+                  }
+                }
+                
+                setCategoryCounts(counts);
+              } catch (error) {
+                console.error('Error refreshing category counts:', error);
+              }
+            };
+            
+            fetchCategoryCounts();
+            
             // Refresh data from API to ensure consistency
             try {
-              const response = await getPlans({ filter: 'all' });
+              const params = {
+                filter: 'all'
+              };
+              
+              // Add category filter from CategoryFilter component
+              if (selectedCategory && selectedCategory !== 'all') {
+                params.category = selectedCategory;
+              }
+              
+              // Add category filter from Sidebar
+              if (!selectedCategory || selectedCategory === 'all') {
+                if (filters.category && filters.category !== '') {
+                  const sidebarCategoryMap = {
+                    'Sports': 'sports',
+                    'Food': 'food',
+                    'Travel': 'travel',
+                    'Art': 'art',
+                    'Music': 'music',
+                    'Movies': 'movie',
+                    'Games': 'game',
+                    'Other': 'other'
+                  };
+                  const categoryId = sidebarCategoryMap[filters.category] || filters.category.toLowerCase();
+                  params.category = categoryId;
+                }
+              }
+              
+              // Add search term if provided
+              if (searchTerm && searchTerm.trim()) {
+                params.search = searchTerm.trim();
+              }
+              
+              const response = await getPlans(params);
               const plansData = response.map(plan => {
                 // If this is the newly created plan, use the image from activityData
                 const isNewPlan = plan.id === activityData.id;
@@ -162,6 +300,7 @@ export default function Home() {
                 <CategoryFilter 
                   selectedCategory={selectedCategory}
                   onCategorySelect={handleCategorySelect}
+                  categoryCounts={categoryCounts}
                 />
               </div>
               <div className="ms-3">
@@ -176,6 +315,26 @@ export default function Home() {
                 </Button>
               </div>
             </div>
+
+            {/* Results Count */}
+            {!loading && (
+              <div className="mb-3 results-count">
+                <p className="text-muted mb-0">
+                  <i className="fas fa-list me-2"></i>
+                  Showing <strong>{plans.length}</strong> {plans.length === 1 ? 'activity' : 'activities'}
+                  {selectedCategory !== 'all' && (
+                    <span className="ms-2">
+                      in <strong>{defaultCategories.find(c => c.id === selectedCategory)?.name || selectedCategory}</strong>
+                    </span>
+                  )}
+                  {searchTerm && searchTerm.trim() && (
+                    <span className="ms-2">
+                      for "<strong>{searchTerm.trim()}</strong>"
+                    </span>
+                  )}
+                </p>
+              </div>
+            )}
 
             {/* Plans Grid */}
             <Row className="g-4 mb-5">

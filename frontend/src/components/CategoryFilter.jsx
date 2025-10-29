@@ -2,7 +2,7 @@ import React from 'react';
 import { Button, Badge } from 'react-bootstrap';
 import '../styles/CategoryFilter.css';
 
-export default function CategoryFilter({ categories, selectedCategory, onCategorySelect }) {
+export default function CategoryFilter({ categories, selectedCategory, onCategorySelect, categoryCounts = {} }) {
   const defaultCategories = [
     { id: 'all', name: 'All', icon: 'fas fa-th', color: 'secondary' },
     { id: 'sports', name: 'Sports', icon: 'fas fa-running', color: 'success' },
@@ -15,7 +15,10 @@ export default function CategoryFilter({ categories, selectedCategory, onCategor
     { id: 'other', name: 'Other', icon: 'fas fa-ellipsis-h', color: 'teal' }
   ];
 
-  const categoriesToUse = categories || defaultCategories;
+  const categoriesToUse = categories || defaultCategories.map(cat => ({
+    ...cat,
+    count: categoryCounts[cat.id] || 0
+  }));
 
   const handleCategoryClick = (categoryId) => {
     onCategorySelect && onCategorySelect(categoryId);
@@ -48,7 +51,7 @@ export default function CategoryFilter({ categories, selectedCategory, onCategor
             >
               <i className={`${category.icon} me-1`}></i>
               {category.name}
-              {category.count && (
+              {(category.count !== undefined && category.count !== null) && (
                 <Badge bg="light" text="dark" className="ms-1 category-count">
                   {category.count}
                 </Badge>

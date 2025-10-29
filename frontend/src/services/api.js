@@ -1,13 +1,30 @@
 // Basic API utility for making requests
 const BASE_URL = import.meta.env.VITE_API_BASE || 'http://localhost:8000';
 
-console.log('API Base URL:', BASE_URL);
+// Helper function to handle token expiration
+const handleTokenExpiration = () => {
+  // Clear token and user data
+  localStorage.removeItem('kh_token');
+  
+  // Redirect to login if not already there
+  if (window.location.pathname !== '/login' && window.location.pathname !== '/register') {
+    window.location.href = '/login';
+  }
+};
 
 const api = {
-  async get(endpoint) {
+  async get(endpoint, options = {}) {
     try {
       const token = localStorage.getItem('kh_token');
-      const response = await fetch(`${BASE_URL}${endpoint}`, {
+      
+      // Build URL with query parameters
+      let url = `${BASE_URL}${endpoint}`;
+      if (options.params && Object.keys(options.params).length > 0) {
+        const queryString = new URLSearchParams(options.params).toString();
+        url += `?${queryString}`;
+      }
+      
+      const response = await fetch(url, {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
@@ -15,6 +32,20 @@ const api = {
         },
         credentials: 'include',
       });
+
+      // Handle token expiration (401 Unauthorized) - check before parsing JSON
+      if (response.status === 401 || response.status === 403) {
+        // Try to get error message, but don't fail if response is not JSON
+        let errorMessage = 'Session expired. Please login again.';
+        try {
+          const errorData = await response.clone().json();
+          errorMessage = errorData?.detail || errorMessage;
+        } catch (e) {
+          // Response is not JSON, use default message
+        }
+        handleTokenExpiration();
+        throw new Error(errorMessage);
+      }
 
       const data = await response.json();
 
@@ -34,12 +65,6 @@ const api = {
     try {
       const token = localStorage.getItem('kh_token');
       const isFormData = payload instanceof FormData;
-      const fullUrl = `${BASE_URL}${endpoint}`;
-
-      console.log('POST Request Details:');
-      console.log('- Full URL:', fullUrl);
-      console.log('- Payload:', payload);
-      console.log('- Token:', token ? 'Present' : 'Missing');
 
       const headers = {
         'X-Requested-With': 'XMLHttpRequest',
@@ -50,17 +75,26 @@ const api = {
         headers['Content-Type'] = 'application/json';
       }
 
-      console.log('- Headers:', headers);
-
-      const response = await fetch(fullUrl, {
+      const response = await fetch(`${BASE_URL}${endpoint}`, {
         method: 'POST',
         headers,
         credentials: 'include',
         body: isFormData ? payload : JSON.stringify(payload),
       });
 
-      console.log('Response Status:', response.status);
-      console.log('Response Headers:', Object.fromEntries(response.headers.entries()));
+      // Handle token expiration (401 Unauthorized) - check before parsing JSON
+      if (response.status === 401 || response.status === 403) {
+        // Try to get error message, but don't fail if response is not JSON
+        let errorMessage = 'Session expired. Please login again.';
+        try {
+          const errorData = await response.clone().json();
+          errorMessage = errorData?.detail || errorMessage;
+        } catch (e) {
+          // Response is not JSON, use default message
+        }
+        handleTokenExpiration();
+        throw new Error(errorMessage);
+      }
 
       const data = await response.json();
 
@@ -72,7 +106,6 @@ const api = {
 
       return data;
     } catch (err) {
-      console.error('POST Error:', err);
       if (err instanceof Error) throw err;
       throw new Error(String(err));
     }
@@ -98,6 +131,20 @@ const api = {
         credentials: 'include',
         body: isFormData ? payload : JSON.stringify(payload),
       });
+
+      // Handle token expiration (401 Unauthorized) - check before parsing JSON
+      if (response.status === 401 || response.status === 403) {
+        // Try to get error message, but don't fail if response is not JSON
+        let errorMessage = 'Session expired. Please login again.';
+        try {
+          const errorData = await response.clone().json();
+          errorMessage = errorData?.detail || errorMessage;
+        } catch (e) {
+          // Response is not JSON, use default message
+        }
+        handleTokenExpiration();
+        throw new Error(errorMessage);
+      }
 
       const data = await response.json();
 
@@ -132,6 +179,20 @@ const api = {
         credentials: 'include',
         body: isFormData ? payload : JSON.stringify(payload),
       });
+
+      // Handle token expiration (401 Unauthorized) - check before parsing JSON
+      if (response.status === 401 || response.status === 403) {
+        // Try to get error message, but don't fail if response is not JSON
+        let errorMessage = 'Session expired. Please login again.';
+        try {
+          const errorData = await response.clone().json();
+          errorMessage = errorData?.detail || errorMessage;
+        } catch (e) {
+          // Response is not JSON, use default message
+        }
+        handleTokenExpiration();
+        throw new Error(errorMessage);
+      }
 
       const data = await response.json();
 
