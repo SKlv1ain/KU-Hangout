@@ -56,13 +56,13 @@ class PlansView(APIView):
             plans_qs = Plans.objects.filter(event_time__gte=start_of_day, event_time__lt=end_of_day)
         
         elif filter_type == "all":
-            # return all plans
-            plans_qs = Plans.objects.all().order_by("-create_at")
+            # return all active plans (not expired)
+            plans_qs = Plans.objects.filter(event_time__gt=now).order_by("-create_at")
 
         else:
-            # Default = today’s plans
-            end_of_day = start_of_day + timedelta(days=1)
-            plans_qs = Plans.objects.filter(event_time__gte=start_of_day, event_time__lt=end_of_day)
+            # Default = active plans (not expired)
+            plans_qs = Plans.objects.filter(event_time__gt=now).order_by("-create_at")
+
 
         serializer = PlansSerializer(plans_qs, many=True)
         return Response(serializer.data, status=status.HTTP_200_OK)
