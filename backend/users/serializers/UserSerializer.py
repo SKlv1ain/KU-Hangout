@@ -1,29 +1,47 @@
 from rest_framework import serializers
 from users.models import Users
 
-class user_serializer(serializers.ModelSerializer):
+class UserSerializer(serializers.ModelSerializer):
     """
-    Class userserializer for convert python model into json format for api
+    Serializer for converting user model to JSON and handling profile creation/update.
     """
+
+    # Explicitly declare profile_picture to handle file uploads
+    profile_picture = serializers.ImageField(required=False, allow_null=True)
+
     class Meta:
         model = Users
-        fields = ['id', 'username', 'role', 'avg_rating', 'review_count', 'contact', 'password']
+        fields = [
+            'id',
+            'username',
+            'display_name',
+            'role',
+            'avg_rating',
+            'review_count',
+            'contact',
+            'password',
+            'profile_picture'
+        ]
         extra_kwargs = {
-            'password': {'write_only': True}  # don’t expose passwords in API response
+            'password': {'write_only': True}
         }
 
-    #function for create user profiels and check for validation
     def create(self, validated_data):
+        profile_picture = validated_data.pop('profile_picture', None)
         user = Users(
             username=validated_data['username'],
+            display_name=validated_data.get('display_name', ''), 
             role=validated_data.get('role', 'user'),
             avg_rating=validated_data.get('avg_rating', 0),
             review_count=validated_data.get('review_count', 0),
             contact=validated_data.get('contact', '')
         )
-        user.set_password(validated_data['password'])  # hash the password
+        user.set_password(validated_data['password'])
+        if profile_picture:
+            user.profile_picture = profile_picture
         user.save()
         return user
+
 
     def update(self, instance, validated_data):
         instance.username = validated_data.get('username', instance.username)
@@ -33,9 +51,14 @@ class user_serializer(serializers.ModelSerializer):
         instance.contact = validated_data.get('contact', instance.contact)
 
         # handle password securely
-        password = validated_data.get('password', None)
+        password = validated_data.get('password')
         if password:
             instance.set_password(password)
+
+        # handle profile picture update
+        profile_picture = validated_data.get('profile_picture', None)
+        if profile_picture is not None:
+            instance.profile_picture = profile_picture
 
         instance.save()
         return instance

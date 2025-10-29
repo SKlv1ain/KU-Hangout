@@ -10,6 +10,7 @@ For the full list of settings and their values, see
 https://docs.djangoproject.com/en/5.1/ref/settings/
 """
 import os
+from datetime import timedelta
 from dotenv import load_dotenv
 from pathlib import Path
 
@@ -52,6 +53,8 @@ INSTALLED_APPS = [
     'plans',
     'tags',
 
+    #chanel for chat
+    "channels",
 ]
 
 MIDDLEWARE = [
@@ -84,33 +87,23 @@ TEMPLATES = [
 ]
 
 WSGI_APPLICATION = 'backend.wsgi.application'
-
+ASGI_APPLICATION = "backend.asgi.application"
 
 # Database
 # https://docs.djangoproject.com/en/5.1/ref/settings/#databases
 
 load_dotenv(os.path.join(BASE_DIR.parent, ".env"))
 
-# Use SQLite for development (no separate database server needed)
-# For production, switch back to PostgreSQL
 DATABASES = {
     'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
+        'ENGINE': 'django.db.backends.postgresql',
+        'NAME': os.getenv('POSTGRES_DB', 'POSTGRES_DB'),
+        'USER': os.getenv('POSTGRES_USER', 'POSTGRES_USER'),
+        'PASSWORD': os.getenv('POSTGRES_PASSWORD', 'POSTGRES_PASSWORD'),
+        'HOST': os.getenv('DJANGO_DB_HOST', 'localhost'),  # ถ้ารัน Django ใน Docker ให้ใช้ 'postgres'
+        'PORT': os.getenv('DJANGO_DB_PORT', '5432'),
     }
-}
-
-# Uncomment below for PostgreSQL (requires PostgreSQL server running)
-# DATABASES = {
-#     'default': {
-#         'ENGINE': 'django.db.backends.postgresql',
-#         'NAME': os.getenv('POSTGRES_DB', 'POSTGRES_DB'),
-#         'USER': os.getenv('POSTGRES_USER', 'POSTGRES_USER'),
-#         'PASSWORD': os.getenv('POSTGRES_PASSWORD', 'POSTGRES_PASSWORD'),
-#         'HOST': os.getenv('DJANGO_DB_HOST', 'localhost'),
-#         'PORT': os.getenv('DJANGO_DB_PORT', '5432'),
-#     }
-# }
+} 
 
 # Password validation
 # https://docs.djangoproject.com/en/5.1/ref/settings/#auth-password-validators
@@ -136,7 +129,7 @@ AUTH_PASSWORD_VALIDATORS = [
 
 LANGUAGE_CODE = 'en-us'
 
-TIME_ZONE = 'UTC'
+TIME_ZONE = 'Asia/Bangkok'
 
 USE_I18N = True
 
@@ -163,6 +156,23 @@ REST_FRAMEWORK = {
     'DEFAULT_PERMISSION_CLASSES': [
         'rest_framework.permissions.IsAuthenticated',
     ],
+}
+
+# JWT Settings - Token expiration configuration
+SIMPLE_JWT = {
+    'ACCESS_TOKEN_LIFETIME': timedelta(days=7),  # Access token valid for 7 days
+    'REFRESH_TOKEN_LIFETIME': timedelta(days=30),  # Refresh token valid for 30 days
+    'ROTATE_REFRESH_TOKENS': False,  # Disable token rotation (requires blacklist app)
+    'BLACKLIST_AFTER_ROTATION': False,  # Disable blacklist (requires token_blacklist app)
+    'UPDATE_LAST_LOGIN': False,  # Disable last login update
+    'ALGORITHM': 'HS256',
+    'SIGNING_KEY': SECRET_KEY,
+    'AUTH_HEADER_TYPES': ('Bearer',),
+    'AUTH_HEADER_NAME': 'HTTP_AUTHORIZATION',
+    'USER_ID_FIELD': 'id',
+    'USER_ID_CLAIM': 'user_id',
+    'AUTH_TOKEN_CLASSES': ('rest_framework_simplejwt.tokens.AccessToken',),
+    'TOKEN_TYPE_CLAIM': 'token_type',
 }
 
 # CORS settings for local development (Vite at http://localhost:5173)
@@ -194,3 +204,17 @@ CORS_ALLOW_METHODS = [
     'POST',
     'PUT',
 ]
+
+#add path for user profiles picture
+MEDIA_URL = '/media/'
+MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
+
+# Redis backend for Channels
+CHANNEL_LAYERS = {
+    "default": {
+        "BACKEND": "channels_redis.core.RedisChannelLayer",
+        "CONFIG": {
+            "hosts": [("127.0.0.1", 6379)],
+        },
+    },
+}

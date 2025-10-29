@@ -1,0 +1,340 @@
+/* PlanCard Styles */
+
+/* Custom Badge Colors for Better Visibility */
+.category-badge.bg-purple {
+  background-color: #8b5cf6 !important;  /* Bright purple */
+  color: white !important;
+  font-weight: 600;
+}
+
+.category-badge.bg-teal {
+  background-color: #14b8a6 !important;  /* Bright teal */
+  color: white !important;
+  font-weight: 600;
+}
+
+.plan-card {
+  border: none;
+  border-radius: 12px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  transition: all 0.3s ease;
+  overflow: hidden;
+}
+
+.plan-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
+}
+
+.plan-card.expired {
+  opacity: 0.7;
+  filter: grayscale(0.3);
+}
+
+.plan-card.expired:hover {
+  transform: none;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.plan-image-container {
+  position: relative;
+  height: 200px;
+  overflow: hidden;
+}
+
+.plan-image {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform 0.3s ease;
+}
+
+.plan-card:hover .plan-image {
+  transform: scale(1.05);
+}
+
+.plan-card.expired:hover .plan-image {
+  transform: none;
+}
+
+/* Placeholder Design when no image */
+.plan-image-placeholder {
+  width: 100%;
+  height: 100%;
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+}
+
+.placeholder-content {
+  position: relative;
+  z-index: 2;
+  text-align: center;
+  padding: 20px;
+  color: white;
+}
+
+.placeholder-icon {
+  font-size: 3rem;
+  margin-bottom: 12px;
+  opacity: 0.9;
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.2));
+}
+
+.placeholder-title {
+  font-size: 1.1rem;
+  font-weight: 700;
+  margin-bottom: 8px;
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+  line-height: 1.3;
+  max-width: 250px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+}
+
+.placeholder-location {
+  font-size: 0.85rem;
+  opacity: 0.9;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+}
+
+.placeholder-pattern {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  opacity: 0.1;
+  background-image: 
+    radial-gradient(circle at 20% 50%, white 1px, transparent 1px),
+    radial-gradient(circle at 80% 50%, white 1px, transparent 1px),
+    radial-gradient(circle at 50% 20%, white 1px, transparent 1px),
+    radial-gradient(circle at 50% 80%, white 1px, transparent 1px);
+  background-size: 50px 50px;
+  background-position: 0 0, 25px 25px, 0 0, 25px 25px;
+  z-index: 1;
+}
+
+.plan-card:hover .plan-image-placeholder {
+  transform: scale(1.02);
+}
+
+.plan-card.expired:hover .plan-image-placeholder {
+  transform: none;
+}
+
+.plan-category-badge {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  z-index: 2;
+}
+
+.category-badge {
+  font-size: 0.75rem;
+  padding: 4px 8px;
+  border-radius: 20px;
+  background-color: rgba(255, 255, 255, 0.9);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+  font-weight: 600;
+}
+
+.expired-badge {
+  position: absolute;
+  top: 12px;
+  left: 12px;
+  z-index: 2;
+}
+
+.expired-text {
+  font-size: 0.75rem;
+  padding: 4px 8px;
+  border-radius: 20px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  background-color: rgba(220, 53, 69, 0.9);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+  color: white !important;
+}
+
+.time-badge {
+  position: absolute;
+  bottom: 12px;
+  left: 12px;
+  z-index: 2;
+}
+
+.time-text {
+  font-size: 0.75rem;
+  padding: 4px 8px;
+  border-radius: 20px;
+  font-weight: 600;
+  background-color: rgba(13, 202, 240, 0.9) !important;
+  color: white !important;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+}
+
+.plan-title {
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: var(--gray-900);
+  margin-bottom: 8px;
+  line-height: 1.3;
+}
+
+.plan-description {
+  font-size: 0.9rem;
+  line-height: 1.4;
+  margin-bottom: 12px;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.plan-details {
+  background-color: var(--green-50);
+  border-radius: 8px;
+  padding: 12px;
+}
+
+.plan-detail-item {
+  display: flex;
+  align-items: center;
+  font-size: 0.85rem;
+  margin-bottom: 4px;
+}
+
+.plan-detail-item:last-child {
+  margin-bottom: 0;
+}
+
+.plan-location {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.location-link {
+  color: #007bff;
+  text-decoration: none;
+  font-weight: 500;
+  transition: color 0.2s ease;
+}
+
+.location-link:hover {
+  color: #0056b3;
+  text-decoration: underline;
+}
+
+.location-link i {
+  font-size: 0.7rem;
+  opacity: 0.7;
+}
+
+.plan-creator {
+  border-top: 1px solid var(--gray-200);
+  padding-top: 12px;
+}
+
+.creator-avatar {
+  width: 32px;
+  height: 32px;
+}
+
+.creator-name {
+  font-size: 0.9rem;
+  font-weight: 500;
+  color: var(--gray-900);
+}
+
+.plan-actions {
+  margin-top: auto;
+}
+
+.plan-action-btn {
+  font-size: 0.8rem;
+  padding: 6px 12px;
+  border-radius: 6px;
+  font-weight: 500;
+}
+
+.plan-action-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .plan-image-container {
+    height: 180px;
+  }
+  
+  .placeholder-icon {
+    font-size: 2.5rem;
+  }
+  
+  .placeholder-title {
+    font-size: 1rem;
+  }
+  
+  .placeholder-location {
+    font-size: 0.8rem;
+  }
+  
+  .plan-title {
+    font-size: 1rem;
+  }
+  
+  .plan-description {
+    font-size: 0.85rem;
+  }
+  
+  .plan-detail-item {
+    font-size: 0.8rem;
+  }
+}
+
+@media (max-width: 576px) {
+  .plan-image-container {
+    height: 160px;
+  }
+  
+  .placeholder-icon {
+    font-size: 2rem;
+    margin-bottom: 8px;
+  }
+  
+  .placeholder-title {
+    font-size: 0.9rem;
+  }
+  
+  .placeholder-location {
+    font-size: 0.75rem;
+  }
+  
+  .placeholder-content {
+    padding: 15px;
+  }
+  
+  .plan-card {
+    margin-bottom: 16px;
+  }
+  
+  .plan-action-btn {
+    font-size: 0.75rem;
+    padding: 5px 10px;
+  }
+}
