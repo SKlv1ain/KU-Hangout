@@ -26,7 +26,7 @@ export default function Login() {
     setServerError("");
     try {
       await login(values.username, values.password);
-      navigate("/"); // ไป Home
+      navigate("/home"); // ไปหน้า Home
     } catch (err) {
       // ดัก error จาก backend แล้วโชว์ข้อความ
       setServerError(err?.response?.data?.detail || "Invalid username or password");

@@ -9,6 +9,13 @@ python-dotenv>=1.0,<2.0
 # Auth (JWT)
 djangorestframework-simplejwt>=5.3,<6.0
 
+# WebSocket support (Channels)
+channels>=4.3,<5.0
+channels-redis>=4.3,<5.0
+
+# CORS support
+django-cors-headers>=4.3,<5.0
+
 # API docs (optional but recommended)
 drf-spectacular>=0.27,<0.28
 

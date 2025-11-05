@@ -13,13 +13,24 @@ export function AuthProvider({ children }) {
   // ตอนแอปโหลดครั้งแรก → ถ้ามี token อยู่ ลองเรียก /users/me เพื่อดึงข้อมูลเข้า state
   useEffect(() => {
     const token = localStorage.getItem("kh_token");
-    if (!token) { setLoading(false); return; }
+    if (!token) { 
+      setLoading(false); 
+      return; 
+    }
+    
     fetchMe()
       .then((res) => {
         // บาง backend ส่ง { user: {...} } หรือส่ง {...} ตรงๆ เลยรองรับทั้งสองแบบ
         const u = res.user || res;
         setUser(u);
         setRole(u?.role ?? "user");
+      })
+      .catch((error) => {
+        // If token is invalid or expired, clear it
+        console.error('Failed to fetch user:', error);
+        localStorage.removeItem("kh_token");
+        setUser(null);
+        setRole(null);
       })
       .finally(() => setLoading(false));
   }, []);
@@ -46,9 +57,16 @@ export function AuthProvider({ children }) {
 
   // ฟังก์ชันออกจากระบบ: เคลียร์ฝั่ง server (ถ้ามี) + ล้าง state/ token
   const logout = useCallback(async () => {
-    await logoutUser();
+    try {
+      await logoutUser();
+    } catch (error) {
+      console.error('Logout API error:', error);
+      // Continue with logout even if API call fails
+    }
+    // Always clear local state and token
     setUser(null);
     setRole(null);
+    localStorage.removeItem("kh_token");
   }, []);
 
   const isAdmin = role === "admin";

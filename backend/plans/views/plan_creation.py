@@ -24,6 +24,9 @@ class PlansCreate(APIView):
             qs.delete()  # CASCADE will remove Participants safely
         return count
 
+    
+    permission_classes = [IsAuthenticated]  #require JWT token
+
     def get_object(self, pk):
         try:
             return Plans.objects.get(pk=pk)
@@ -32,14 +35,13 @@ class PlansCreate(APIView):
 
     @transaction.atomic
     def post(self, request):
-        # opportunistic cleanup
         self._purge_expired_plans()
 
         serializer = PlansSerializer(data=request.data, context={"request": request})
         if not serializer.is_valid():
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
-        # Force current user as owner
+        # Force current user as owner/leader
         plan = serializer.save(leader_id=request.user)
 
         # Optional: reject already-expired plan
@@ -47,11 +49,14 @@ class PlansCreate(APIView):
             plan.delete()
             return Response(
                 {"detail": "event_time must be in the future."},
-                status=status.HTTP_400_BAD_REQUEST
+                status=status.HTTP_400_BAD_REQUEST,
             )
 
-        return Response(PlansSerializer(plan, context={"request": request}).data,
-                        status=status.HTTP_201_CREATED)
+        return Response(
+            PlansSerializer(plan, context={"request": request}).data,
+            status=status.HTTP_201_CREATED,
+        )
+
 
     @transaction.atomic
     def put(self, request, pk):
