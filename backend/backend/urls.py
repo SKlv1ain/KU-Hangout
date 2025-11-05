@@ -26,10 +26,11 @@ urlpatterns = [
     path('users/', include('users.urls.profile_urls')),
     # Auth
     path("api/", include("accounts.urls")),
-    # Plans CRUD (create post/plan)
-    path('plans/', include('plans.urls.plan_crud_urls')),
-    # Plans for homepage
-    path('homepage/', include('plans.urls.homepage')),
+    # Plans
+    path('plans/', include('plans.urls.plan_crud_urls')),   # Create/Edit/Delete
+    path('plans/', include('plans.urls.plan_join_urls')),   # join/leave plans
+    path('homepage/', include('plans.urls.homepage')),      # homepage plans
+  
     # JWT endpoints
     path('api/token/', TokenObtainPairView.as_view(), name='token_obtain_pair'),
     path('api/token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
