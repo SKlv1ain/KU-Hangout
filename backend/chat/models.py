@@ -20,8 +20,11 @@ class chat_member(models.Model):
 
 # Model for chat message
 class chat_messages(models.Model):
-    thread = models.ForeignKey(chat_threads, on_delete=models.CASCADE)
-    sender = models.ForeignKey(Users, on_delete=models.CASCADE,related_name="sender")
+    thread = models.ForeignKey(chat_threads, on_delete=models.CASCADE, related_name="messages")
+    sender = models.ForeignKey(Users, on_delete=models.CASCADE, related_name="sent_messages")
     body = models.TextField()
-    create_at = models.DateTimeField(auto_now_add=True)
+    create_at = models.DateTimeField(auto_now_add=True, db_index=True)  # Add index
+
+    class Meta:
+        ordering = ['create_at']  # Default ordering
 
