@@ -1,6 +1,10 @@
 import json
+import pytz
 from channels.generic.websocket import AsyncWebsocketConsumer
 from channels.db import database_sync_to_async
+from django.utils import timezone
+
+BANGKOK_TZ = pytz.timezone("Asia/Bangkok")
 
 class ChatConsumer(AsyncWebsocketConsumer):
     async def connect(self):
@@ -8,7 +12,7 @@ class ChatConsumer(AsyncWebsocketConsumer):
             self.plan_id = self.scope['url_route']['kwargs']['plan_id']
             self.room_group_name = f'plan_{self.plan_id}'
 
-            #Get authenticated user from middleware
+            # Get authenticated user from middleware
             user = self.scope.get('user')
             if not user or not user.is_authenticated:
                 await self.accept()
@@ -18,7 +22,7 @@ class ChatConsumer(AsyncWebsocketConsumer):
                 await self.close()
                 return
 
-            #Get or create chat thread
+            # Get or create chat thread
             thread = await self.get_or_create_thread(self.plan_id, user)
             if not thread:
                 await self.accept()
@@ -30,36 +34,29 @@ class ChatConsumer(AsyncWebsocketConsumer):
             
             self.thread_id = thread.id
 
-            #Add user as chat member
+            # Add user as chat member
             await self.add_chat_member(thread, user)
 
-            #Join the chat room
+            # Join the chat room
             await self.channel_layer.group_add(
                 self.room_group_name,
                 self.channel_name
             )
             await self.accept()
 
-            #Send connection confirmation
+            # Send connection confirmation
             await self.send(json.dumps({
                 "status": "connected",
                 "plan_id": self.plan_id,
                 "message": f"Connected as {user.username}"
             }))
 
-            #send chat history
+            # Send chat history
             history = await self.get_chat_history(thread)
-            if history:
-                await self.send(json.dumps({
-                    "type": "chat_history",
-                    "messages": history
-                }))
-            else:
-                #Send empty history if no messages yet
-                await self.send(json.dumps({
-                    "type": "chat_history",
-                    "messages": []
-                }))
+            await self.send(json.dumps({
+                "type": "chat_history",
+                "messages": history or []
+            }))
 
         except Exception as e:
             await self.accept()
@@ -91,7 +88,7 @@ class ChatConsumer(AsyncWebsocketConsumer):
                 await self.send(json.dumps({'error': 'Message cannot be empty.'}))
                 return
 
-            #Save message to database
+            # Save message to database
             saved_message = await self.save_message(self.thread_id, user, message)
             if not saved_message:
                 await self.send(json.dumps({'error': 'Failed to save message.'}))
@@ -99,14 +96,14 @@ class ChatConsumer(AsyncWebsocketConsumer):
 
             display_name = getattr(user, 'display_name', None) or user.get_full_name() or user.username
 
-            #Broadcast message to group
+            # Broadcast message to group
             await self.channel_layer.group_send(
                 self.room_group_name,
                 {
                     'type': 'chat_message',
                     'message': message,
                     'user': display_name,
-                    'timestamp': saved_message['timestamp'],
+                    'timestamp': saved_message['timestamp'],  # Already converted to Bangkok time
                 }
             )
 
@@ -128,8 +125,7 @@ class ChatConsumer(AsyncWebsocketConsumer):
                 'error': f'Display message error: {str(e)}'
             }))
 
-    #Database Operations
-
+    # Database Operations
     @database_sync_to_async
     def get_or_create_thread(self, plan_id, user):
         """Get or create a chat thread for the plan."""
@@ -138,7 +134,7 @@ class ChatConsumer(AsyncWebsocketConsumer):
         
         try:
             plan = Plans.objects.get(id=plan_id)
-            thread, created = chat_threads.objects.get_or_create(
+            thread, _ = chat_threads.objects.get_or_create(
                 plan=plan,
                 defaults={
                     'title': f'Chat for {plan.title}',
@@ -153,15 +149,11 @@ class ChatConsumer(AsyncWebsocketConsumer):
     def add_chat_member(self, thread, user):
         """Add user as a chat member if not already added."""
         from chat.models import chat_member
-        
-        chat_member.objects.get_or_create(
-            thread=thread,
-            user=user
-        )
+        chat_member.objects.get_or_create(thread=thread, user=user)
 
     @database_sync_to_async
     def get_chat_history(self, thread):
-        """Retrieve all messages for this thread."""
+        """Retrieve all messages for this thread with Bangkok timestamps."""
         from chat.models import chat_messages
         
         messages = chat_messages.objects.filter(
@@ -173,14 +165,14 @@ class ChatConsumer(AsyncWebsocketConsumer):
                 'id': msg.id,
                 'user': getattr(msg.sender, 'display_name', None) or msg.sender.get_full_name() or msg.sender.username,
                 'message': msg.body,
-                'timestamp': msg.create_at.isoformat()
+                'timestamp': timezone.localtime(msg.create_at, BANGKOK_TZ).strftime("%Y-%m-%d %H:%M:%S")
             }
             for msg in messages
         ]
 
     @database_sync_to_async
     def save_message(self, thread_id, user, message_body):
-        """Save a new message to the database."""
+        """Save a new message to the database with Bangkok timestamp."""
         from chat.models import chat_messages, chat_threads
         
         try:
@@ -190,9 +182,13 @@ class ChatConsumer(AsyncWebsocketConsumer):
                 sender=user,
                 body=message_body
             )
+
+            bangkok_time = timezone.localtime(message.create_at, BANGKOK_TZ)
+            formatted_time = bangkok_time.strftime("%Y-%m-%d %H:%M:%S")
+
             return {
                 'id': message.id,
-                'timestamp': message.create_at.isoformat()
+                'timestamp': formatted_time
             }
         except Exception as e:
             print(f"Error saving message: {e}")
