@@ -1,3 +1,8 @@
+import { useState } from "react"
+import { useForm } from "react-hook-form"
+import { z } from "zod"
+import { zodResolver } from "@hookform/resolvers/zod"
+import { useNavigate } from "react-router-dom"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import {
@@ -8,6 +13,16 @@ import {
   FieldSeparator,
 } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
+import { useAuth } from "@/context/AuthContext"
+import { toast } from "sonner"
+
+// กำหนดกติกาฟอร์มด้วย zod
+const loginSchema = z.object({
+  username: z.string().min(3, "Username must be at least 3 characters"),
+  password: z.string().min(8, "Password must be at least 8 characters"),
+});
+
+type LoginFormData = z.infer<typeof loginSchema>;
 
 type LoginFormProps = React.ComponentProps<"form"> & {
   onSignUp?: () => void
@@ -18,8 +33,40 @@ export function LoginForm({
   onSignUp,
   ...props
 }: LoginFormProps) {
+  const { login } = useAuth();
+  const navigate = useNavigate();
+  const [serverError, setServerError] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // ผูกฟอร์มกับสคีมา (จะได้ errors อัตโนมัติ)
+  const {
+    register,
+    handleSubmit,
+    formState: { errors },
+  } = useForm<LoginFormData>({
+    resolver: zodResolver(loginSchema),
+  });
+
+  // เมื่อ submit สำเร็จ → เรียก login → โยกไปหน้า Home
+  const onSubmit = async (values: LoginFormData) => {
+    setServerError("");
+    setIsSubmitting(true);
+    try {
+      await login(values.username, values.password);
+      toast.success("Login successful!");
+      navigate("/home"); // ไปหน้า Home
+    } catch (err: any) {
+      // ดัก error จาก backend แล้วโชว์ข้อความ
+      const errorMessage = err?.response?.data?.detail || err?.message || "Invalid username or password";
+      setServerError(errorMessage);
+      toast.error(errorMessage);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
   return (
-    <form className={cn("flex flex-col gap-6", className)} {...props}>
+    <form className={cn("flex flex-col gap-6", className)} onSubmit={handleSubmit(onSubmit)} {...props}>
       <FieldGroup>
         <div className="flex flex-col items-center gap-1 text-center">
           <h1 className="text-2xl font-bold">Login to your account</h1>
@@ -27,9 +74,23 @@ export function LoginForm({
             Enter your username below to login to your account
           </p>
         </div>
+        {serverError && (
+          <div className="text-sm text-red-500 text-center bg-red-50 dark:bg-red-950/20 p-3 rounded-md">
+            {serverError}
+          </div>
+        )}
         <Field>
           <FieldLabel htmlFor="username">Username</FieldLabel>
-          <Input id="username" type="text" placeholder="yourusername" required />
+          <Input
+            id="username"
+            type="text"
+            placeholder="yourusername"
+            {...register("username")}
+            className={errors.username ? "border-red-500" : ""}
+          />
+          {errors.username && (
+            <p className="text-sm text-red-500 mt-1">{errors.username.message}</p>
+          )}
         </Field>
         <Field>
           <div className="flex items-center">
@@ -41,11 +102,23 @@ export function LoginForm({
               Forgot your password?
             </a>
           </div>
-          <Input id="password" type="password" required />
+          <Input
+            id="password"
+            type="password"
+            {...register("password")}
+            className={errors.password ? "border-red-500" : ""}
+          />
+          {errors.password && (
+            <p className="text-sm text-red-500 mt-1">{errors.password.message}</p>
+          )}
         </Field>
         <Field>
-          <Button type="submit" className="bg-emerald-500 hover:bg-emerald-600 text-white">
-            Login
+          <Button
+            type="submit"
+            className="bg-emerald-500 hover:bg-emerald-600 text-white"
+            disabled={isSubmitting}
+          >
+            {isSubmitting ? "Logging in..." : "Login"}
           </Button>
         </Field>
         <FieldSeparator>Or continue with</FieldSeparator>

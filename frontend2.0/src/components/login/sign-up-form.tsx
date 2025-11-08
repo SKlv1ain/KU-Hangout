@@ -1,3 +1,8 @@
+import { useState } from "react"
+import { useForm } from "react-hook-form"
+import { z } from "zod"
+import { zodResolver } from "@hookform/resolvers/zod"
+import { useNavigate } from "react-router-dom"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import {
@@ -8,6 +13,22 @@ import {
   FieldSeparator,
 } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
+import { useAuth } from "@/context/AuthContext"
+import { toast } from "sonner"
+
+// กำหนดกติกาฟอร์มด้วย zod
+const signUpSchema = z.object({
+  username: z.string().min(3, "Username must be at least 3 characters"),
+  email: z.string().email("Invalid email address"),
+  password: z.string().min(8, "Password must be at least 8 characters"),
+  password_confirm: z.string().min(8, "Password confirmation is required"),
+  contact: z.string().optional(),
+}).refine((data) => data.password === data.password_confirm, {
+  message: "Passwords don't match",
+  path: ["password_confirm"],
+});
+
+type SignUpFormData = z.infer<typeof signUpSchema>;
 
 type SignUpFormProps = React.ComponentProps<"form"> & {
   onLogin?: () => void
@@ -18,8 +39,46 @@ export function SignUpForm({
   onLogin,
   ...props
 }: SignUpFormProps) {
+  const { register: registerUser } = useAuth();
+  const navigate = useNavigate();
+  const [serverError, setServerError] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // ผูกฟอร์มกับสคีมา
+  const {
+    register,
+    handleSubmit,
+    formState: { errors },
+  } = useForm<SignUpFormData>({
+    resolver: zodResolver(signUpSchema),
+  });
+
+  // เมื่อ submit สำเร็จ → เรียก register → โยกไปหน้า Home
+  const onSubmit = async (values: SignUpFormData) => {
+    setServerError("");
+    setIsSubmitting(true);
+    try {
+      await registerUser({
+        username: values.username,
+        email: values.email,
+        password: values.password,
+        password_confirm: values.password_confirm,
+        contact: values.contact,
+      });
+      toast.success("Account created successfully!");
+      navigate("/home"); // ไปหน้า Home
+    } catch (err: any) {
+      // ดัก error จาก backend แล้วโชว์ข้อความ
+      const errorMessage = err?.response?.data?.detail || err?.message || "Failed to create account";
+      setServerError(errorMessage);
+      toast.error(errorMessage);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
   return (
-    <form className={cn("flex flex-col gap-6", className)} {...props}>
+    <form className={cn("flex flex-col gap-6", className)} onSubmit={handleSubmit(onSubmit)} {...props}>
       <FieldGroup>
         <div className="flex flex-col items-center gap-1 text-center">
           <h1 className="text-2xl font-bold">Create a new account</h1>
@@ -27,30 +86,77 @@ export function SignUpForm({
             Start by entering your details below
           </p>
         </div>
+        {serverError && (
+          <div className="text-sm text-red-500 text-center bg-red-50 dark:bg-red-950/20 p-3 rounded-md">
+            {serverError}
+          </div>
+        )}
         <Field>
           <FieldLabel htmlFor="signup-username">Username</FieldLabel>
           <Input
             id="signup-username"
             type="text"
             placeholder="yourusername"
-            required
+            {...register("username")}
+            className={errors.username ? "border-red-500" : ""}
           />
+          {errors.username && (
+            <p className="text-sm text-red-500 mt-1">{errors.username.message}</p>
+          )}
         </Field>
         <Field>
           <FieldLabel htmlFor="signup-email">Email</FieldLabel>
-          <Input id="signup-email" type="email" placeholder="you@example.com" required />
+          <Input
+            id="signup-email"
+            type="email"
+            placeholder="you@example.com"
+            {...register("email")}
+            className={errors.email ? "border-red-500" : ""}
+          />
+          {errors.email && (
+            <p className="text-sm text-red-500 mt-1">{errors.email.message}</p>
+          )}
         </Field>
         <Field>
           <FieldLabel htmlFor="signup-password">Password</FieldLabel>
-          <Input id="signup-password" type="password" required />
+          <Input
+            id="signup-password"
+            type="password"
+            {...register("password")}
+            className={errors.password ? "border-red-500" : ""}
+          />
+          {errors.password && (
+            <p className="text-sm text-red-500 mt-1">{errors.password.message}</p>
+          )}
         </Field>
         <Field>
           <FieldLabel htmlFor="signup-confirm-password">Confirm password</FieldLabel>
-          <Input id="signup-confirm-password" type="password" required />
+          <Input
+            id="signup-confirm-password"
+            type="password"
+            {...register("password_confirm")}
+            className={errors.password_confirm ? "border-red-500" : ""}
+          />
+          {errors.password_confirm && (
+            <p className="text-sm text-red-500 mt-1">{errors.password_confirm.message}</p>
+          )}
         </Field>
         <Field>
-          <Button type="submit" className="bg-emerald-500 hover:bg-emerald-600 text-white">
-            Create account
+          <FieldLabel htmlFor="signup-contact">Contact (Optional)</FieldLabel>
+          <Input
+            id="signup-contact"
+            type="text"
+            placeholder="Your contact information"
+            {...register("contact")}
+          />
+        </Field>
+        <Field>
+          <Button
+            type="submit"
+            className="bg-emerald-500 hover:bg-emerald-600 text-white"
+            disabled={isSubmitting}
+          >
+            {isSubmitting ? "Creating account..." : "Create account"}
           </Button>
         </Field>
         <FieldSeparator>Or continue with</FieldSeparator>

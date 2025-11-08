@@ -1,10 +1,17 @@
 import { useState } from "react"
-
+import { Navigate } from "react-router-dom"
 import { LoginForm, LoginHero, SignUpForm } from "@/components/login"
 import { ModeToggle } from "@/components/mode-toggle"
+import { useAuth } from "@/context/AuthContext"
 
 export default function LoginPage() {
   const [view, setView] = useState<"login" | "signup">("login")
+  const { user, loading } = useAuth()
+
+  // ถ้า login อยู่แล้ว redirect ไปหน้า home
+  if (!loading && user) {
+    return <Navigate to="/home" replace />
+  }
 
   return (
     <div className="grid h-screen lg:grid-cols-[60%_40%]">
