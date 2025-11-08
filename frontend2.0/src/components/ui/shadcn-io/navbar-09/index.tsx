@@ -9,22 +9,21 @@ import {
   SearchIcon,
   UsersRound,
   BellIcon,
-  UserIcon,
   ChevronDownIcon,
 } from 'lucide-react';
-import { Button } from '@repo/shadcn-ui/components/ui/button';
-import { Input } from '@repo/shadcn-ui/components/ui/input';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import {
   NavigationMenu,
   NavigationMenuItem,
   NavigationMenuLink,
   NavigationMenuList,
-} from '@repo/shadcn-ui/components/ui/navigation-menu';
+} from '@/components/ui/navigation-menu';
 import {
   Popover,
   PopoverContent,
   PopoverTrigger,
-} from '@repo/shadcn-ui/components/ui/popover';
+} from '@/components/ui/popover';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -32,11 +31,10 @@ import {
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from '@repo/shadcn-ui/components/ui/dropdown-menu';
-import { Avatar, AvatarFallback, AvatarImage } from '@repo/shadcn-ui/components/ui/avatar';
-import { Badge } from '@repo/shadcn-ui/components/ui/badge';
-import { cn } from '@repo/shadcn-ui/lib/utils';
-import type { ComponentProps } from 'react';
+} from '@/components/ui/dropdown-menu';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Badge } from '@/components/ui/badge';
+import { cn } from '@/lib/utils';
 
 // Simple logo component for the navbar
 const Logo = (props: React.SVGAttributes<SVGElement>) => {
@@ -212,8 +210,10 @@ export interface Navbar09Props extends React.HTMLAttributes<HTMLElement> {
   userAvatar?: string;
   notificationCount?: number;
   messageIndicator?: boolean;
+  themeToggle?: React.ReactNode;
   onNavItemClick?: (href: string) => void;
   onSearchSubmit?: (query: string) => void;
+  onSearchClick?: () => void;
   onMessageClick?: () => void;
   onNotificationItemClick?: (item: string) => void;
   onUserItemClick?: (item: string) => void;
@@ -239,8 +239,10 @@ export const Navbar09 = React.forwardRef<HTMLElement, Navbar09Props>(
       userAvatar,
       notificationCount = 3,
       messageIndicator = true,
+      themeToggle,
       onNavItemClick,
       onSearchSubmit,
+      onSearchClick,
       onMessageClick,
       onNotificationItemClick,
       onUserItemClick,
@@ -355,16 +357,21 @@ export const Navbar09 = React.forwardRef<HTMLElement, Navbar09Props>(
                 <span className="hidden font-bold text-xl sm:inline-block">shadcn.io</span>
               </button>
               {/* Search form */}
-              <form onSubmit={handleSearchSubmit} className="relative">
+              <form onSubmit={handleSearchSubmit} className="relative w-64 md:w-80">
                 <Input
                   id={searchId}
                   name="search"
-                  className="peer h-8 ps-8 pe-2"
+                  className="peer h-8 w-full ps-8 pe-12 cursor-pointer"
                   placeholder={searchPlaceholder}
                   type="search"
+                  onClick={onSearchClick}
+                  readOnly
                 />
                 <div className="text-muted-foreground/80 pointer-events-none absolute inset-y-0 start-0 flex items-center justify-center ps-2 peer-disabled:opacity-50">
                   <SearchIcon size={16} />
+                </div>
+                <div className="text-muted-foreground/50 pointer-events-none absolute inset-y-0 end-0 flex items-center justify-center pe-2 text-xs">
+                  ⌘K
                 </div>
               </form>
             </div>
@@ -422,6 +429,12 @@ export const Navbar09 = React.forwardRef<HTMLElement, Navbar09Props>(
                 notificationCount={notificationCount}
                 onItemClick={onNotificationItemClick}
               />
+              {/* Theme toggle */}
+              {themeToggle && (
+                <div className="flex items-center">
+                  {themeToggle}
+                </div>
+              )}
             </div>
             {/* User menu */}
             <UserMenu 

@@ -1,0 +1,92 @@
+import { useState } from "react"
+import { useNavigate } from "react-router-dom"
+import { useAuth } from "@/context/AuthContext"
+import { Navbar09, type Navbar09NavItem } from "@/components/ui/shadcn-io/navbar-09"
+import { HouseIcon, HashIcon, UsersRound } from "lucide-react"
+import { CommandSearch } from "./command-search"
+import { ModeToggle } from "@/components/mode-toggle"
+
+export default function Navbar() {
+  const { user, logout } = useAuth()
+  const navigate = useNavigate()
+  const [commandOpen, setCommandOpen] = useState(false)
+
+  const navigationLinks: Navbar09NavItem[] = [
+    { href: '/home', label: 'Home', icon: HouseIcon },
+    { href: '#', label: 'Hash', icon: HashIcon },
+    { href: '#', label: 'Groups', icon: UsersRound },
+  ]
+
+  const handleNavItemClick = (href: string) => {
+    if (href.startsWith('/')) {
+      navigate(href)
+    }
+  }
+
+  const handleSearchSubmit = (_query: string) => {
+    // Open command dialog when search is submitted
+    setCommandOpen(true)
+  }
+
+  const handleSearchClick = () => {
+    // Open command dialog when search input is clicked
+    setCommandOpen(true)
+  }
+
+  const handleMessageClick = () => {
+    // TODO: Implement message functionality
+    console.log('Message clicked')
+  }
+
+  const handleNotificationItemClick = (item: string) => {
+    // TODO: Implement notification functionality
+    console.log('Notification item clicked:', item)
+  }
+
+  const handleUserItemClick = async (item: string) => {
+    switch (item) {
+      case 'profile':
+        // TODO: Navigate to profile page
+        console.log('Navigate to profile')
+        break
+      case 'settings':
+        // TODO: Navigate to settings page
+        console.log('Navigate to settings')
+        break
+      case 'billing':
+        // TODO: Navigate to billing page
+        console.log('Navigate to billing')
+        break
+      case 'logout':
+        await logout()
+        navigate('/login')
+        break
+      default:
+        console.log('User item clicked:', item)
+    }
+  }
+
+  return (
+    <>
+      <Navbar09
+        logoHref="/home"
+        navigationLinks={navigationLinks}
+        searchPlaceholder="Search..."
+        userName={user?.username || 'User'}
+        userEmail={user?.username || 'user@example.com'}
+        userAvatar={user?.profile_picture}
+        notificationCount={0}
+        messageIndicator={false}
+        themeToggle={<ModeToggle />}
+        onNavItemClick={handleNavItemClick}
+        onSearchSubmit={handleSearchSubmit}
+        onSearchClick={handleSearchClick}
+        onMessageClick={handleMessageClick}
+        onNotificationItemClick={handleNotificationItemClick}
+        onUserItemClick={handleUserItemClick}
+      />
+      <CommandSearch open={commandOpen} onOpenChange={setCommandOpen} />
+    </>
+  )
+}
+
