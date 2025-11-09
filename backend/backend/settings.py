@@ -103,13 +103,11 @@ DATABASES = {
         'PASSWORD': os.getenv('POSTGRES_PASSWORD', 'POSTGRES_PASSWORD'),
         # Prefer DJANGO_DB_* if present; else POSTGRES_*; else default.
         'HOST': (
-            os.getenv('DJANGO_DB_HOST')
-            or os.getenv('POSTGRES_HOST')
+            os.getenv('POSTGRES_HOST')
             or 'localhost'   # in Docker Compose, use service name e.g. 'postgres'
         ),
         'PORT': (
-            os.getenv('DJANGO_DB_PORT')
-            or os.getenv('POSTGRES_PORT')
+            os.getenv('POSTGRES_PORT')
             or '5432'
         ),
     }
