@@ -74,15 +74,116 @@ class ChatConsumer(AsyncWebsocketConsumer):
         except Exception:
             pass
 
+    import json
+import pytz
+from channels.generic.websocket import AsyncWebsocketConsumer
+from channels.db import database_sync_to_async
+from django.utils import timezone
+
+BANGKOK_TZ = pytz.timezone("Asia/Bangkok")
+
+class ChatConsumer(AsyncWebsocketConsumer):
+    async def connect(self):
+        try:
+            self.plan_id = self.scope['url_route']['kwargs']['plan_id']
+            self.room_group_name = f'plan_{self.plan_id}'
+
+            # Get authenticated user from middleware
+            user = self.scope.get('user')
+            if not user or not user.is_authenticated:
+                await self.accept()
+                await self.send(json.dumps({
+                    'error': 'You must log in to join this chat.'
+                }))
+                await self.close()
+                return
+
+            # Get or create chat thread
+            thread = await self.get_or_create_thread(self.plan_id, user)
+            if not thread:
+                await self.accept()
+                await self.send(json.dumps({
+                    'error': 'Plan not found or access denied.'
+                }))
+                await self.close()
+                return
+            
+            self.thread_id = thread.id
+
+            # Add user as chat member
+            await self.add_chat_member(thread, user)
+
+            # Join the chat room
+            await self.channel_layer.group_add(
+                self.room_group_name,
+                self.channel_name
+            )
+            await self.accept()
+
+            # Send connection confirmation
+            await self.send(json.dumps({
+                "status": "connected",
+                "plan_id": self.plan_id,
+                "message": f"Connected as {user.username}"
+            }))
+
+            # Send chat history
+            history = await self.get_chat_history(thread)
+            await self.send(json.dumps({
+                "type": "chat_history",
+                "messages": history or []
+            }))
+
+        except Exception as e:
+            await self.accept()
+            await self.send(json.dumps({
+                'error': f'Something went wrong: {str(e)}'
+            }))
+            await self.close()
+
+    async def disconnect(self, close_code):
+        try:
+            await self.channel_layer.group_discard(
+                self.room_group_name,
+                self.channel_name
+            )
+        except Exception:
+            pass
+
     async def receive(self, text_data):
         try:
             text_data_json = json.loads(text_data)
-            message = text_data_json.get('message', '').strip()
-
+            action = text_data_json.get('action', 'send_message')
+            
             user = self.scope.get('user')
             if not user or not user.is_authenticated:
-                await self.send(json.dumps({'error': 'You must be logged in to send messages.'}))
+                await self.send(json.dumps({'error': 'You must be logged in.'}))
                 return
+
+            # Handle delete message action
+            if action == 'delete_message':
+                message_id = text_data_json.get('message_id')
+                if not message_id:
+                    await self.send(json.dumps({'error': 'Message ID is required.'}))
+                    return
+
+                # Delete the message
+                result = await self.delete_message(message_id, user)
+                if result['success']:
+                    # Broadcast deletion to all users in the room
+                    await self.channel_layer.group_send(
+                        self.room_group_name,
+                        {
+                            'type': 'message_deleted',
+                            'message_id': message_id,
+                        }
+                    )
+                else:
+                    await self.send(json.dumps({'error': result['error']}))
+                return
+
+            # Handle send message action (default)
+            message = text_data_json.get('message', '').strip()
 
             if not message:
                 await self.send(json.dumps({'error': 'Message cannot be empty.'}))
@@ -101,9 +202,11 @@ class ChatConsumer(AsyncWebsocketConsumer):
                 self.room_group_name,
                 {
                     'type': 'chat_message',
+                    'message_id': saved_message['id'],
                     'message': message,
                     'user': display_name,
-                    'timestamp': saved_message['timestamp'],  # Already converted to Bangkok time
+                    'user_id': user.id,
+                    'timestamp': saved_message['timestamp'],
                 }
             )
 
@@ -116,13 +219,27 @@ class ChatConsumer(AsyncWebsocketConsumer):
         try:
             await self.send(json.dumps({
                 'type': 'new_message',
+                'message_id': event['message_id'],
                 'user': event['user'],
+                'user_id': event['user_id'],
                 'message': event['message'],
                 'timestamp': event.get('timestamp')
             }))
         except Exception as e:
             await self.send(json.dumps({
                 'error': f'Display message error: {str(e)}'
+            }))
+
+    async def message_deleted(self, event):
+        """Handle message deletion broadcast"""
+        try:
+            await self.send(json.dumps({
+                'type': 'message_deleted',
+                'message_id': event['message_id']
+            }))
+        except Exception as e:
+            await self.send(json.dumps({
+                'error': f'Delete message error: {str(e)}'
             }))
 
     # Database Operations
@@ -164,6 +281,7 @@ class ChatConsumer(AsyncWebsocketConsumer):
             {
                 'id': msg.id,
                 'user': getattr(msg.sender, 'display_name', None) or msg.sender.get_full_name() or msg.sender.username,
+                'user_id': msg.sender.id,
                 'message': msg.body,
                 'timestamp': timezone.localtime(msg.create_at, BANGKOK_TZ).strftime("%Y-%m-%d %H:%M:%S")
             }
@@ -193,3 +311,34 @@ class ChatConsumer(AsyncWebsocketConsumer):
         except Exception as e:
             print(f"Error saving message: {e}")
             return None
+
+    @database_sync_to_async
+    def delete_message(self, message_id, user):
+        """Delete a message if the user is the sender."""
+        from chat.models import chat_messages
+        
+        try:
+            message = chat_messages.objects.get(id=message_id, thread_id=self.thread_id)
+            
+            # Check if the user is the sender
+            if message.sender.id != user.id:
+                return {
+                    'success': False,
+                    'error': 'You can only delete your own messages.'
+                }
+            
+            # Delete the message
+            message.delete()
+            return {'success': True}
+            
+        except chat_messages.DoesNotExist:
+            return {
+                'success': False,
+                'error': 'Message not found.'
+            }
+        except Exception as e:
+            print(f"Error deleting message: {e}")
+            return {
+                'success': False,
+                'error': 'Failed to delete message.'
+            }
