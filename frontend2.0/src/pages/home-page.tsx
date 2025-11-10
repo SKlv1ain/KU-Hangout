@@ -1,10 +1,12 @@
 import Navbar from "@/components/navbar"
 import MessageDockDemo from "@/components/home/message-dock"
+import BreadcrumbNav from "@/components/home/breadcrumb-nav"
 
 export default function HomePage() {
   return (
     <div className="min-h-screen bg-background">
       <Navbar />
+      <BreadcrumbNav />
       <div className="container mx-auto px-4 py-8">
         {/* Add your page content here */}
         </div>

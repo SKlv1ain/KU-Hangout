@@ -1,10 +1,12 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { CardBody, CardContainer, CardItem } from "@/components/ui/shadcn-io/3d-card"
 import { AnimatedTooltip } from "@/components/ui/shadcn-io/animated-tooltip"
 import { Badge } from "@/components/ui/badge"
-import { MapPin, Calendar, Users, Heart, Crown, ChevronLeft, ChevronRight } from "lucide-react"
+import { MapPin, Calendar, Users, Heart, Crown, ChevronLeft, ChevronRight, Circle } from "lucide-react"
+import { useScript } from "@/hooks/use-script"
+import { toast } from "sonner"
 
 const people = [
   {
@@ -49,6 +51,33 @@ const tags = [
 
 export function PlanCardExample() {
   const [currentImageIndex, setCurrentImageIndex] = useState(0)
+  const [isJoined, setIsJoined] = useState(false)
+  const [isLiked, setIsLiked] = useState(false)
+  const [shouldTriggerConfetti, setShouldTriggerConfetti] = useState(false)
+
+  const confettiStatus = useScript(
+    'https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js',
+    {
+      removeOnUnmount: false,
+      id: 'confetti-script',
+    }
+  )
+
+  // Trigger confetti when script is ready and user has joined
+  useEffect(() => {
+    if (shouldTriggerConfetti && confettiStatus === 'ready' && typeof window !== 'undefined' && 'confetti' in window) {
+      // @ts-ignore - confetti is loaded dynamically
+      window.confetti({
+        particleCount: 100,
+        spread: 70,
+        origin: { y: 0.6 }
+      })
+      setShouldTriggerConfetti(false)
+      toast.success("🎉 Joined successfully!", {
+        description: "Welcome to the study session!",
+      })
+    }
+  }, [confettiStatus, shouldTriggerConfetti])
 
   const nextImage = () => {
     setCurrentImageIndex((prev) => (prev + 1) % images.length)
@@ -60,6 +89,37 @@ export function PlanCardExample() {
 
   const goToImage = (index: number) => {
     setCurrentImageIndex(index)
+  }
+
+  const handleJoin = () => {
+    setIsJoined(true)
+    setShouldTriggerConfetti(true)
+    
+    // If script is already ready, trigger immediately
+    if (confettiStatus === 'ready' && typeof window !== 'undefined' && 'confetti' in window) {
+      // @ts-ignore - confetti is loaded dynamically
+      window.confetti({
+        particleCount: 100,
+        spread: 70,
+        origin: { y: 0.6 }
+      })
+      setShouldTriggerConfetti(false)
+      toast.success("🎉 Joined successfully!", {
+        description: "Welcome to the study session!",
+      })
+    } else if (confettiStatus === 'loading') {
+      toast.info("Loading celebration...", {
+        description: "Please wait a moment",
+      })
+    } else {
+      toast.success("Joined successfully!", {
+        description: "Welcome to the study session!",
+      })
+    }
+  }
+
+  const handleLike = () => {
+    setIsLiked(!isLiked)
   }
 
   return (
@@ -90,11 +150,14 @@ export function PlanCardExample() {
                 key={i}
                 type="button"
                 onClick={() => goToImage(i)}
-                className={`block h-0.5 rounded-full transition-all ${
-                  i === currentImageIndex ? "w-4 bg-white/90" : "w-2 bg-white/40"
-                }`}
+                className="bg-transparent border-none p-0 text-white/80 hover:text-white transition-colors cursor-pointer"
+                style={{ backgroundColor: 'transparent', border: 'none', padding: 0 }}
                 aria-label={`Go to image ${i + 1}`}
-              />
+              >
+                <Circle className={`h-2 w-2 transition-all ${
+                  i === currentImageIndex ? "fill-white" : "fill-white/40"
+                }`} />
+              </button>
             ))}
           </div>
 
@@ -102,18 +165,20 @@ export function PlanCardExample() {
           <button
             type="button"
             onClick={prevImage}
-            className="absolute left-1 top-1/2 -translate-y-1/2 z-50 p-0.5 rounded-full bg-white/10 hover:bg-white/20 text-white/80 hover:text-white opacity-0 group-hover:opacity-100 transition-opacity backdrop-blur-sm"
+            className="absolute left-1 top-1/2 -translate-y-1/2 z-50 bg-transparent border-none p-1 text-white/80 hover:text-white opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer"
+            style={{ backgroundColor: 'transparent', border: 'none' }}
             aria-label="Previous image"
           >
-            <ChevronLeft className="h-3 w-3" />
+            <ChevronLeft className="h-4 w-4" />
           </button>
           <button
             type="button"
             onClick={nextImage}
-            className="absolute right-1 top-1/2 -translate-y-1/2 z-50 p-0.5 rounded-full bg-white/10 hover:bg-white/20 text-white/80 hover:text-white opacity-0 group-hover:opacity-100 transition-opacity backdrop-blur-sm"
+            className="absolute right-1 top-1/2 -translate-y-1/2 z-50 bg-transparent border-none p-1 text-white/80 hover:text-white opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer"
+            style={{ backgroundColor: 'transparent', border: 'none' }}
             aria-label="Next image"
           >
-            <ChevronRight className="h-3 w-3" />
+            <ChevronRight className="h-4 w-4" />
           </button>
         </div>
         
@@ -195,16 +260,26 @@ export function PlanCardExample() {
               <CardItem
                 translateZ={20}
                 as="button"
-                className="flex-1 px-3 py-1.5 rounded-lg bg-emerald-500 hover:bg-emerald-600 text-white text-xs font-semibold transition-colors"
+                onClick={handleJoin}
+                className={`flex-1 px-3 py-1.5 rounded-lg text-white text-xs font-semibold transition-colors ${
+                  isJoined 
+                    ? 'bg-emerald-600 hover:bg-emerald-700' 
+                    : 'bg-emerald-500 hover:bg-emerald-600'
+                }`}
               >
-                Join
+                {isJoined ? 'Joined' : 'Join'}
               </CardItem>
               <CardItem
                 translateZ={20}
                 as="button"
-                className="px-3 py-1.5 rounded-lg border border-emerald-400/30 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-200 text-xs font-semibold transition-colors"
+                onClick={handleLike}
+                className={`px-3 py-1.5 rounded-lg border text-xs font-semibold transition-colors ${
+                  isLiked
+                    ? 'border-red-400/50 bg-red-500/20 hover:bg-red-500/30 text-red-200'
+                    : 'border-emerald-400/30 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-200'
+                }`}
               >
-                <Heart className="h-3 w-3" />
+                <Heart className={`h-3 w-3 ${isLiked ? 'fill-red-500 text-red-500' : ''}`} />
               </CardItem>
             </div>
           </div>

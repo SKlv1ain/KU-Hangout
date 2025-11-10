@@ -56,7 +56,7 @@ export default function MessageDockDemo() {
       expandedWidth={400}
       placeholder={(name) => `Message ${name}...`}
       enableAnimations={true}
-      closeOnSend={true}
+      closeOnSend={false}
       autoFocus={true}
     />
   );

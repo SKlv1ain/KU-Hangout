@@ -102,8 +102,13 @@ const NotificationMenu = ({
 }) => (
   <DropdownMenu>
     <DropdownMenuTrigger asChild>
-      <Button variant="ghost" size="icon" className="h-8 w-8 relative rounded-full">
-        <BellIcon size={16} />
+      <Button 
+        variant="ghost" 
+        size="icon" 
+        className="h-8 w-8 relative rounded-full transition-all hover:bg-emerald-600/10 dark:hover:bg-emerald-400/20 hover:shadow-sm focus:outline-none focus-visible:outline-none focus-visible:ring-0"
+        style={{ backgroundColor: 'transparent', border: 'none', color: 'hsl(var(--foreground))' }}
+      >
+        <BellIcon size={16} style={{ color: 'hsl(var(--foreground))' }} />
         {notificationCount > 0 && (
           <Badge className="absolute -top-1 -right-1 h-5 w-5 flex items-center justify-center p-0 text-xs">
             {notificationCount > 9 ? '9+' : notificationCount}
@@ -155,14 +160,18 @@ const UserMenu = ({
 }) => (
   <DropdownMenu>
     <DropdownMenuTrigger asChild>
-      <Button variant="ghost" className="h-9 px-2 py-0 hover:bg-accent hover:text-accent-foreground">
+      <Button 
+        variant="ghost" 
+        className="h-9 px-2 py-0 transition-all hover:bg-emerald-600/10 dark:hover:bg-emerald-400/20 hover:shadow-sm focus:outline-none focus-visible:outline-none focus-visible:ring-0"
+        style={{ backgroundColor: 'transparent', border: 'none', color: 'hsl(var(--foreground))' }}
+      >
         <Avatar className="h-7 w-7">
           <AvatarImage src={userAvatar} alt={userName} />
           <AvatarFallback className="text-xs">
             {userName.split(' ').map(n => n[0]).join('')}
           </AvatarFallback>
         </Avatar>
-        <ChevronDownIcon className="h-3 w-3 ml-1" />
+        <ChevronDownIcon className="h-3 w-3 ml-1" style={{ color: 'hsl(var(--foreground))' }} />
         <span className="sr-only">User menu</span>
       </Button>
     </DropdownMenuTrigger>
@@ -198,10 +207,12 @@ export interface Navbar09NavItem {
   href?: string;
   label: string;
   icon: React.ComponentType<{ size?: number; className?: string; 'aria-hidden'?: boolean }>;
+  isActive?: boolean;
 }
 
 export interface Navbar09Props extends React.HTMLAttributes<HTMLElement> {
   logo?: React.ReactNode;
+  logoText?: string;
   logoHref?: string;
   navigationLinks?: Navbar09NavItem[];
   searchPlaceholder?: string;
@@ -231,6 +242,7 @@ export const Navbar09 = React.forwardRef<HTMLElement, Navbar09Props>(
     {
       className,
       logo = <Logo />,
+      logoText,
       logoHref = '#',
       navigationLinks = defaultNavigationLinks,
       searchPlaceholder = 'Search...',
@@ -310,9 +322,10 @@ export const Navbar09 = React.forwardRef<HTMLElement, Navbar09Props>(
               <Popover>
                 <PopoverTrigger asChild>
                   <Button
-                    className="group h-8 w-8 hover:bg-accent hover:text-accent-foreground"
+                    className="group h-8 w-8 text-foreground transition-all hover:bg-emerald-600/10 dark:hover:bg-emerald-400/20 hover:shadow-sm focus:outline-none focus-visible:outline-none focus-visible:ring-0"
                     variant="ghost"
                     size="icon"
+                    style={{ backgroundColor: 'transparent', border: 'none' }}
                   >
                     <HamburgerIcon />
                   </Button>
@@ -322,6 +335,7 @@ export const Navbar09 = React.forwardRef<HTMLElement, Navbar09Props>(
                     <NavigationMenuList className="flex-col items-start gap-0">
                       {navigationLinks.map((link, index) => {
                         const Icon = link.icon;
+                        const isActive = link.isActive ?? false;
                         return (
                           <NavigationMenuItem key={index} className="w-full">
                             <button
@@ -329,11 +343,15 @@ export const Navbar09 = React.forwardRef<HTMLElement, Navbar09Props>(
                                 e.preventDefault();
                                 if (onNavItemClick && link.href) onNavItemClick(link.href);
                               }}
-                              className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-sm font-medium transition-colors hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground cursor-pointer no-underline"
+                              className={cn(
+                                "flex w-full items-center gap-2 rounded-md px-3 py-2 text-sm font-medium transition-all hover:bg-emerald-600/10 dark:hover:bg-emerald-400/20 hover:shadow-sm focus:bg-emerald-600/10 dark:focus:bg-emerald-400/20 focus:shadow-sm focus:outline-none focus-visible:outline-none focus-visible:ring-0 cursor-pointer no-underline",
+                                isActive && "bg-emerald-600/15 dark:bg-emerald-400/25 shadow-sm border border-emerald-500/30 dark:border-emerald-400/40"
+                              )}
+                              style={{ backgroundColor: isActive ? undefined : 'transparent', border: isActive ? undefined : 'none' }}
                             >
                               <Icon
                                 size={16}
-                                className="text-muted-foreground"
+                                className="text-foreground"
                                 aria-hidden={true}
                               />
                               <span>{link.label}</span>
@@ -347,15 +365,21 @@ export const Navbar09 = React.forwardRef<HTMLElement, Navbar09Props>(
               </Popover>
             )}
             <div className="flex items-center gap-6">
-              <button
-                onClick={(e) => e.preventDefault()}
+              <a
+                href={logoHref}
+                onClick={(e) => {
+                  e.preventDefault();
+                  if (onNavItemClick && logoHref) onNavItemClick(logoHref);
+                }}
                 className="flex items-center space-x-2 text-primary hover:text-primary/90 transition-colors cursor-pointer"
               >
                 <div className="text-2xl">
                   {logo}
                 </div>
-                <span className="hidden font-bold text-xl sm:inline-block">shadcn.io</span>
-              </button>
+                {logoText && (
+                  <span className="font-bold text-xl">{logoText}</span>
+                )}
+              </a>
               {/* Search form */}
               <form onSubmit={handleSearchSubmit} className="relative w-64 md:w-80">
                 <Input
@@ -382,6 +406,7 @@ export const Navbar09 = React.forwardRef<HTMLElement, Navbar09Props>(
               <NavigationMenuList className="gap-2">
                 {navigationLinks.map((link, index) => {
                   const Icon = link.icon;
+                  const isActive = link.isActive ?? false;
                   return (
                     <NavigationMenuItem key={index}>
                       <NavigationMenuLink
@@ -390,10 +415,13 @@ export const Navbar09 = React.forwardRef<HTMLElement, Navbar09Props>(
                           e.preventDefault();
                           if (onNavItemClick && link.href) onNavItemClick(link.href);
                         }}
-                        className="flex size-8 items-center justify-center p-1.5 rounded-md transition-colors hover:bg-accent hover:text-accent-foreground cursor-pointer"
+                        className={cn(
+                          "flex size-8 items-center justify-center p-1.5 rounded-md transition-all hover:bg-emerald-600/10 dark:hover:bg-emerald-400/20 hover:shadow-sm focus:outline-none focus-visible:outline-none focus-visible:ring-0 cursor-pointer text-foreground",
+                          isActive && "bg-emerald-600/15 dark:bg-emerald-400/25 shadow-sm border border-emerald-500/30 dark:border-emerald-400/40"
+                        )}
                         title={link.label}
                       >
-                        <Icon aria-hidden={true} />
+                        <Icon aria-hidden={true} className="text-foreground" />
                         <span className="sr-only">{link.label}</span>
                       </NavigationMenuLink>
                     </NavigationMenuItem>
@@ -409,14 +437,15 @@ export const Navbar09 = React.forwardRef<HTMLElement, Navbar09Props>(
               <Button
                 size="icon"
                 variant="ghost"
-                className="text-muted-foreground relative size-8 rounded-full shadow-none"
+                className="relative size-8 rounded-full shadow-none transition-all hover:bg-emerald-600/10 dark:hover:bg-emerald-400/20 hover:shadow-sm focus:outline-none focus-visible:outline-none focus-visible:ring-0"
+                style={{ backgroundColor: 'transparent', border: 'none', color: 'hsl(var(--foreground))' }}
                 aria-label="Open messages"
                 onClick={(e) => {
                   e.preventDefault();
                   if (onMessageClick) onMessageClick();
                 }}
               >
-                <MailIcon size={16} aria-hidden={true} />
+                <MailIcon size={16} aria-hidden={true} style={{ color: 'hsl(var(--foreground))' }} />
                 {messageIndicator && (
                   <div
                     aria-hidden={true}

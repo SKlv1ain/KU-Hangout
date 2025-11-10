@@ -1,20 +1,20 @@
 import { useState } from "react"
-import { useNavigate } from "react-router-dom"
+import { useNavigate, useLocation } from "react-router-dom"
 import { useAuth } from "@/context/AuthContext"
 import { Navbar09, type Navbar09NavItem } from "@/components/ui/shadcn-io/navbar-09"
-import { HouseIcon, HashIcon, UsersRound } from "lucide-react"
+import { HouseIcon, Info } from "lucide-react"
 import { CommandSearch } from "./command-search"
 import { ModeToggle } from "@/components/mode-toggle"
 
 export default function Navbar() {
   const { user, logout } = useAuth()
   const navigate = useNavigate()
+  const location = useLocation()
   const [commandOpen, setCommandOpen] = useState(false)
 
   const navigationLinks: Navbar09NavItem[] = [
-    { href: '/home', label: 'Home', icon: HouseIcon },
-    { href: '#', label: 'Hash', icon: HashIcon },
-    { href: '#', label: 'Groups', icon: UsersRound },
+    { href: '/about', label: 'About Us', icon: Info, isActive: location.pathname === '/about' },
+    { href: '/home', label: 'Home', icon: HouseIcon, isActive: location.pathname === '/home' }
   ]
 
   const handleNavItemClick = (href: string) => {
@@ -70,12 +70,13 @@ export default function Navbar() {
     <>
       <Navbar09
         logoHref="/home"
+        logoText="KU-Hangout"
         navigationLinks={navigationLinks}
         searchPlaceholder="Search..."
         userName={user?.username || 'User'}
         userEmail={user?.username || 'user@example.com'}
         userAvatar={user?.profile_picture}
-        notificationCount={0}
+        notificationCount={3}
         messageIndicator={false}
         themeToggle={<ModeToggle />}
         onNavItemClick={handleNavItemClick}

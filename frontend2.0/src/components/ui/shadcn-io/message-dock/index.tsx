@@ -1,8 +1,14 @@
 'use client';
 
 import { cn } from "@/lib/utils";
-import { motion, useReducedMotion, AnimatePresence } from "framer-motion";
-import { useState, useRef, useEffect } from "react";
+import {
+  AnimatePresence,
+  motion,
+  useReducedMotion,
+  type TargetAndTransition,
+} from "framer-motion";
+import { useEffect, useRef, useState } from "react";
+import { useTheme } from "@/components/theme-provider";
 
 export interface Character {
   id?: string | number;
@@ -18,9 +24,14 @@ export interface Character {
 
 export interface MessageDockProps {
   characters?: Character[];
-  onMessageSend?: (message: string, character: Character, characterIndex: number) => void;
+  onMessageSend?: (
+    message: string,
+    character: Character,
+    characterIndex: number
+  ) => void;
   onCharacterSelect?: (character: Character, characterIndex: number) => void;
   onDockToggle?: (isExpanded: boolean) => void;
+  onExpandClick?: () => void;
   className?: string;
   expandedWidth?: number;
   position?: "bottom" | "top";
@@ -76,8 +87,10 @@ const defaultCharacters: Character[] = [
   },
 ];
 
-const getGradientColors = (character: Character) => {
-  return character.gradientColors || "#86efac, #dcfce7";
+type MessageEntry = {
+  text: string;
+  timestamp: number;
+  from: "user" | "character";
 };
 
 export function MessageDock({
@@ -85,6 +98,7 @@ export function MessageDock({
   onMessageSend,
   onCharacterSelect,
   onDockToggle,
+  onExpandClick,
   className,
   expandedWidth = 448,
   position = "bottom",
@@ -93,13 +107,13 @@ export function MessageDock({
   enableAnimations = true,
   animationDuration = 1,
   placeholder = (name: string) => `Message ${name}...`,
-  theme = "light",
   autoFocus = true,
   closeOnClickOutside = true,
   closeOnEscape = true,
-  closeOnSend = true,
+  closeOnSend = false,
 }: MessageDockProps) {
   const shouldReduceMotion = useReducedMotion();
+  const { theme } = useTheme();
   const [expandedCharacter, setExpandedCharacter] = useState<number | null>(
     null
   );
@@ -107,6 +121,10 @@ export function MessageDock({
   const dockRef = useRef<HTMLDivElement>(null);
   const [collapsedWidth, setCollapsedWidth] = useState<number>(266);
   const [hasInitialized, setHasInitialized] = useState(false);
+  const [messageHistories, setMessageHistories] = useState<
+    Record<number, MessageEntry[]>
+  >({});
+  const chatScrollRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (dockRef.current && !hasInitialized) {
@@ -156,13 +174,13 @@ export function MessageDock({
     },
   };
 
-  const hoverAnimation = shouldReduceMotion
+  const hoverAnimation: TargetAndTransition = shouldReduceMotion
     ? { scale: 1.02 }
     : {
         scale: 1.05,
         y: -8,
         transition: {
-          type: "spring",
+          type: "spring" as const,
           stiffness: 400,
           damping: 25,
         },
@@ -185,6 +203,17 @@ export function MessageDock({
   const handleSendMessage = () => {
     if (messageInput.trim() && expandedCharacter !== null) {
       const character = characters[expandedCharacter];
+
+      setMessageHistories((prev) => {
+        const existing = prev[expandedCharacter] ?? [];
+        return {
+          ...prev,
+          [expandedCharacter]: [
+            ...existing,
+            { text: messageInput.trim(), timestamp: Date.now(), from: "user" },
+          ],
+        };
+      });
       
       onMessageSend?.(messageInput, character, expandedCharacter);
       
@@ -200,17 +229,29 @@ export function MessageDock({
   const selectedCharacter =
     expandedCharacter !== null ? characters[expandedCharacter] : null;
   const isExpanded = expandedCharacter !== null;
+  const activeMessages =
+    expandedCharacter !== null
+      ? messageHistories[expandedCharacter] ?? []
+      : [];
 
-  const defaultPositionClasses = position === "top" 
-    ? "fixed top-6 left-1/2 -translate-x-1/2 z-50"
-    : "fixed bottom-6 left-1/2 -translate-x-1/2 z-50";
+  useEffect(() => {
+    if (isExpanded && chatScrollRef.current) {
+      chatScrollRef.current.scrollTop = chatScrollRef.current.scrollHeight;
+    }
+  }, [isExpanded, activeMessages.length, expandedCharacter]);
+
+  const defaultPositionClasses =
+    position === "top"
+      ? "fixed top-6 right-6 z-50"
+      : "fixed bottom-6 right-6 z-50";
 
   return (
     <motion.div
       ref={dockRef}
       className={cn(
-        // Only apply default positioning if not overridden by className
-        !className?.includes('relative') && !className?.includes('absolute') ? defaultPositionClasses : '',
+        !className?.includes("relative") && !className?.includes("absolute")
+          ? defaultPositionClasses
+          : "",
         className
       )}
       initial={enableAnimations ? "hidden" : "visible"}
@@ -218,25 +259,50 @@ export function MessageDock({
       variants={enableAnimations ? containerVariants : {}}
     >
       <motion.div
-        className="rounded-full px-4 py-2 shadow-2xl border border-border bg-background/95 backdrop-blur-md"
+        className={cn(
+          "overflow-hidden shadow-2xl backdrop-blur-md",
+          isExpanded 
+            ? "border-emerald-400/30 dark:border-emerald-400/20 border"
+            : "border border-emerald-400/20 dark:border-emerald-400/10"
+        )}
+        style={{ 
+          paddingLeft: 16, 
+          paddingRight: 16,
+          backgroundColor: theme === 'dark' 
+            ? 'rgba(16, 185, 129, 0.05)' // emerald-500/5 for dark
+            : 'rgba(16, 185, 129, 0.1)', // emerald-500/10 for light
+        }}
         animate={{
           width: isExpanded ? expandedWidth : collapsedWidth,
-          background: isExpanded && selectedCharacter
-            ? `linear-gradient(to right, ${getGradientColors(selectedCharacter)})`
-            : "hsl(var(--background))",
+          borderRadius: isExpanded ? 28 : 9999,
+          paddingTop: isExpanded ? 12 : 8,
+          paddingBottom: isExpanded ? 12 : 8,
         }}
-        transition={enableAnimations ? { 
+        transition={
+          enableAnimations
+            ? {
           type: "spring", 
           stiffness: isExpanded ? 300 : 500, 
           damping: isExpanded ? 30 : 35, 
           mass: isExpanded ? 0.8 : 0.6,
           background: {
             duration: 0.2 * animationDuration,
-            ease: "easeInOut"
+                  ease: "easeInOut",
+                },
           }
-        } : { duration: 0 }}
+            : { duration: 0 }
+        }
       >
-        <div className="flex items-center gap-2 relative">
+        <div
+          className={cn(
+            "relative flex w-full items-center gap-2",
+            isExpanded && "flex-col items-stretch gap-2"
+          )}
+      >
+          <div className={cn(
+            "flex w-full items-center gap-2",
+            isExpanded && "gap-1.5"
+          )}>
           {showSparkleButton && (
             <motion.div
             className="flex items-center justify-center"
@@ -253,8 +319,11 @@ export function MessageDock({
             }}
           >
             <motion.button
-              className="w-12 h-12 flex items-center justify-center cursor-pointer"
-              style={{ backgroundColor: 'transparent', border: 'none' }}
+                  className={cn(
+                    "flex items-center justify-center cursor-pointer",
+                    isExpanded ? "h-8 w-8" : "h-12 w-12"
+                  )}
+                  style={{ backgroundColor: "transparent", border: "none" }}
               whileHover={
                 !isExpanded
                   ? {
@@ -277,7 +346,7 @@ export function MessageDock({
           )}
 
           <motion.div
-            className="w-px h-6 bg-gray-300 mr-2 -ml-2"
+              className="h-6 w-px bg-gray-300 -ml-2 mr-2"
             animate={{
               opacity: isExpanded ? 0 : 1,
               scaleY: isExpanded ? 0 : 1,
@@ -326,25 +395,26 @@ export function MessageDock({
               >
                 <motion.button
                   className={cn(
-                    "relative w-10 h-10 rounded-full flex items-center justify-center text-xl cursor-pointer",
+                      "relative flex h-10 w-10 items-center justify-center rounded-full text-xl",
                     isSelected && isExpanded
                       ? "bg-white/90"
                       : character.backgroundColor
                   )}
-                  style={{ 
-                    border: 'none',
-                    backgroundColor: isSelected && isExpanded 
-                      ? 'rgba(255, 255, 255, 0.9)' 
-                      : character.backgroundColor?.includes('emerald')
-                        ? '#a7f3d0'
-                        : character.backgroundColor?.includes('violet')
-                        ? '#c4b5fd'
-                        : character.backgroundColor?.includes('amber')
-                        ? '#fde68a'
-                        : character.backgroundColor?.includes('rose')
-                        ? '#fecaca'
-                        : 'transparent'
-                  }}
+                    style={{
+                      border: "none",
+                      backgroundColor:
+                        isSelected && isExpanded
+                          ? "rgba(255, 255, 255, 0.9)"
+                          : character.backgroundColor?.includes("emerald")
+                          ? "#a7f3d0"
+                          : character.backgroundColor?.includes("violet")
+                          ? "#c4b5fd"
+                          : character.backgroundColor?.includes("amber")
+                          ? "#fde68a"
+                          : character.backgroundColor?.includes("rose")
+                          ? "#fecaca"
+                          : "transparent",
+                    }}
                   onClick={() => handleCharacterClick(actualIndex)}
                   whileHover={!isExpanded ? hoverAnimation : { scale: 1.05 }}
                   whileTap={{ scale: 0.95 }}
@@ -354,7 +424,7 @@ export function MessageDock({
 
                   {character.online && (
                     <motion.div
-                      className="absolute bottom-0 right-0 w-3 h-3 bg-green-500 border-2 border-white rounded-full"
+                        className="absolute bottom-0 right-0 h-3 w-3 rounded-full border-2 border-white bg-green-500"
                       initial={{ scale: 0 }}
                       animate={{ scale: isExpanded && !isSelected ? 0 : 1 }}
                       transition={{
@@ -374,50 +444,8 @@ export function MessageDock({
             );
           })}
 
-          <AnimatePresence>
-            {isExpanded && (
-              <motion.input
-                type="text"
-                value={messageInput}
-                onChange={(e) => setMessageInput(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter") {
-                    handleSendMessage();
-                  }
-                  if (e.key === "Escape" && closeOnEscape) {
-                    setExpandedCharacter(null);
-                    setMessageInput("");
-                    onDockToggle?.(false);
-                  }
-                }}
-                placeholder={placeholder(selectedCharacter?.name || "")}
-                className="w-[300px] absolute left-14 right-0 bg-transparent border-none outline-none text-sm font-medium z-50 placeholder-muted-foreground"
-                style={{ color: 'rgb(0, 0, 0)' }}
-                autoFocus={autoFocus}
-                initial={{ opacity: 0, x: 20 }}
-                animate={{ 
-                  opacity: 1, 
-                  x: 0,
-                  transition: {
-                    delay: 0.2,
-                    type: "spring",
-                    stiffness: 400,
-                    damping: 30,
-                  }
-                }}
-                exit={{ 
-                  opacity: 0,
-                  transition: {
-                    duration: 0.1,
-                    ease: "easeOut"
-                  }
-                }}
-              />
-            )}
-          </AnimatePresence>
-
           <motion.div
-            className="w-px h-6 bg-gray-300 ml-2 -mr-2"
+              className="h-6 w-px bg-gray-300 -mr-2 ml-2"
             animate={{
               opacity: isExpanded ? 0 : 1,
               scaleY: isExpanded ? 0 : 1,
@@ -431,19 +459,16 @@ export function MessageDock({
           />
 
           {showMenuButton && (
-            <motion.div
-              className={cn(
-                "flex items-center justify-center z-20",
-                isExpanded && "absolute right-0"
-              )}
-              transition={{ type: "spring", stiffness: 400, damping: 30 }}
-            >
-              <AnimatePresence mode="wait">
-                {!isExpanded ? (
+              <div className="ml-auto flex items-center gap-1">
+                <AnimatePresence mode="wait">
+                  {!isExpanded ? (
                 <motion.button
                   key="menu"
-                  className="w-12 h-12 flex items-center justify-center cursor-pointer"
-                  style={{ backgroundColor: 'transparent', border: 'none' }}
+                      className={cn(
+                        "flex items-center justify-center cursor-pointer",
+                        isExpanded ? "h-8 w-8" : "h-12 w-12"
+                      )}
+                      style={{ backgroundColor: "transparent", border: "none" }}
                   whileHover={{
                     scale: 1.02,
                     y: -2,
@@ -474,48 +499,151 @@ export function MessageDock({
                     <line x1="3" y1="18" x2="21" y2="18" />
                   </svg>
                 </motion.button>
-                ) : (
-                <motion.button
-                  key="send"
-                  onClick={handleSendMessage}
-                  className="w-10 h-10 flex items-center justify-center rounded-full bg-background/90 hover:!bg-background transition-colors disabled:opacity-50 cursor-pointer relative z-30 border border-border/50 [&:hover]:!bg-background [&:hover]:!border-[hsl(var(--border)/0.5)]"
-                  style={{ 
-                    border: '1px solid hsl(var(--border) / 0.5)',
-                    borderRadius: '9999px',
-                    padding: 0,
-                    fontSize: 'inherit',
-                    fontWeight: 'inherit',
-                    fontFamily: 'inherit',
-                    backgroundColor: 'hsl(var(--background) / 0.9)',
-                    color: 'hsl(var(--foreground))'
-                  }}
-                  whileHover={{ 
-                    scale: 1.1,
-                    backgroundColor: 'hsl(var(--background))'
-                  }}
-                  whileTap={{ scale: 0.9 }}
-                  disabled={!messageInput.trim()}
-                  initial={{ opacity: 0, scale: 0, rotate: -90 }}
+                  ) : (
+                    <motion.button
+                      key="expand"
+                      onClick={onExpandClick}
+                      className="flex h-8 w-8 items-center justify-center cursor-pointer"
+                      style={{ backgroundColor: "transparent", border: "none" }}
+                      whileHover={{
+                        scale: 1.1,
+                        transition: {
+                          type: "spring",
+                          stiffness: 400,
+                          damping: 25,
+                        },
+                      }}
+                      whileTap={{ scale: 0.95 }}
+                      aria-label="Expand to full page"
+                      initial={{ opacity: 0, scale: 0.8 }}
+                      animate={{ opacity: 1, scale: 1 }}
+                      exit={{ opacity: 0, scale: 0.8 }}
+                      transition={{ type: "spring", stiffness: 400, damping: 30 }}
+                    >
+                      <svg
+                        width="18"
+                        height="18"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="2"
+                        className="text-muted-foreground"
+                      >
+                        <path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3" />
+                      </svg>
+                    </motion.button>
+                  )}
+                </AnimatePresence>
+              </div>
+            )}
+          </div>
+
+          <AnimatePresence>
+            {isExpanded && (
+              <motion.div
+                key="chat-panel"
+                className="flex w-full flex-col gap-3 rounded-2xl border border-emerald-400/20 dark:border-emerald-400/10 bg-emerald-50/30 dark:bg-emerald-950/20 p-4 backdrop-blur-md"
+                initial={{ opacity: 0, y: 16 }}
+                animate={{
+                  opacity: 1,
+                  y: 0,
+                  transition: {
+                    type: "spring",
+                    stiffness: 320,
+                    damping: 30,
+                  },
+                }}
+                exit={{
+                  opacity: 0,
+                  y: 12,
+                  transition: {
+                    duration: 0.15,
+                    ease: "easeInOut",
+                  },
+                }}
+              >
+                <div
+                  ref={chatScrollRef}
+                  className="flex-1 min-h-[180px] max-h-72 space-y-2 overflow-y-auto pr-1"
+                >
+                  {activeMessages.length === 0 ? (
+                    <p className="text-xs text-muted-foreground/80">
+                      Start the conversation with{" "}
+                      {selectedCharacter?.name ?? "your friend"}.
+                    </p>
+                  ) : (
+                    activeMessages.map((entry, idx) => (
+                      <div
+                        key={`${entry.timestamp}-${idx}`}
+                        className={cn(
+                          "flex",
+                          entry.from === "user"
+                            ? "justify-end"
+                            : "justify-start"
+                        )}
+                      >
+                        <div
+                          className={cn(
+                            "max-w-[80%] rounded-2xl px-3 py-2 text-xs font-medium shadow-sm",
+                            entry.from === "user"
+                              ? "bg-emerald-500/70 dark:bg-emerald-600/60 text-white backdrop-blur-sm"
+                              : "bg-white/40 dark:bg-white/10 text-foreground border border-emerald-200/30 dark:border-emerald-800/30 backdrop-blur-sm"
+                          )}
+                        >
+                          {entry.text}
+                        </div>
+                      </div>
+                    ))
+                  )}
+                </div>
+
+                <div className="flex items-center gap-2 pt-1">
+                  <motion.input
+                    type="text"
+                    value={messageInput}
+                    onChange={(e) => setMessageInput(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        handleSendMessage();
+                      }
+                      if (e.key === "Escape" && closeOnEscape) {
+                        setExpandedCharacter(null);
+                        setMessageInput("");
+                        onDockToggle?.(false);
+                      }
+                    }}
+                    placeholder={placeholder(selectedCharacter?.name || "")}
+                    className="flex-1 rounded-full border border-emerald-300/40 dark:border-emerald-700/40 bg-white/50 dark:bg-white/10 px-3 py-2 text-sm font-medium text-foreground placeholder-muted-foreground outline-none transition backdrop-blur-sm focus:border-emerald-400/60 dark:focus:border-emerald-500/60 focus:ring-0"
+                    style={{ color: "hsl(var(--foreground))" }}
+                    autoFocus={autoFocus}
+                    initial={{ opacity: 0, x: 20 }}
                   animate={{ 
                     opacity: 1, 
-                    scale: 1, 
-                    rotate: 0,
+                      x: 0,
                     transition: {
-                      delay: 0.25,
+                        delay: 0.1,
                       type: "spring",
                       stiffness: 400,
                       damping: 30,
-                    }
+                      },
                   }}
                   exit={{ 
                     opacity: 0, 
-                    scale: 0, 
-                    rotate: 90,
                     transition: {
                       duration: 0.1,
-                      ease: "easeIn"
-                    }
-                  }}
+                        ease: "easeOut",
+                      },
+                    }}
+                  />
+                  <motion.button
+                    key="send"
+                    onClick={handleSendMessage}
+                    className="flex h-10 w-10 items-center justify-center rounded-full border border-emerald-400/40 dark:border-emerald-600/40 bg-emerald-500/60 dark:bg-emerald-600/50 text-white backdrop-blur-sm transition-colors hover:bg-emerald-500/80 dark:hover:bg-emerald-600/70 disabled:opacity-50 disabled:cursor-not-allowed"
+                    whileHover={{
+                      scale: 1.05,
+                    }}
+                    whileTap={{ scale: 0.92 }}
+                    disabled={!messageInput.trim()}
                 >
                   <svg
                     width="16"
@@ -530,10 +658,10 @@ export function MessageDock({
                     <path d="M22 2 11 13" />
                   </svg>
                 </motion.button>
+                </div>
+              </motion.div>
               )}
             </AnimatePresence>
-          </motion.div>
-          )}
         </div>
       </motion.div>
     </motion.div>
