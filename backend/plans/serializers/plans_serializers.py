@@ -1,6 +1,7 @@
 from rest_framework import serializers
 from plans.models import Plans
 from tags.models import Tags
+from participants.models import Participants
 
 class PlansSerializer(serializers.ModelSerializer):
     tags = serializers.ListField(
@@ -103,3 +104,20 @@ class PlansSerializer(serializers.ModelSerializer):
                 instance.tags.add(tag_obj)
 
         return instance
+    
+    def get_role(self, obj):
+        """Get user's role in this plan."""
+        user = self.context.get('user')
+        if user:
+            participant = Participants.objects.filter(plan=obj, user=user).first()
+            return participant.role if participant else None
+        return None
+    
+    def get_joined_at(self, obj):
+        """Get when user joined this plan."""
+        user = self.context.get('user')
+        if user:
+            participant = Participants.objects.filter(plan=obj, user=user).first()
+            return participant.joined_at if participant else None
+        return None
+

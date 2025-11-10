@@ -30,6 +30,7 @@ urlpatterns = [
     path('plans/', include('plans.urls.plan_crud_urls')),   # Create/Edit/Delete
     path('plans/', include('plans.urls.plan_join_urls')),   # join/leave plans
     path('homepage/', include('plans.urls.homepage')),      # homepage plans
+    path('plans/', include('plans.urls.plan_history')),     # history of plan that user have join
   
     # JWT endpoints
     path('api/token/', TokenObtainPairView.as_view(), name='token_obtain_pair'),
