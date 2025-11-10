@@ -116,6 +116,48 @@ class ChatDatabase:
             }
     
     @staticmethod
+    @database_sync_to_async
+    def edit_message(message_id, thread_id, user, new_content):
+        """Edit a message if the user is the sender."""
+        from chat.models import chat_messages
+        from django.utils import timezone
+        
+        try:
+            message = chat_messages.objects.get(id=message_id, thread_id=thread_id)
+            
+            # Check if the user is the sender
+            if message.sender.id != user.id:
+                return {
+                    'success': False,
+                    'error': 'You can only edit your own messages.'
+                }
+            
+            # Update the message content
+            message.body = new_content
+            message.save()
+            
+            # Get updated timestamp
+            bangkok_time = timezone.localtime(message.create_at, BANGKOK_TZ)
+            formatted_time = bangkok_time.strftime("%Y-%m-%d %H:%M:%S")
+            
+            return {
+                'success': True,
+                'timestamp': formatted_time
+            }
+            
+        except chat_messages.DoesNotExist:
+            return {
+                'success': False,
+                'error': 'Message not found.'
+            }
+        except Exception as e:
+            print(f"Error editing message: {e}")
+            return {
+                'success': False,
+                'error': 'Failed to edit message.'
+            }
+    
+    @staticmethod
     def _get_display_name(user):
         """Get display name for a user."""
         return getattr(user, 'display_name', None) or user.get_full_name() or user.username

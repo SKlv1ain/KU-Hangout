@@ -86,6 +86,8 @@ class ChatConsumer(AsyncWebsocketConsumer):
             # Route to appropriate handler
             if action == 'delete_message':
                 await self.message_handler.handle_delete_message(text_data_json, user)
+            elif action == 'edit_message':
+                await self.message_handler.handle_edit_message(text_data_json, user)
             else:  # Default to send_message
                 await self.message_handler.handle_send_message(text_data_json, user)
 
@@ -120,6 +122,20 @@ class ChatConsumer(AsyncWebsocketConsumer):
         except Exception as e:
             await self.send(json.dumps({
                 'error': f'Delete message error: {str(e)}'
+            }))
+    
+    async def message_edited(self, event):
+        """Handle message edit broadcast."""
+        try:
+            await self.send(json.dumps({
+                'type': 'message_edited',
+                'message_id': event['message_id'],
+                'message': event['message'],
+                'timestamp': event['timestamp']
+            }))
+        except Exception as e:
+            await self.send(json.dumps({
+                'error': f'Edit message error: {str(e)}'
             }))
     
     async def _reject_connection(self, error_message):

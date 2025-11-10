@@ -61,3 +61,32 @@ class MessageHandler:
             )
         else:
             await self.consumer.send(json.dumps({'error': result['error']}))
+
+    async def handle_edit_message(self, text_data_json, user):
+        """Handle editing a message."""
+        message_id = text_data_json.get('message_id')
+        new_content = text_data_json.get('message', '').strip()
+        
+        if not message_id:
+            await self.consumer.send(json.dumps({'error': 'Message ID is required.'}))
+            return
+        
+        if not new_content:
+            await self.consumer.send(json.dumps({'error': 'Message content cannot be empty.'}))
+            return
+        
+        # Edit the message
+        result = await self.db.edit_message(message_id, self.consumer.thread_id, user, new_content)
+        if result['success']:
+            # Broadcast edit to all users in the room
+            await self.consumer.channel_layer.group_send(
+                self.consumer.room_group_name,
+                {
+                    'type': 'message_edited',
+                    'message_id': message_id,
+                    'message': new_content,
+                    'timestamp': result['timestamp'],
+                }
+            )
+        else:
+            await self.consumer.send(json.dumps({'error': result['error']}))
