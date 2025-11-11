@@ -5,44 +5,35 @@ from rest_framework import status
 
 from plans.models import Plans
 from participants.models import Participants
+from plans.serializers.plans_serializers import PlansSerializer
+
 
 class PlanMembershipView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request, plan_id: int):
         """
-        Membership status for a specific plan (safe with auto-deletion).
+        Return full plan (including 'members') and convenience flags:
+        - joined: whether requester is part of the plan
+        - role: requester's role or None
         """
         try:
-            plan = Plans.objects.get(pk=plan_id)
+            plan = Plans.objects.prefetch_related('participants__user').get(pk=plan_id)
         except Plans.DoesNotExist:
             return Response({"detail": "Plan not found."}, status=status.HTTP_404_NOT_FOUND)
 
-        # Explicit participation?
+        data = PlansSerializer(plan, context={"request": request}).data
+
+        # joined/role shortcuts (optional, but handy for UI)
         participant = Participants.objects.filter(plan=plan, user=request.user).only('role').first()
         if participant:
-            return Response({
-                "id": plan.id,
-                "joined": True,
-                "role": participant.role,
-                "people_joined": plan.people_joined,
-                "max_people": plan.max_people
-            }, status=status.HTTP_200_OK)
+            data["joined"] = True
+            data["role"] = participant.role
+        elif plan.leader_id_id == request.user.id:
+            data["joined"] = True
+            data["role"] = "LEADER"
+        else:
+            data["joined"] = False
+            data["role"] = None
 
-        # Owner is implicitly leader for viewing
-        if plan.leader_id_id == request.user.id:
-            return Response({
-                "id": plan.id,
-                "joined": True,
-                "role": "LEADER",
-                "people_joined": plan.people_joined,
-                "max_people": plan.max_people
-            }, status=status.HTTP_200_OK)
-
-        return Response({
-            "id": plan.id,
-            "joined": False,
-            "role": None,
-            "people_joined": plan.people_joined,
-            "max_people": plan.max_people
-        }, status=status.HTTP_200_OK)
+        return Response(data, status=status.HTTP_200_OK)
