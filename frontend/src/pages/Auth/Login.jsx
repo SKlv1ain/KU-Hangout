@@ -4,6 +4,7 @@ import { z } from "zod";                             // สคีมา validate
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useAuth } from "@/context/AuthContext";
 import { Link, useNavigate } from "react-router-dom";
+import GoogleAuthButton from "@/components/GoogleAuthButton";
 
 // กำหนดกติกาฟอร์มด้วย zod
 const schema = z.object({
@@ -61,8 +62,14 @@ export default function Login() {
           </button>
         </form>
 
-        <p className="muted">
-          Don’t have an account? <Link className="link" to="/register">Register</Link>
+        <div style={{ margin: '1rem 0', textAlign: 'center', color: '#666' }}>
+          <span>or</span>
+        </div>
+
+        <GoogleAuthButton />
+
+        <p className="muted" style={{ marginTop: '1rem' }}>
+          Don't have an account? <Link className="link" to="/register">Register</Link>
         </p>
       </div>
     </div>

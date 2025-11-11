@@ -4,6 +4,7 @@ import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useAuth } from "@/context/AuthContext";
 import { Link, useNavigate } from "react-router-dom";
+import GoogleAuthButton from "@/components/GoogleAuthButton";
 
 // สคีมาสมัครสมาชิก + เช็คยืนยันรหัสผ่านให้ตรงกัน
 const schema = z
@@ -96,7 +97,13 @@ export default function Register() {
           </button>
         </form>
 
-        <p className="muted">
+        <div style={{ margin: '1rem 0', textAlign: 'center', color: '#666' }}>
+          <span>or</span>
+        </div>
+
+        <GoogleAuthButton />
+
+        <p className="muted" style={{ marginTop: '1rem' }}>
           Already have an account? <Link to="/login" className="link">Login</Link>
         </p>
       </div>
