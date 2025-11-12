@@ -18,8 +18,8 @@ class UserJoinedPlansView(APIView):
         Get all plans joined by a user.
         
         Examples:
-            GET /api/users/1/plans/  # Get plans for user 1
-            GET /api/users/me/plans/ # Get plans for current user
+            GET /plans/users/1/plans/  # Get plans for user 1
+            GET /plans/users/me/plans/ # Get plans for current user
         """
         # If user_id is 'me' or not provided, use current user
         if user_id == 'me' or user_id is None:
