@@ -52,7 +52,8 @@ INSTALLED_APPS = [
     "users",
     'plans',
     'tags',
-
+    'participants',
+    'chat',
     #chanel for chat
     "channels",
 ]
@@ -87,7 +88,7 @@ TEMPLATES = [
 ]
 
 WSGI_APPLICATION = 'backend.wsgi.application'
-ASGI_APPLICATION = "backend.asgi.application"
+ASGI_APPLICATION = 'backend.asgi.application'
 
 # Database
 # https://docs.djangoproject.com/en/5.1/ref/settings/#databases
@@ -100,10 +101,18 @@ DATABASES = {
         'NAME': os.getenv('POSTGRES_DB', 'POSTGRES_DB'),
         'USER': os.getenv('POSTGRES_USER', 'POSTGRES_USER'),
         'PASSWORD': os.getenv('POSTGRES_PASSWORD', 'POSTGRES_PASSWORD'),
-        'HOST': os.getenv('DJANGO_DB_HOST', 'localhost'),  # ถ้ารัน Django ใน Docker ให้ใช้ 'postgres'
-        'PORT': os.getenv('DJANGO_DB_PORT', '5432'),
+        # Prefer DJANGO_DB_* if present; else POSTGRES_*; else default.
+        'HOST': (
+            os.getenv('POSTGRES_HOST')
+            or 'localhost'   # in Docker Compose, use service name e.g. 'postgres'
+        ),
+        'PORT': (
+            os.getenv('POSTGRES_PORT')
+            or '5432'
+        ),
     }
-} 
+}
+
 
 # Password validation
 # https://docs.djangoproject.com/en/5.1/ref/settings/#auth-password-validators
