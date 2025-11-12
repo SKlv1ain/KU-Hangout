@@ -29,6 +29,7 @@ urlpatterns = [
     # Plans
     path('plans/', include('plans.urls.plan_crud_urls')),   # Create/Edit/Delete
     path('plans/', include('plans.urls.plan_join_urls')),   # join/leave plans
+    path('plans/', include('plans.urls.plan_summary_urls')),   # member ship of plan
     path('homepage/', include('plans.urls.homepage')),      # homepage plans
   
     # JWT endpoints
