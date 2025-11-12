@@ -5,12 +5,17 @@ import { Navbar09, type Navbar09NavItem } from "@/components/ui/shadcn-io/navbar
 import { HouseIcon, Info } from "lucide-react"
 import { CommandSearch } from "./command-search"
 import { ModeToggle } from "@/components/mode-toggle"
+import NotificationDrawer from "./notification-drawer-right-5"
+import { SidebarTrigger } from "@/components/ui/sidebar"
+import { Separator } from "@/components/ui/separator"
+import logoImage from "@/assets/logo.png"
 
 export default function Navbar() {
   const { user, logout } = useAuth()
   const navigate = useNavigate()
   const location = useLocation()
   const [commandOpen, setCommandOpen] = useState(false)
+  const [notificationDrawerOpen, setNotificationDrawerOpen] = useState(false)
 
   const navigationLinks: Navbar09NavItem[] = [
     { href: '/about', label: 'About Us', icon: Info, isActive: location.pathname === '/about' },
@@ -39,8 +44,12 @@ export default function Navbar() {
   }
 
   const handleNotificationItemClick = (item: string) => {
-    // TODO: Implement notification functionality
+    if (item === 'view-all') {
+      setNotificationDrawerOpen(true)
+    } else {
+      // TODO: Implement other notification functionality
     console.log('Notification item clicked:', item)
+    }
   }
 
   const handleUserItemClick = async (item: string) => {
@@ -70,6 +79,13 @@ export default function Navbar() {
     <>
       <Navbar09
         logoHref="/home"
+        logo={
+          <img
+            src={logoImage}
+            alt="KU-Hangout logo"
+            className="h-10 w-auto"
+          />
+        }
         logoText="KU-Hangout"
         navigationLinks={navigationLinks}
         searchPlaceholder="Search..."
@@ -79,6 +95,15 @@ export default function Navbar() {
         notificationCount={3}
         messageIndicator={false}
         themeToggle={<ModeToggle />}
+        leftContent={
+          <>
+            <SidebarTrigger className="-ml-1" />
+            <Separator
+              orientation="vertical"
+              className="mr-2 data-[orientation=vertical]:h-4"
+            />
+          </>
+        }
         onNavItemClick={handleNavItemClick}
         onSearchSubmit={handleSearchSubmit}
         onSearchClick={handleSearchClick}
@@ -87,6 +112,7 @@ export default function Navbar() {
         onUserItemClick={handleUserItemClick}
       />
       <CommandSearch open={commandOpen} onOpenChange={setCommandOpen} />
+      <NotificationDrawer open={notificationDrawerOpen} onOpenChange={setNotificationDrawerOpen} />
     </>
   )
 }

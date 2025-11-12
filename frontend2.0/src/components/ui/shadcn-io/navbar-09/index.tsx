@@ -222,6 +222,7 @@ export interface Navbar09Props extends React.HTMLAttributes<HTMLElement> {
   notificationCount?: number;
   messageIndicator?: boolean;
   themeToggle?: React.ReactNode;
+  leftContent?: React.ReactNode;
   onNavItemClick?: (href: string) => void;
   onSearchSubmit?: (query: string) => void;
   onSearchClick?: () => void;
@@ -252,6 +253,7 @@ export const Navbar09 = React.forwardRef<HTMLElement, Navbar09Props>(
       notificationCount = 3,
       messageIndicator = true,
       themeToggle,
+      leftContent,
       onNavItemClick,
       onSearchSubmit,
       onSearchClick,
@@ -317,6 +319,12 @@ export const Navbar09 = React.forwardRef<HTMLElement, Navbar09Props>(
         <div className="container mx-auto flex h-16 max-w-screen-2xl items-center justify-between gap-4">
           {/* Left side */}
           <div className="flex flex-1 items-center gap-2">
+            {/* Left content (e.g., SidebarTrigger) */}
+            {leftContent && (
+              <div className="flex items-center gap-2">
+                {leftContent}
+              </div>
+            )}
             {/* Mobile menu trigger */}
             {isMobile && (
               <Popover>

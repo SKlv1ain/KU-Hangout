@@ -1,14 +1,17 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { CardBody, CardContainer, CardItem } from "@/components/ui/shadcn-io/3d-card"
-import { AnimatedTooltip } from "@/components/ui/shadcn-io/animated-tooltip"
-import { Badge } from "@/components/ui/badge"
-import { MapPin, Calendar, Users, Heart, Crown, ChevronLeft, ChevronRight, Circle } from "lucide-react"
+import { CardBody, CardContainer } from "@/components/ui/shadcn-io/3d-card"
 import { useScript } from "@/hooks/use-script"
 import { toast } from "sonner"
+import { ImageCarouselExample } from "./image-carousel-example"
+import { PlanCardHeader } from "@/components/plan-card/plan-card-header"
+import { PlanCardDescription } from "@/components/plan-card/plan-card-description"
+import { PlanCardParticipants } from "@/components/plan-card/plan-card-participants"
+import { PlanCardActions } from "@/components/plan-card/plan-card-actions"
+import type { AnimatedTooltipItem } from "@/components/ui/shadcn-io/animated-tooltip"
 
-const people = [
+const people: AnimatedTooltipItem[] = [
   {
     id: 1,
     name: "Sai Khun Main",
@@ -50,7 +53,6 @@ const tags = [
 ]
 
 export function PlanCardExample() {
-  const [currentImageIndex, setCurrentImageIndex] = useState(0)
   const [isJoined, setIsJoined] = useState(false)
   const [isLiked, setIsLiked] = useState(false)
   const [shouldTriggerConfetti, setShouldTriggerConfetti] = useState(false)
@@ -78,18 +80,6 @@ export function PlanCardExample() {
       })
     }
   }, [confettiStatus, shouldTriggerConfetti])
-
-  const nextImage = () => {
-    setCurrentImageIndex((prev) => (prev + 1) % images.length)
-  }
-
-  const prevImage = () => {
-    setCurrentImageIndex((prev) => (prev - 1 + images.length) % images.length)
-  }
-
-  const goToImage = (index: number) => {
-    setCurrentImageIndex(index)
-  }
 
   const handleJoin = () => {
     setIsJoined(true)
@@ -129,159 +119,39 @@ export function PlanCardExample() {
     >
       <CardBody className="bg-emerald-900/50 relative group/card dark:hover:shadow-2xl dark:hover:shadow-emerald-500/[0.1] dark:bg-emerald-900/30 dark:border-emerald-400/20 border-emerald-400/20 w-[600px] min-h-[280px] rounded-xl p-0 border backdrop-blur-sm overflow-hidden flex flex-row">
         {/* Image Section - 40% */}
-        <div className="w-[40%] min-h-[280px] bg-emerald-800/50 flex-shrink-0 relative group">
-          <div className="relative h-full w-full min-h-[280px] overflow-hidden rounded-l-xl">
-            {images.map((image, index) => (
-              <img
-                key={index}
-                src={image}
-                alt={`Starbucks café ${index + 1}`}
-                className={`absolute inset-0 h-full w-full min-h-[280px] object-cover transition-opacity duration-500 ${
-                  index === currentImageIndex ? "opacity-100" : "opacity-0"
-                }`}
-              />
-            ))}
-          </div>
-          
-          {/* Navigation Dots */}
-          <div className="absolute bottom-2 left-1/2 z-50 flex -translate-x-1/2 gap-1">
-            {images.map((_, i) => (
-              <button
-                key={i}
-                type="button"
-                onClick={() => goToImage(i)}
-                className="bg-transparent border-none p-0 text-white/80 hover:text-white transition-colors cursor-pointer"
-                style={{ backgroundColor: 'transparent', border: 'none', padding: 0 }}
-                aria-label={`Go to image ${i + 1}`}
-              >
-                <Circle className={`h-2 w-2 transition-all ${
-                  i === currentImageIndex ? "fill-white" : "fill-white/40"
-                }`} />
-              </button>
-            ))}
-          </div>
-
-          {/* Navigation Arrows */}
-          <button
-            type="button"
-            onClick={prevImage}
-            className="absolute left-1 top-1/2 -translate-y-1/2 z-50 bg-transparent border-none p-1 text-white/80 hover:text-white opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer"
-            style={{ backgroundColor: 'transparent', border: 'none' }}
-            aria-label="Previous image"
-          >
-            <ChevronLeft className="h-4 w-4" />
-          </button>
-          <button
-            type="button"
-            onClick={nextImage}
-            className="absolute right-1 top-1/2 -translate-y-1/2 z-50 bg-transparent border-none p-1 text-white/80 hover:text-white opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer"
-            style={{ backgroundColor: 'transparent', border: 'none' }}
-            aria-label="Next image"
-          >
-            <ChevronRight className="h-4 w-4" />
-          </button>
-        </div>
+        <ImageCarouselExample 
+          images={images}
+          alt="Starbucks café"
+        />
         
         {/* Content Section - 60% */}
         <div className="flex-1 p-5 flex flex-col justify-between min-h-[280px]">
           <div className="space-y-2">
-            <CardItem
-              translateZ="50"
-              className="text-base font-bold text-emerald-50"
-            >
-              Weekend Café Study Session
-            </CardItem>
-            
-            <CardItem
-              as="div"
-              translateZ="60"
-              className="flex items-center gap-2 text-emerald-200/80 text-xs"
-            >
-              <Crown className="h-3 w-3 text-emerald-300" />
-              <span className="text-emerald-100/90">Created by</span>
-              <span className="font-semibold text-emerald-50">Sai Khun Main</span>
-            </CardItem>
+            <PlanCardHeader
+              title="Weekend Café Study Session"
+              creatorName="Sai Khun Main"
+              location="Starbucks @ KU Central"
+              dateTime="Sat, Dec 14 • 2:00 PM"
+            />
 
-            <CardItem
-              as="div"
-              translateZ="60"
-              className="flex items-center gap-2 text-emerald-200/80 text-xs"
-            >
-              <MapPin className="h-3 w-3" />
-              <span>Starbucks @ KU Central</span>
-            </CardItem>
-
-            <CardItem
-              as="div"
-              translateZ="60"
-              className="flex items-center gap-2 text-emerald-200/80 text-xs"
-            >
-              <Calendar className="h-3 w-3" />
-              <span>Sat, Dec 14 • 2:00 PM</span>
-            </CardItem>
-
-            <CardItem
-              translateZ="70"
-              className="text-emerald-100/70 text-[10px] line-clamp-2"
-            >
-              Join us for a productive study session! Bring your books and let's tackle assignments together.
-            </CardItem>
-
-            {/* Tags */}
-            <CardItem
-              as="div"
-              translateZ="60"
-              className="flex flex-wrap gap-1.5 mt-2"
-            >
-              {tags.map((tag, index) => (
-                <Badge
-                  key={index}
-                  variant="outline"
-                  className={`${tag.color} text-[10px] px-2 py-0.5 border`}
-                >
-                  {tag.label}
-                </Badge>
-              ))}
-            </CardItem>
+            <PlanCardDescription
+              description="Join us for a productive study session! Bring your books and let's tackle assignments together."
+              tags={tags}
+            />
           </div>
 
           <div className="mt-3 space-y-2">
-            <div className="relative z-[100]">
-              <div className="flex items-center gap-2 text-emerald-200/80 text-[10px] mb-1.5">
-                <Users className="h-3 w-3" />
-                <span className="font-medium">4 people joined</span>
-              </div>
-              <div className="flex items-center justify-start relative z-[100] pointer-events-auto flex-row">
-                <AnimatedTooltip items={people} />
-              </div>
-            </div>
+            <PlanCardParticipants
+              participants={people}
+              participantCount={4}
+            />
 
-            <div className="flex gap-2">
-              <CardItem
-                translateZ={20}
-                as="button"
-                onClick={handleJoin}
-                className={`flex-1 px-3 py-1.5 rounded-lg text-white text-xs font-semibold transition-colors ${
-                  isJoined 
-                    ? 'bg-emerald-600 hover:bg-emerald-700' 
-                    : 'bg-emerald-500 hover:bg-emerald-600'
-                }`}
-              >
-                {isJoined ? 'Joined' : 'Join'}
-              </CardItem>
-              <CardItem
-                translateZ={20}
-                as="button"
-                onClick={handleLike}
-                className={`px-3 py-1.5 rounded-lg border text-xs font-semibold transition-colors ${
-                  isLiked
-                    ? 'border-red-400/50 bg-red-500/20 hover:bg-red-500/30 text-red-200'
-                    : 'border-emerald-400/30 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-200'
-                }`}
-              >
-                <Heart className={`h-3 w-3 ${isLiked ? 'fill-red-500 text-red-500' : ''}`} />
-              </CardItem>
-            </div>
+            <PlanCardActions
+              isJoined={isJoined}
+              isLiked={isLiked}
+              onJoin={handleJoin}
+              onLike={handleLike}
+            />
           </div>
         </div>
       </CardBody>
