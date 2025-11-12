@@ -88,4 +88,5 @@ class PlanJoinView(APIView):
                 plan.refresh_from_db(fields=['people_joined'])
 
         data = PlansSerializer(plan, context={"request": request}).data
-        return Response(data, status=status.HTTP_200_OK)
+        return Response({"message": "Leave plan successfully"}, status=status.HTTP_200_OK)
+
