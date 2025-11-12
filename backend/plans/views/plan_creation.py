@@ -6,8 +6,7 @@ from plans.models import Plans
 from plans.serializers.plans_serializers import PlansSerializer
 
 class PlansCreate(APIView):
-    
-    permission_classes = [IsAuthenticated]  #require JWT token
+    permission_classes = [IsAuthenticated]  # require JWT token
 
     def get_object(self, pk):
         try:
@@ -17,16 +16,16 @@ class PlansCreate(APIView):
 
     # POST: create a new plan
     def post(self, request):
-        # Add leader_id to the data
-        data = request.data.copy()
-        data['leader_id'] = request.user.id
-        
-        serializer = PlansSerializer(data=data)
+        serializer = PlansSerializer(data=request.data, context={"request": request})
         if serializer.is_valid():
-            serializer.save()
-            return Response(serializer.data, status=201)
+            plan = serializer.save()  # leader set inside serializer.create()
+            return Response(
+                PlansSerializer(plan, context={"request": request}).data,
+                status=status.HTTP_201_CREATED
+            )
         else:
-            return Response(serializer.errors, status=400)
+            print(serializer.errors)
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
     # PUT: update a plan
     def put(self, request, pk):
@@ -34,27 +33,35 @@ class PlansCreate(APIView):
         if not plan:
             return Response({"error": "Plan not found"}, status=status.HTTP_404_NOT_FOUND)
 
-        if plan.leader_id != request.user.id:  #only owner can edit
-            return Response({"error": "You do not have permission to edit this plan."},
-                            status=status.HTTP_403_FORBIDDEN)
+        if plan.leader_id_id != request.user.id:  # only owner can edit
+            return Response(
+                {"error": "You do not have permission to edit this plan."},
+                status=status.HTTP_403_FORBIDDEN
+            )
 
-        serializer = PlansSerializer(plan, data=request.data, partial=True)
+        # Prevent leader changes from client
+        incoming = request.data.copy()
+        incoming.pop("leader_id", None)
+
+        serializer = PlansSerializer(plan, data=incoming, partial=True, context={"request": request})
         if serializer.is_valid():
-            serializer.save()
-            return Response(serializer.data, status=status.HTTP_200_OK)
+            plan = serializer.save()
+            return Response(
+                PlansSerializer(plan, context={"request": request}).data,
+                status=status.HTTP_200_OK
+            )
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
 
     def delete(self, request, pk):
         plan = self.get_object(pk)
         if not plan:
             return Response({"error": "Plan not found"}, status=status.HTTP_404_NOT_FOUND)
 
-        if plan.leader_id != request.user.id:  #only owner can delete
-            return Response({"error": "You do not have permission to delete this plan."},
-                            status=status.HTTP_403_FORBIDDEN)
+        if plan.leader_id_id != request.user.id:
+            return Response(
+                {"error": "You do not have permission to delete this plan."},
+                status=status.HTTP_403_FORBIDDEN
+            )
 
         plan.delete()
-        return Response({"message": "Plan deleted successfully"},
-                        status=status.HTTP_204_NO_CONTENT)
-
+        return Response({"message": "Plan deleted successfully"}, status=status.HTTP_200_OK)
