@@ -206,6 +206,50 @@ const api = {
       throw new Error(String(err));
     }
   },
+
+  async delete(endpoint: string) {
+    try {
+      const token = localStorage.getItem('kh_token');
+
+      const response = await fetch(`${BASE_URL}${endpoint}`, {
+        method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token && { 'Authorization': `Bearer ${token}` })
+        },
+        credentials: 'include',
+      });
+
+      // Handle token expiration (401 Unauthorized) - check before parsing JSON
+      if (response.status === 401 || response.status === 403) {
+        let errorMessage = 'Session expired. Please login again.';
+        try {
+          const errorData = await response.clone().json();
+          errorMessage = errorData?.detail || errorMessage;
+        } catch (e) {
+          // Response is not JSON, use default message
+        }
+        handleTokenExpiration();
+        throw new Error(errorMessage);
+      }
+
+      // Handle 204 No Content (successful delete with no body)
+      if (response.status === 204) {
+        return null;
+      }
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data?.detail || `DELETE ${endpoint} failed with status ${response.status}`);
+      }
+
+      return data;
+    } catch (err) {
+      if (err instanceof Error) throw err;
+      throw new Error(String(err));
+    }
+  },
 };
 
 export default api;

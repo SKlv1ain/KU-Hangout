@@ -4,6 +4,7 @@ import { AuthProvider } from "@/context/AuthContext"
 import { Toaster } from "@/components/ui/sonner"
 import LoginPage from "@/pages/login-page"
 import HomePage from "@/pages/home-page"
+import MessagePage from "@/pages/message-page"
 import ProtectedRoute from "@/components/ProtectedRoute"
 
 function App() {
@@ -19,6 +20,14 @@ function App() {
               element={
                 <ProtectedRoute>
                   <HomePage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/messages"
+              element={
+                <ProtectedRoute>
+                  <MessagePage />
                 </ProtectedRoute>
               }
             />

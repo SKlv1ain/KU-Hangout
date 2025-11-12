@@ -27,6 +27,7 @@ export interface PlanCardProps {
   onJoin?: (e?: React.MouseEvent) => void
   onLike?: (e?: React.MouseEvent) => void
   onSave?: (e?: React.MouseEvent) => void
+  onChat?: (e?: React.MouseEvent) => void
   onClick?: () => void
   href?: string
   className?: string
@@ -49,6 +50,7 @@ export function PlanCard({
   onJoin,
   onLike,
   onSave,
+  onChat,
   onClick,
   href,
   className = ""
@@ -68,6 +70,11 @@ export function PlanCard({
   const handleSave = (e?: React.MouseEvent) => {
     e?.stopPropagation()
     onSave?.(e)
+  }
+
+  const handleChat = (e?: React.MouseEvent) => {
+    e?.stopPropagation()
+    onChat?.(e)
   }
 
   const handleCardClick = () => {
@@ -138,6 +145,7 @@ export function PlanCard({
               isLiked={isLiked}
               onJoin={handleJoin}
               onLike={handleLike}
+              onChat={handleChat}
             />
           </div>
         </div>

@@ -8,7 +8,9 @@ import {
   Command,
   Frame,
   GalleryVerticalEnd,
+  Home,
   Map,
+  MessageSquare,
   PieChart,
   Settings2,
   SquareTerminal,
@@ -52,10 +54,22 @@ const data = {
   ],
   navMain: [
     {
+      title: "Home",
+      url: "/home",
+      icon: Home,
+      isActive: false,
+    },
+    {
+      title: "Messages",
+      url: "/messages",
+      icon: MessageSquare,
+      isActive: false,
+    },
+    {
       title: "Playground",
       url: "#",
       icon: SquareTerminal,
-      isActive: true,
+      isActive: false,
       items: [
         {
           title: "History",

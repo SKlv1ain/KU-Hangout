@@ -39,6 +39,7 @@ interface PlanDetailPanelProps {
   onJoin?: (e?: React.MouseEvent) => void
   onLike?: (e?: React.MouseEvent) => void
   onSave?: (e?: React.MouseEvent) => void
+  onChat?: (e?: React.MouseEvent) => void
 }
 
 export function PlanDetailPanel({
@@ -47,7 +48,8 @@ export function PlanDetailPanel({
   onClose,
   onJoin,
   onLike,
-  onSave
+  onSave,
+  onChat
 }: PlanDetailPanelProps) {
   const handleSave = (e?: React.MouseEvent) => {
     e?.stopPropagation()
@@ -62,6 +64,11 @@ export function PlanDetailPanel({
   const handleLike = (e?: React.MouseEvent) => {
     e?.stopPropagation()
     onLike?.(e)
+  }
+
+  const handleChat = (e?: React.MouseEvent) => {
+    e?.stopPropagation()
+    onChat?.(e)
   }
 
   if (!isOpen || !plan) return null
@@ -94,6 +101,7 @@ export function PlanDetailPanel({
             isLiked={plan.isLiked || false}
             onJoin={handleJoin}
             onLike={handleLike}
+            onChat={handleChat}
           />
           <Button
             variant="ghost"

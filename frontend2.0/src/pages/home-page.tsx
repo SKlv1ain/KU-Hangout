@@ -1,4 +1,5 @@
-import { useState } from "react"
+import { useState, useEffect } from "react"
+import { useNavigate } from "react-router-dom"
 import Navbar from "@/components/navbar"
 import MessageDockDemo from "@/components/home/message-dock"
 import FilterDock from "@/components/home/filter-dock"
@@ -6,35 +7,7 @@ import { PlanCard } from "@/components/home/plan-card"
 import { PlanDetailPanel, type PlanDetailData } from "@/components/home/plan-detail-panel"
 import { CreatePlanDialog, type CreatePlanFormData } from "@/components/home/create-plan-dialog"
 import { SidebarLayout } from "@/components/home/side-bar"
-import type { ParticipantData } from "@/components/plan-card/plan-card-participants"
-
-// Sample data
-const samplePeople: ParticipantData[] = [
-  {
-    id: 1,
-    name: "Sai Khun Main",
-    designation: "Frontend dev",
-    image: "https://api.dicebear.com/7.x/notionists/svg?seed=SaiKhunMain&backgroundColor=b6e3f4,c0aede,d1d4f9,ffd5dc,ffdfbf",
-  },
-  {
-    id: 2,
-    name: "Thanutham Chonsongkram",
-    designation: "Frontend dev",
-    image: "https://api.dicebear.com/7.x/notionists/svg?seed=Thanutham&backgroundColor=b6e3f4,c0aede,d1d4f9,ffd5dc,ffdfbf",
-  },
-  {
-    id: 3,
-    name: "Peerawat Theerasakul",
-    designation: "Backend dev",
-    image: "https://api.dicebear.com/7.x/notionists/svg?seed=Peerawat&backgroundColor=b6e3f4,c0aede,d1d4f9,ffd5dc,ffdfbf",
-  },
-  {
-    id: 4,
-    name: "Chanotai Mukdakul",
-    designation: "Backend dev",
-    image: "https://api.dicebear.com/7.x/notionists/svg?seed=Chanotai&backgroundColor=b6e3f4,c0aede,d1d4f9,ffd5dc,ffdfbf",
-  },
-]
+import plansService, { type Plan } from "@/services/plansService"
 
 const sampleImages = [
   "https://images.unsplash.com/photo-1568036193587-84226a9c5a1b?ixlib=rb-4.1.0&auto=format&fit=crop&q=80&w=800",
@@ -42,108 +15,13 @@ const sampleImages = [
   "https://images.unsplash.com/photo-1654054041538-ad6a3fb653d5?ixlib=rb-4.1.0&auto=format&fit=crop&q=80&w=800",
 ]
 
-const sampleTags = [
-  { label: "Study", color: "bg-blue-500/20 text-blue-700 dark:text-blue-300 border-blue-400/30" },
-  { label: "Café", color: "bg-amber-500/20 text-amber-700 dark:text-amber-300 border-amber-400/30" },
-  { label: "Weekend", color: "bg-purple-500/20 text-purple-700 dark:text-purple-300 border-purple-400/30" },
-  { label: "Group", color: "bg-emerald-500/20 text-emerald-700 dark:text-emerald-300 border-emerald-400/30" },
-]
-
-// Initial plans data
-const initialPlans: PlanDetailData[] = [
-  {
-    id: "1",
-    title: "Weekend Café Study Session",
-    creatorName: "Sai Khun Main",
-    location: "Starbucks @ KU Central",
-    dateTime: "Sat, Dec 14 • 2:00 PM",
-    description: "Join us for a productive study session! Bring your books and let's tackle assignments together.",
-    fullDescription: "Join us for a productive study session at Starbucks! This is a great opportunity to meet new study buddies and work on assignments together. Bring your books, laptops, and a positive attitude. We'll be studying for about 3-4 hours with breaks in between. All majors welcome!",
-    tags: sampleTags,
-    participants: samplePeople,
-    participantCount: 4,
-    maxParticipants: 8,
-    images: sampleImages,
-    requirements: [
-      "Bring your own study materials",
-      "Laptop or notebook recommended",
-      "Respectful and focused environment"
-    ]
-  },
-  {
-    id: "2",
-    title: "Basketball Game at Sports Complex",
-    creatorName: "Thanutham Chonsongkram",
-    location: "KU Sports Complex",
-    dateTime: "Sun, Dec 15 • 4:00 PM",
-    description: "Looking for players to join a friendly basketball match. All skill levels welcome!",
-    fullDescription: "Join us for a friendly basketball game at the KU Sports Complex! This is a casual game open to all skill levels. We'll play for about 2 hours with breaks. Bring your own water bottle and wear appropriate sports attire. Let's have fun and stay active!",
-    tags: [
-      { label: "Sports", color: "bg-green-500/20 text-green-700 dark:text-green-300 border-green-400/30" },
-      { label: "Outdoor", color: "bg-orange-500/20 text-orange-700 dark:text-orange-300 border-orange-400/30" },
-    ],
-    participants: samplePeople.slice(0, 2),
-    participantCount: 2,
-    maxParticipants: 10,
-    images: sampleImages,
-    requirements: [
-      "Sports attire required",
-      "Bring water bottle",
-      "All skill levels welcome"
-    ]
-  },
-  {
-    id: "3",
-    title: "Movie Night at Central World",
-    creatorName: "Peerawat Theerasakul",
-    location: "Central World Cinema",
-    dateTime: "Fri, Dec 13 • 7:00 PM",
-    description: "Join us for a fun movie night! We're watching the latest blockbuster together.",
-    fullDescription: "Let's enjoy a movie night together at Central World Cinema! We'll watch the latest blockbuster and grab some snacks. After the movie, we can discuss it over dinner. All movie lovers are welcome!",
-    tags: [
-      { label: "Entertainment", color: "bg-pink-500/20 text-pink-700 dark:text-pink-300 border-pink-400/30" },
-      { label: "Social", color: "bg-indigo-500/20 text-indigo-700 dark:text-indigo-300 border-indigo-400/30" },
-      { label: "Evening", color: "bg-violet-500/20 text-violet-700 dark:text-violet-300 border-violet-400/30" },
-    ],
-    participants: samplePeople.slice(0, 3),
-    participantCount: 3,
-    maxParticipants: 6,
-    images: sampleImages,
-    requirements: [
-      "Movie ticket required",
-      "Arrive 15 minutes early",
-      "Bring money for snacks"
-    ]
-  },
-  {
-    id: "4",
-    title: "Food Tour Around Siam",
-    creatorName: "Chanotai Mukdakul",
-    location: "Siam Square",
-    dateTime: "Sun, Dec 15 • 12:00 PM",
-    description: "Explore the best street food in Siam! Let's try different cuisines together.",
-    fullDescription: "Join us for an exciting food tour around Siam Square! We'll explore various street food stalls and restaurants, trying different cuisines from Thai to international. Perfect for food lovers who want to discover new flavors and make new friends!",
-    tags: [
-      { label: "Food", color: "bg-amber-500/20 text-amber-700 dark:text-amber-300 border-amber-400/30" },
-      { label: "Adventure", color: "bg-rose-500/20 text-rose-700 dark:text-rose-300 border-rose-400/30" },
-      { label: "Weekend", color: "bg-purple-500/20 text-purple-700 dark:text-purple-300 border-purple-400/30" },
-    ],
-    participants: samplePeople,
-    participantCount: 4,
-    maxParticipants: 8,
-    images: sampleImages,
-    requirements: [
-      "Bring cash for food",
-      "Come with an empty stomach",
-      "Allergy information welcome"
-    ]
-  }
-]
-
 export default function HomePage() {
+  const navigate = useNavigate()
   const [selectedPlan, setSelectedPlan] = useState<PlanDetailData | null>(null)
   const [isDetailOpen, setIsDetailOpen] = useState(false)
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false)
+  const [loading, setLoading] = useState(true)
+  const [filterParams, setFilterParams] = useState<{ filter?: 'hot' | 'new' | 'expiring' | 'all'; category?: string; search?: string }>({})
   
   // State management for all plans
   const [plansState, setPlansState] = useState<Record<string | number, {
@@ -151,6 +29,9 @@ export default function HomePage() {
     isLiked: boolean
     isSaved: boolean
   }>>({})
+  
+  // Plans state - initialize empty, will be loaded from API
+  const [plans, setPlans] = useState<PlanDetailData[]>([])
 
   // Helper function to generate tag colors
   const getTagColor = (tagLabel: string): string => {
@@ -170,29 +51,67 @@ export default function HomePage() {
     return tagColors[tagLabel] || "bg-gray-500/20 text-gray-700 dark:text-gray-300 border-gray-400/30"
   }
 
-  // Format date and time to dateTime string
-  const formatDateTime = (date: Date | undefined, time: string): string => {
-    if (!date || !time) return ""
-    
+
+  // Convert backend Plan to frontend PlanDetailData
+  const convertPlanToDetailData = (plan: Plan): PlanDetailData => {
+    const eventDate = new Date(plan.event_time)
     const days = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"]
     const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
     
-    const dayName = days[date.getDay()]
-    const monthName = months[date.getMonth()]
-    const day = date.getDate()
+    const dayName = days[eventDate.getDay()]
+    const monthName = months[eventDate.getMonth()]
+    const day = eventDate.getDate()
+    const hours = eventDate.getHours()
+    const minutes = eventDate.getMinutes()
+    const ampm = hours >= 12 ? "PM" : "AM"
+    const displayHour = hours % 12 || 12
+    const formattedTime = `${displayHour}:${minutes.toString().padStart(2, '0')} ${ampm}`
     
-    // Format time (time input type="time" gives format "HH:MM")
-    let formattedTime = time
-    if (time.includes(":")) {
-      const [hours, minutes] = time.split(":")
-      const hour = parseInt(hours, 10)
-      const ampm = hour >= 12 ? "PM" : "AM"
-      const displayHour = hour % 12 || 12
-      formattedTime = `${displayHour}:${minutes} ${ampm}`
+    // Convert tags
+    const tags = (plan.tags_display || []).map(tag => ({
+      label: tag.name,
+      color: getTagColor(tag.name)
+    }))
+
+    return {
+      id: plan.id,
+      title: plan.title,
+      creatorName: plan.creator_username,
+      location: plan.location,
+      dateTime: `${dayName}, ${monthName} ${day} • ${formattedTime}`,
+      description: plan.description,
+      fullDescription: plan.description,
+      tags,
+      participants: [], // Will be loaded separately if needed
+      participantCount: plan.people_joined,
+      maxParticipants: plan.max_people,
+      images: sampleImages, // Backend doesn't have images yet, use sample
+      isJoined: false, // Will be checked from plansState
+      isLiked: false,
+      isSaved: false,
+      requirements: [] // Backend doesn't have requirements yet
     }
-    
-    return `${dayName}, ${monthName} ${day} • ${formattedTime}`
   }
+
+  // Load plans from API
+  useEffect(() => {
+    const loadPlans = async () => {
+      try {
+        setLoading(true)
+        const backendPlans = await plansService.getPlans(filterParams)
+        const convertedPlans = backendPlans.map(convertPlanToDetailData)
+        setPlans(convertedPlans)
+      } catch (error) {
+        console.error('Error loading plans:', error)
+        // Fallback to empty array on error
+        setPlans([])
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    loadPlans()
+  }, [filterParams])
 
   const updatePlanState = (planId: string | number | undefined, updates: Partial<{
     isJoined: boolean
@@ -201,15 +120,26 @@ export default function HomePage() {
   }>) => {
     if (!planId) return
     
-    setPlansState(prev => ({
-      ...prev,
-      [planId]: {
-        isJoined: prev[planId]?.isJoined || false,
-        isLiked: prev[planId]?.isLiked || false,
-        isSaved: prev[planId]?.isSaved || false,
-        ...updates
+    setPlansState(prev => {
+      const newState = {
+        ...prev,
+        [planId]: {
+          isJoined: prev[planId]?.isJoined || false,
+          isLiked: prev[planId]?.isLiked || false,
+          isSaved: prev[planId]?.isSaved || false,
+          ...updates
+        }
       }
-    }))
+      
+      // Save to localStorage
+      try {
+        localStorage.setItem('ku-hangout-plans-state', JSON.stringify(newState))
+      } catch (error) {
+        console.error('Error saving plans state to localStorage:', error)
+      }
+      
+      return newState
+    })
 
     // Update selectedPlan if it's the same plan
     if (selectedPlan && selectedPlan.id === planId) {
@@ -238,12 +168,39 @@ export default function HomePage() {
     setSelectedPlan(null)
   }
 
-  const handleJoin = (planId: string | number | undefined) => {
+  const handleJoin = async (planId: string | number | undefined) => {
     if (!planId) return
     const currentState = plansState[planId]
-    const newJoined = !(currentState?.isJoined ?? false)
-    updatePlanState(planId, { isJoined: newJoined })
-    console.log('Plan joined:', planId, newJoined)
+    const isCurrentlyJoined = currentState?.isJoined ?? false
+    
+    try {
+      if (isCurrentlyJoined) {
+        // Leave plan
+        const numericPlanId = typeof planId === 'string' ? parseInt(planId, 10) : planId
+        await plansService.leavePlan(numericPlanId)
+        updatePlanState(planId, { isJoined: false })
+        // Update plan's people_joined count
+        setPlans(prev => prev.map(p => 
+          p.id === planId 
+            ? { ...p, participantCount: Math.max((p.participantCount || 0) - 1, 0) }
+            : p
+        ))
+      } else {
+        // Join plan
+        const numericPlanId = typeof planId === 'string' ? parseInt(planId, 10) : planId
+        const response = await plansService.joinPlan(numericPlanId)
+        updatePlanState(planId, { isJoined: true })
+        // Update plan's people_joined count
+        setPlans(prev => prev.map(p => 
+          p.id === planId 
+            ? { ...p, participantCount: response.people_joined }
+            : p
+        ))
+      }
+    } catch (error) {
+      console.error('Error joining/leaving plan:', error)
+      // Show error message to user (optional)
+    }
   }
 
   const handleLike = (planId: string | number | undefined) => {
@@ -262,66 +219,74 @@ export default function HomePage() {
     console.log('Plan saved:', planId, newSaved)
   }
 
+  const handleChat = (planId: string | number | undefined) => {
+    if (!planId) return
+    // Navigate to messages page with planId as query parameter
+    navigate(`/messages?planId=${planId}`)
+  }
+
   const handleCreatePlan = () => {
     setIsCreateDialogOpen(true)
   }
 
-  const handleSubmitPlan = (data: CreatePlanFormData) => {
-    // Convert File[] to string[] (URLs)
-    const imageUrls = data.images.map((image) => {
-      if (typeof image === 'string') {
-        return image
+  const handleSubmitPlan = async (data: CreatePlanFormData) => {
+    try {
+      // Combine date and time into ISO 8601 format
+      if (!data.date || !data.time) {
+        throw new Error('Date and time are required')
       }
-      return URL.createObjectURL(image)
-    })
 
-    // Convert tags string[] to tags array with colors
-    const tagsWithColors = data.tags.map((tag) => ({
-      label: tag,
-      color: getTagColor(tag)
-    }))
+      const [hours, minutes] = data.time.split(':')
+      const eventDateTime = new Date(data.date)
+      eventDateTime.setHours(parseInt(hours, 10), parseInt(minutes, 10), 0, 0)
 
-    // Generate new plan ID
-    const newPlanId = String(Date.now())
+      // Create plan payload
+      const payload = {
+        title: data.title,
+        description: data.description,
+        location: data.location,
+        lat: null, // TODO: Add geocoding for lat/lng
+        lng: null,
+        event_time: eventDateTime.toISOString(),
+        max_people: data.maxParticipants,
+        tags: data.tags
+      }
 
-    // Create new plan data
-    const newPlan: PlanDetailData = {
-      id: newPlanId,
-      title: data.title,
-      creatorName: "You", // TODO: Replace with actual user name from context
-      location: data.location,
-      dateTime: formatDateTime(data.date, data.time),
-      description: data.description,
-      fullDescription: data.description, // Use description as full description for now
-      tags: tagsWithColors,
-      participants: [], // New plan has no participants yet
-      participantCount: 0,
-      maxParticipants: data.maxParticipants,
-      images: imageUrls,
-      requirements: data.requirements,
-      isJoined: false,
-      isLiked: false,
-      isSaved: false,
+      // Call API to create plan
+      const createdPlan = await plansService.createPlan(payload)
+      
+      // Convert to frontend format and add to plans
+      const newPlan = convertPlanToDetailData(createdPlan)
+      
+      // Add new plan to plans array (will be added at the beginning)
+      setPlans((prev) => [newPlan, ...prev])
+
+      // Initialize state for new plan
+      updatePlanState(createdPlan.id, {
+        isJoined: false, // User is leader, but not "joined" in the same sense
+        isLiked: false,
+        isSaved: false,
+      })
+
+      // Close dialog
+      setIsCreateDialogOpen(false)
+
+      console.log('Plan created successfully:', createdPlan)
+    } catch (error) {
+      console.error('Error creating plan:', error)
+      // Show error message to user (optional)
+      alert('Failed to create plan. Please try again.')
     }
-
-    // Add new plan to plans array (will be added at the beginning)
-    setPlans((prev) => [newPlan, ...prev])
-
-    // Initialize state for new plan
-    updatePlanState(newPlanId, {
-      isJoined: false,
-      isLiked: false,
-      isSaved: false,
-    })
-
-    // Close dialog
-    setIsCreateDialogOpen(false)
-
-    console.log('Plan created successfully:', newPlan)
   }
 
-  // Plans state - initialize with initial plans
-  const [plans, setPlans] = useState<PlanDetailData[]>(initialPlans)
+  // Save plans to localStorage whenever plans change (for message page)
+  useEffect(() => {
+    try {
+      localStorage.setItem('ku-hangout-plans', JSON.stringify(plans))
+    } catch (error) {
+      console.error('Error saving plans to localStorage:', error)
+    }
+  }, [plans])
 
   return (
     <SidebarLayout contentClassName="h-screen bg-background overflow-hidden">
@@ -340,34 +305,68 @@ export default function HomePage() {
                     id: 'status',
                     label: 'Status',
                     options: [
-                      { id: 'upcoming', label: 'Upcoming', checked: false },
-                      { id: 'ongoing', label: 'Ongoing', checked: false },
-                      { id: 'completed', label: 'Completed', checked: false },
+                      { id: 'all', label: 'All', checked: filterParams.filter === 'all' || !filterParams.filter },
+                      { id: 'hot', label: 'Hot', checked: filterParams.filter === 'hot' },
+                      { id: 'new', label: 'New', checked: filterParams.filter === 'new' },
+                      { id: 'expiring', label: 'Expiring', checked: filterParams.filter === 'expiring' },
                     ],
                   },
                   {
                     id: 'category',
                     label: 'Category',
                     options: [
-                      { id: 'study', label: 'Study', checked: false },
-                      { id: 'social', label: 'Social', checked: false },
-                      { id: 'sports', label: 'Sports', checked: false },
+                      { id: 'all', label: 'All', checked: !filterParams.category || filterParams.category === 'all' },
+                      { id: 'sports', label: 'Sports', checked: filterParams.category === 'sports' },
+                      { id: 'food', label: 'Food', checked: filterParams.category === 'food' },
+                      { id: 'travel', label: 'Travel', checked: filterParams.category === 'travel' },
+                      { id: 'art', label: 'Art', checked: filterParams.category === 'art' },
+                      { id: 'music', label: 'Music', checked: filterParams.category === 'music' },
+                      { id: 'movie', label: 'Movies', checked: filterParams.category === 'movie' },
+                      { id: 'game', label: 'Games', checked: filterParams.category === 'game' },
                     ],
                   },
                 ]}
                 savedButtonText="Saved"
                 createButtonText="Create Plan"
-                onDateChange={(date) => console.log('Date changed:', date)}
-                onFilterChange={(groupId, optionId, checked) => console.log('Filter changed:', { groupId, optionId, checked })}
-                onClearFilters={() => console.log('Filters cleared')}
-                onSavedClick={() => console.log('Saved clicked')}
+                onDateChange={(date) => {
+                  // TODO: Implement date filter
+                  console.log('Date changed:', date)
+                }}
+                onFilterChange={(groupId, optionId, checked) => {
+                  if (checked) {
+                    if (groupId === 'status') {
+                      setFilterParams(prev => ({ 
+                        ...prev, 
+                        filter: optionId === 'all' ? undefined : (optionId as 'hot' | 'new' | 'expiring' | 'all')
+                      }))
+                    } else if (groupId === 'category') {
+                      setFilterParams(prev => ({ ...prev, category: optionId === 'all' ? undefined : optionId }))
+                    }
+                  }
+                }}
+                onClearFilters={() => {
+                  setFilterParams({})
+                }}
+                onSavedClick={() => {
+                  // TODO: Implement saved plans filter
+                  console.log('Saved clicked')
+                }}
                 onCreateClick={handleCreatePlan}
               />
               <div className="py-8">
                 <div className="space-y-8 pb-8">
                   {/* Plan Cards Grid */}
-                  <div className="space-y-4">
-                    {plans.map((plan) => {
+                  {loading ? (
+                    <div className="flex items-center justify-center py-12">
+                      <p className="text-muted-foreground">Loading plans...</p>
+                    </div>
+                  ) : plans.length === 0 ? (
+                    <div className="flex items-center justify-center py-12">
+                      <p className="text-muted-foreground">No plans found. Create one to get started!</p>
+                    </div>
+                  ) : (
+                    <div className="space-y-4">
+                      {plans.map((plan) => {
                       const planId = plan.id || ''
                       return (
                         <PlanCard
@@ -389,10 +388,12 @@ export default function HomePage() {
                           onJoin={() => handleJoin(planId)}
                           onLike={() => handleLike(planId)}
                           onSave={() => handleSave(planId)}
+                          onChat={() => handleChat(planId)}
                         />
                       )
                     })}
-                  </div>
+                    </div>
+                  )}
                   
         <MessageDockDemo />
       </div>
@@ -408,6 +409,7 @@ export default function HomePage() {
             onJoin={() => handleJoin(selectedPlan?.id)}
             onLike={() => handleLike(selectedPlan?.id)}
             onSave={() => handleSave(selectedPlan?.id)}
+            onChat={() => handleChat(selectedPlan?.id)}
           />
         </div>
       </div>

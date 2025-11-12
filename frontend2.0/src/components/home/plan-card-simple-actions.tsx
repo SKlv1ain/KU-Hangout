@@ -1,6 +1,6 @@
 "use client"
 
-import { Heart } from "lucide-react"
+import { Heart, MessageSquare } from "lucide-react"
 import { Button } from "@/components/ui/button"
 
 interface PlanCardSimpleActionsProps {
@@ -8,6 +8,7 @@ interface PlanCardSimpleActionsProps {
   isLiked: boolean
   onJoin: (e?: React.MouseEvent) => void
   onLike: (e?: React.MouseEvent) => void
+  onChat?: (e?: React.MouseEvent) => void
   className?: string
 }
 
@@ -16,6 +17,7 @@ export function PlanCardSimpleActions({
   isLiked,
   onJoin,
   onLike,
+  onChat,
   className = ""
 }: PlanCardSimpleActionsProps) {
   return (
@@ -31,6 +33,16 @@ export function PlanCardSimpleActions({
       >
         {isJoined ? 'Joined' : 'Join'}
       </Button>
+      {isJoined && onChat && (
+        <Button
+          onClick={onChat}
+          variant="outline"
+          size="sm"
+          className="px-3 text-xs font-semibold border-border hover:bg-accent"
+        >
+          <MessageSquare className="h-3 w-3" />
+        </Button>
+      )}
       <Button
         onClick={onLike}
         variant="outline"
