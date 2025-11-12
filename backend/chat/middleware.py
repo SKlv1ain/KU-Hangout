@@ -20,8 +20,13 @@ class JWTAuthMiddleware:
                 user = await self.authenticate_user(token)
                 if user:
                     scope["user"] = user
+                    print(f"[JWT Middleware] User authenticated: {user.username} (ID: {user.id})")
+                else:
+                    print(f"[JWT Middleware] Authentication failed: token provided but user is None")
             except Exception as e:
-                print("JWT Middleware error:", e)
+                print(f"[JWT Middleware] Error authenticating user: {e}")
+        else:
+            print(f"[JWT Middleware] No token provided in query string")
 
         return await self.inner(scope, receive, send)
 

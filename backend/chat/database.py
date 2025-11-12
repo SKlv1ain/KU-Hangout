@@ -18,7 +18,9 @@ class ChatDatabase:
         from plans.models import Plans
         
         try:
-            plan = Plans.objects.get(id=plan_id)
+            # Ensure plan_id is int
+            plan_id_int = int(plan_id) if not isinstance(plan_id, int) else plan_id
+            plan = Plans.objects.get(id=plan_id_int)
             thread, _ = chat_threads.objects.get_or_create(
                 plan=plan,
                 defaults={
@@ -28,6 +30,10 @@ class ChatDatabase:
             )
             return thread
         except Plans.DoesNotExist:
+            print(f"[ChatDatabase] Plan {plan_id} does not exist")
+            return None
+        except Exception as e:
+            print(f"[ChatDatabase] Error getting/creating thread: {e}")
             return None
 
     @staticmethod

@@ -108,7 +108,7 @@ DATABASES = {
         ),
         'PORT': (
             os.getenv('POSTGRES_PORT')
-            or '5432'
+            or '5433'
         ),
     }
 }
@@ -189,6 +189,8 @@ CORS_ALLOWED_ORIGINS = [
     'http://localhost:5173',
     'http://127.0.0.1:5173',
     'http://localhost:3000',
+    'http://localhost:5174',  # เพิ่มบรรทัดนี้
+    'http://127.0.0.1:5174'  # เพิ่มบรรทัดนี้
 ]
 CORS_ALLOW_CREDENTIALS = True
 
