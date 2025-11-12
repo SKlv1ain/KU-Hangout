@@ -39,6 +39,15 @@ export function useWebSocket({
   const reconnectTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const reconnectAttempts = useRef(0)
   const maxReconnectAttempts = 5
+  const isManualDisconnect = useRef(false)
+
+  // Store callbacks in refs to avoid recreating connect/disconnect on every render
+  const callbacksRef = useRef({ onMessage, onError, onConnect, onDisconnect })
+  
+  // Update callbacks ref when they change
+  useEffect(() => {
+    callbacksRef.current = { onMessage, onError, onConnect, onDisconnect }
+  }, [onMessage, onError, onConnect, onDisconnect])
 
   const BASE_WS_URL = import.meta.env.VITE_WS_BASE || 'ws://localhost:8000'
 
@@ -47,16 +56,26 @@ export function useWebSocket({
       return
     }
 
+    // Prevent multiple simultaneous connection attempts
+    if (wsRef.current) {
+      const currentState = wsRef.current.readyState
+      // If already connecting or connected, don't create another connection
+      if (currentState === WebSocket.CONNECTING || currentState === WebSocket.OPEN) {
+        const currentUrl = wsRef.current.url
+        if (currentUrl.includes(`/ws/plan/${planId}/`)) {
+          console.log('WebSocket connection already in progress or connected, skipping')
+          return
+        }
+      }
+      // Close existing connection if it's for a different plan or closed
+      wsRef.current.close()
+    }
+
     // Get JWT token from localStorage
     const token = localStorage.getItem('kh_token')
     if (!token) {
-      onError?.('No authentication token found. Please login.')
+      callbacksRef.current.onError?.('No authentication token found. Please login.')
       return
-    }
-
-    // Close existing connection if any
-    if (wsRef.current) {
-      wsRef.current.close()
     }
 
     setConnectionStatus('connecting')
@@ -71,17 +90,26 @@ export function useWebSocket({
         setIsConnected(true)
         setConnectionStatus('connected')
         reconnectAttempts.current = 0
-        onConnect?.()
+        isManualDisconnect.current = false
+        // Clear any pending reconnect timeout
+        if (reconnectTimeoutRef.current) {
+          clearTimeout(reconnectTimeoutRef.current)
+          reconnectTimeoutRef.current = null
+        }
+        callbacksRef.current.onConnect?.()
       }
 
       ws.onmessage = (event) => {
         try {
           const data: WebSocketMessage = JSON.parse(event.data)
           
-          // Handle errors
+          // Handle errors - backend sends error before closing connection
           if (data.error) {
-            console.error('WebSocket error:', data.error)
-            onError?.(data.error)
+            console.error('WebSocket error from server:', data.error)
+            setConnectionStatus('error')
+            callbacksRef.current.onError?.(data.error)
+            // Close connection if error received
+            ws.close(1008, data.error)
             return
           }
 
@@ -94,48 +122,107 @@ export function useWebSocket({
           // Handle chat history
           if (data.type === 'chat_history') {
             console.log('Received chat history:', data.messages)
-            onMessage?.(data)
+            callbacksRef.current.onMessage?.(data)
             return
           }
 
           // Handle new messages
           if (data.type === 'new_message') {
             console.log('Received new message:', data)
-            onMessage?.(data)
+            callbacksRef.current.onMessage?.(data)
             return
           }
 
           // Handle other message types
-          onMessage?.(data)
+          callbacksRef.current.onMessage?.(data)
         } catch (error) {
           console.error('Error parsing WebSocket message:', error)
-          onError?.('Failed to parse message')
+          callbacksRef.current.onError?.('Failed to parse message')
         }
       }
 
       ws.onerror = (error) => {
-        console.error('WebSocket error:', error)
-        setConnectionStatus('error')
-        onError?.('WebSocket connection error')
+        // Only log error if not already closing/closed
+        // Error event doesn't provide much info, wait for onclose for details
+        if (ws.readyState !== WebSocket.CLOSING && ws.readyState !== WebSocket.CLOSED) {
+          console.error('WebSocket error event:', error)
+          setConnectionStatus('error')
+        }
       }
 
       ws.onclose = (event) => {
-        console.log('WebSocket closed:', event.code, event.reason)
+        // Only log if it's not a normal closure or manual disconnect
+        if (event.code !== 1000 && !isManualDisconnect.current) {
+          console.log('WebSocket closed:', {
+            code: event.code,
+            reason: event.reason,
+            wasClean: event.wasClean,
+            readyState: ws.readyState
+          })
+        }
+        
         setIsConnected(false)
         setConnectionStatus('disconnected')
-        onDisconnect?.()
+        
+        // Don't show error or reconnect if it's a manual disconnect
+        if (isManualDisconnect.current || event.code === 1000) {
+          isManualDisconnect.current = false
+          reconnectAttempts.current = 0
+          callbacksRef.current.onDisconnect?.()
+          return
+        }
 
-        // Attempt to reconnect if not a normal closure
+        // For code 1006 (abnormal closure), don't call onDisconnect immediately
+        // as it might be a temporary issue and we'll reconnect
+        if (event.code === 1006 && reconnectAttempts.current === 0) {
+          // First disconnect with 1006, might be normal reconnection, don't show error yet
+          // Don't call onDisconnect to avoid showing "disconnected" message
+        } else {
+          callbacksRef.current.onDisconnect?.()
+        }
+
+        // Determine error message based on close code
+        let errorMessage = 'WebSocket connection closed'
+        if (event.code === 1006) {
+          // 1006 can happen during normal reconnection, only show if we've tried multiple times
+          if (reconnectAttempts.current === 0) {
+            // First disconnect, might be normal reconnection, don't show error yet
+            // Will attempt to reconnect silently
+          } else {
+            errorMessage = 'Connection closed unexpectedly. Please check your network connection and try again.'
+          }
+        } else if (event.code === 1002) {
+          errorMessage = 'Protocol error. Please refresh the page.'
+        } else if (event.code === 1003) {
+          errorMessage = 'Invalid data received. Please refresh the page.'
+        } else if (event.code === 1008) {
+          errorMessage = event.reason || 'Policy violation. Please check your authentication token.'
+        } else if (event.code >= 4000 && event.code < 5000) {
+          // Custom error codes from backend
+          errorMessage = event.reason || 'Connection rejected by server. Please check your authentication.'
+        } else if (event.code !== 1000) {
+          errorMessage = `Connection closed with code ${event.code}. ${event.reason || 'Please try again.'}`
+        }
+
+        // Only show error if not a normal closure and not the first 1006 disconnect
+        if (event.code !== 1000 && !(event.code === 1006 && reconnectAttempts.current === 0)) {
+          callbacksRef.current.onError?.(errorMessage)
+        }
+
+        // Attempt to reconnect if not a normal closure and not a client-initiated close
         if (event.code !== 1000 && reconnectAttempts.current < maxReconnectAttempts) {
           reconnectAttempts.current += 1
           const delay = Math.min(1000 * Math.pow(2, reconnectAttempts.current), 30000) // Exponential backoff, max 30s
-          console.log(`Attempting to reconnect in ${delay}ms (attempt ${reconnectAttempts.current}/${maxReconnectAttempts})`)
+          // Only log reconnect attempts if it's not the first attempt
+          if (reconnectAttempts.current > 1) {
+            console.log(`Attempting to reconnect in ${delay}ms (attempt ${reconnectAttempts.current}/${maxReconnectAttempts})`)
+          }
           
           reconnectTimeoutRef.current = setTimeout(() => {
             connect()
           }, delay)
         } else if (reconnectAttempts.current >= maxReconnectAttempts) {
-          onError?.('Failed to reconnect after multiple attempts')
+          callbacksRef.current.onError?.('Failed to reconnect after multiple attempts. Please refresh the page.')
         }
       }
 
@@ -143,11 +230,13 @@ export function useWebSocket({
     } catch (error) {
       console.error('Error creating WebSocket:', error)
       setConnectionStatus('error')
-      onError?.('Failed to create WebSocket connection')
+      callbacksRef.current.onError?.('Failed to create WebSocket connection')
     }
-  }, [planId, BASE_WS_URL, onMessage, onError, onConnect, onDisconnect])
+  }, [planId, BASE_WS_URL]) // Only depend on planId and BASE_WS_URL, callbacks are in ref
 
   const disconnect = useCallback(() => {
+    isManualDisconnect.current = true
+    
     if (reconnectTimeoutRef.current) {
       clearTimeout(reconnectTimeoutRef.current)
       reconnectTimeoutRef.current = null
@@ -165,7 +254,7 @@ export function useWebSocket({
 
   const sendMessage = useCallback((message: string) => {
     if (!wsRef.current || wsRef.current.readyState !== WebSocket.OPEN) {
-      onError?.('WebSocket is not connected')
+      callbacksRef.current.onError?.('WebSocket is not connected')
       return false
     }
 
@@ -177,23 +266,42 @@ export function useWebSocket({
       return true
     } catch (error) {
       console.error('Error sending message:', error)
-      onError?.('Failed to send message')
+      callbacksRef.current.onError?.('Failed to send message')
       return false
     }
-  }, [onError])
+  }, [])
 
   // Connect when planId changes
   useEffect(() => {
-    if (planId) {
-      connect()
-    } else {
+    if (!planId) {
       disconnect()
+      return
     }
 
+    // Only connect if not already connected to the same plan
+    if (wsRef.current) {
+      const currentState = wsRef.current.readyState
+      // If already connecting or connected to the same plan, skip
+      if (currentState === WebSocket.CONNECTING || currentState === WebSocket.OPEN) {
+        const currentUrl = wsRef.current.url
+        if (currentUrl.includes(`/ws/plan/${planId}/`)) {
+          console.log('WebSocket already connected/connecting to this plan, skipping reconnect')
+          return
+        }
+      }
+    }
+
+    // Small delay to prevent rapid reconnections
+    const connectTimeout = setTimeout(() => {
+      connect()
+    }, 100)
+
     return () => {
+      clearTimeout(connectTimeout)
       disconnect()
     }
-  }, [planId, connect, disconnect])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [planId]) // Only depend on planId, connect/disconnect are stable
 
   return {
     isConnected,

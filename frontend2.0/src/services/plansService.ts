@@ -17,6 +17,8 @@ export interface Plan {
   tags_display?: Array<{ id: number; name: string }>
   is_expired: boolean
   time_until_event: string
+  joined?: boolean
+  role?: 'LEADER' | 'MEMBER' | null
 }
 
 export interface CreatePlanPayload {
@@ -37,6 +39,9 @@ export interface JoinPlanResponse {
   people_joined: number
   max_people: number
 }
+
+// LeavePlanResponse is the same as Plan since backend returns full plan data
+export type LeavePlanResponse = Plan
 
 export interface PlansListParams {
   filter?: 'hot' | 'new' | 'expiring' | 'all'
@@ -76,8 +81,22 @@ const plansService = {
   /**
    * Leave a plan
    */
-  async leavePlan(planId: number): Promise<JoinPlanResponse> {
+  async leavePlan(planId: number): Promise<LeavePlanResponse> {
     return api.delete(`/plans/${planId}/join/`)
+  },
+
+  /**
+   * Delete a plan (only owner can delete)
+   */
+  async deletePlan(planId: number): Promise<{ message: string }> {
+    return api.delete(`/plans/${planId}/`)
+  },
+
+  /**
+   * Get plan membership info (includes joined status and role)
+   */
+  async getPlanMembership(planId: number): Promise<Plan & { joined: boolean; role: 'LEADER' | 'MEMBER' | null }> {
+    return api.get(`/homepage/${planId}/`)
   },
 }
 

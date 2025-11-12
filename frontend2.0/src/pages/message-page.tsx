@@ -63,20 +63,40 @@ export default function MessagePage() {
             unreadCount: 0
           }))
           
-          setChatRooms(rooms)
+          // Only update state if rooms actually changed (compare by planId)
+          setChatRooms((prev) => {
+            const prevIds = new Set(prev.map(r => r.planId.toString()))
+            const newIds = new Set(rooms.map(r => r.planId.toString()))
+            if (prevIds.size !== newIds.size || 
+                ![...prevIds].every(id => newIds.has(id)) ||
+                ![...newIds].every(id => prevIds.has(id))) {
+              return rooms
+            }
+            return prev // No change, return previous state
+          })
         } else {
           // Mock data for development if no localStorage data
-          setChatRooms([
-            { planId: "1", title: "Weekend Café Study Session", lastMessage: "Let's meet at 2 PM", lastMessageTime: new Date(), unreadCount: 0 },
-            { planId: "2", title: "Basketball Game at Sports Complex", lastMessage: "See you there!", lastMessageTime: new Date(), unreadCount: 0 },
-          ])
+          setChatRooms((prev) => {
+            if (prev.length === 0) {
+              return [
+                { planId: "1", title: "Weekend Café Study Session", lastMessage: "Let's meet at 2 PM", lastMessageTime: new Date(), unreadCount: 0 },
+                { planId: "2", title: "Basketball Game at Sports Complex", lastMessage: "See you there!", lastMessageTime: new Date(), unreadCount: 0 },
+              ]
+            }
+            return prev
+          })
         }
       } catch (error) {
         console.error('Error loading chat rooms:', error)
-        // Fallback to mock data
-        setChatRooms([
-          { planId: "1", title: "Weekend Café Study Session", lastMessage: "Let's meet at 2 PM", lastMessageTime: new Date(), unreadCount: 0 },
-        ])
+        // Fallback to mock data only if no rooms exist
+        setChatRooms((prev) => {
+          if (prev.length === 0) {
+            return [
+              { planId: "1", title: "Weekend Café Study Session", lastMessage: "Let's meet at 2 PM", lastMessageTime: new Date(), unreadCount: 0 },
+            ]
+          }
+          return prev
+        })
       }
     }
     
@@ -89,8 +109,8 @@ export default function MessagePage() {
     
     window.addEventListener('storage', handleStorageChange)
     
-    // Also check periodically (for same-tab updates)
-    const interval = setInterval(loadChatRooms, 1000)
+    // Also check periodically (for same-tab updates) - reduced frequency to avoid unnecessary re-renders
+    const interval = setInterval(loadChatRooms, 5000) // Changed from 1s to 5s
     
     return () => {
       window.removeEventListener('storage', handleStorageChange)
@@ -110,7 +130,8 @@ export default function MessagePage() {
       navigate(`/messages?planId=${firstRoom.planId}`, { replace: true })
       loadMessagesForPlan()
     }
-  }, [planId, chatRooms])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [planId]) // Only depend on planId, chatRooms will be checked when needed
 
   // Handle WebSocket messages
   const handleWebSocketMessage = useCallback((data: any) => {
@@ -175,8 +196,16 @@ export default function MessagePage() {
   }, [selectedPlanId])
 
   const handleWebSocketError = useCallback((error: string) => {
-    console.error('WebSocket error:', error)
-    setConnectionError(error)
+    // Only show error if connection is actually disconnected
+    // Don't show error during normal reconnection attempts
+    if (error && !error.includes('reconnect')) {
+      console.error('WebSocket error:', error)
+      setConnectionError(error)
+      // Clear error after 5 seconds
+      setTimeout(() => {
+        setConnectionError(null)
+      }, 5000)
+    }
   }, [])
 
   const handleWebSocketConnect = useCallback(() => {
@@ -185,7 +214,9 @@ export default function MessagePage() {
   }, [])
 
   const handleWebSocketDisconnect = useCallback(() => {
-    console.log('WebSocket disconnected')
+    // Only log disconnect if we're not in the middle of reconnecting
+    // This prevents showing "disconnected" message during normal reconnection
+    // The connection status will be updated by the hook itself
   }, [])
 
   // Initialize WebSocket connection

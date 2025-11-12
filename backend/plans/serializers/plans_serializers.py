@@ -16,6 +16,8 @@ class PlansSerializer(serializers.ModelSerializer):
     is_expired = serializers.SerializerMethodField()
     time_until_event = serializers.SerializerMethodField()
     members = serializers.SerializerMethodField()  # <- exact shape per your ask
+    joined = serializers.SerializerMethodField()  # Whether current user has joined this plan
+    role = serializers.SerializerMethodField()  # Current user's role in this plan (LEADER/MEMBER/None)
 
     class Meta:
         model = Plans
@@ -37,6 +39,8 @@ class PlansSerializer(serializers.ModelSerializer):
             'is_expired',         # read-only
             'time_until_event',   # read-only
             'members',            # read-only
+            'joined',             # read-only
+            'role',               # read-only
         ]
         read_only_fields = (
             'id',
@@ -48,6 +52,8 @@ class PlansSerializer(serializers.ModelSerializer):
             'is_expired',
             'time_until_event',
             'members',
+            'joined',
+            'role',
         )
 
     def get_tags_display(self, obj):
@@ -97,6 +103,36 @@ class PlansSerializer(serializers.ModelSerializer):
             })
         return out
 
+    def get_joined(self, obj):
+        """Check if current user has joined this plan."""
+        request = self.context.get("request")
+        if not request or not request.user or not request.user.is_authenticated:
+            return False
+        
+        # Check if user is the leader
+        if obj.leader_id_id == request.user.id:
+            return True
+        
+        # Check if user is a participant
+        return Participants.objects.filter(plan=obj, user=request.user).exists()  # pylint: disable=no-member
+
+    def get_role(self, obj):
+        """Get current user's role in this plan."""
+        request = self.context.get("request")
+        if not request or not request.user or not request.user.is_authenticated:
+            return None
+        
+        # Check if user is the leader
+        if obj.leader_id_id == request.user.id:
+            return 'LEADER'
+        
+        # Check if user is a participant
+        participant = Participants.objects.filter(plan=obj, user=request.user).first()  # pylint: disable=no-member
+        if participant:
+            return participant.role
+        
+        return None
+
     def create(self, validated_data):
         # pop tags BEFORE creating
         tags_data = validated_data.pop('tags', [])
@@ -109,11 +145,11 @@ class PlansSerializer(serializers.ModelSerializer):
         # initial count to 1 (leader already joined)
         validated_data["people_joined"] = 1
 
-        plan = Plans.objects.create(**validated_data)
+        plan = Plans.objects.create(**validated_data)  # pylint: disable=no-member
 
         # ensure leader participant row
         if plan.leader_id_id:
-            Participants.objects.get_or_create(
+            Participants.objects.get_or_create(  # pylint: disable=no-member
                 user=plan.leader_id,
                 plan=plan,
                 defaults={"role": "LEADER"},
@@ -123,7 +159,7 @@ class PlansSerializer(serializers.ModelSerializer):
         if tags_data:
             tag_names = [t.strip() for t in tags_data if t and t.strip()]
             for name in tag_names:
-                tag_obj, _ = Tags.objects.get_or_create(name=name)
+                tag_obj, _ = Tags.objects.get_or_create(name=name)  # pylint: disable=no-member
                 plan.tags.add(tag_obj)
 
         return plan
@@ -143,7 +179,7 @@ class PlansSerializer(serializers.ModelSerializer):
             instance.tags.clear()
             tag_names = [t.strip() for t in tags_data if t and t.strip()]
             for name in tag_names:
-                tag_obj, _ = Tags.objects.get_or_create(name=name)
+                tag_obj, _ = Tags.objects.get_or_create(name=name)  # pylint: disable=no-member
                 instance.tags.add(tag_obj)
 
         return instance

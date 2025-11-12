@@ -87,6 +87,11 @@ class PlanJoinView(APIView):
                 Plans.objects.filter(pk=plan.pk).update(people_joined=1)
                 plan.refresh_from_db(fields=['people_joined'])
 
+        # Reload plan from database to ensure we have the latest data
+        plan = Plans.objects.get(pk=plan_id)  # pylint: disable=no-member
+        
+        # Return full plan data including updated people_joined count
         data = PlansSerializer(plan, context={"request": request}).data
-        return Response({"message": "Leave plan successfully"}, status=status.HTTP_200_OK)
+        print(f"[DEBUG] Leave plan - plan_id: {plan_id}, people_joined: {plan.people_joined}, serialized people_joined: {data.get('people_joined')}")
+        return Response(data, status=status.HTTP_200_OK)
 

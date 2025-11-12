@@ -24,7 +24,9 @@ export interface PlanCardProps {
   isJoined?: boolean
   isLiked?: boolean
   isSaved?: boolean
+  isOwner?: boolean
   onJoin?: (e?: React.MouseEvent) => void
+  onDelete?: (e?: React.MouseEvent) => void
   onLike?: (e?: React.MouseEvent) => void
   onSave?: (e?: React.MouseEvent) => void
   onChat?: (e?: React.MouseEvent) => void
@@ -34,7 +36,6 @@ export interface PlanCardProps {
 }
 
 export function PlanCard({
-  id,
   title,
   creatorName,
   location,
@@ -47,7 +48,9 @@ export function PlanCard({
   isJoined = false,
   isLiked = false,
   isSaved = false,
+  isOwner = false,
   onJoin,
+  onDelete,
   onLike,
   onSave,
   onChat,
@@ -143,7 +146,9 @@ export function PlanCard({
             <PlanCardSimpleActions
               isJoined={isJoined}
               isLiked={isLiked}
+              isOwner={isOwner}
               onJoin={handleJoin}
+              onDelete={onDelete}
               onLike={handleLike}
               onChat={handleChat}
             />

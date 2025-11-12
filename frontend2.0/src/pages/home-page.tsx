@@ -8,6 +8,7 @@ import { PlanDetailPanel, type PlanDetailData } from "@/components/home/plan-det
 import { CreatePlanDialog, type CreatePlanFormData } from "@/components/home/create-plan-dialog"
 import { SidebarLayout } from "@/components/home/side-bar"
 import plansService, { type Plan } from "@/services/plansService"
+import { useAuth } from "@/context/AuthContext"
 
 const sampleImages = [
   "https://images.unsplash.com/photo-1568036193587-84226a9c5a1b?ixlib=rb-4.1.0&auto=format&fit=crop&q=80&w=800",
@@ -17,6 +18,7 @@ const sampleImages = [
 
 export default function HomePage() {
   const navigate = useNavigate()
+  const { user } = useAuth()
   const [selectedPlan, setSelectedPlan] = useState<PlanDetailData | null>(null)
   const [isDetailOpen, setIsDetailOpen] = useState(false)
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false)
@@ -52,6 +54,12 @@ export default function HomePage() {
   }
 
 
+  // Store plan leader_id mapping for owner check
+  const [planOwners, setPlanOwners] = useState<Record<string | number, number>>({})
+  
+  // Store plan images (planId -> image URLs)
+  const [planImages, setPlanImages] = useState<Record<string | number, string[]>>({})
+
   // Convert backend Plan to frontend PlanDetailData
   const convertPlanToDetailData = (plan: Plan): PlanDetailData => {
     const eventDate = new Date(plan.event_time)
@@ -73,6 +81,12 @@ export default function HomePage() {
       color: getTagColor(tag.name)
     }))
 
+    // Store leader_id for owner check
+    setPlanOwners(prev => ({
+      ...prev,
+      [plan.id]: plan.leader_id
+    }))
+
     return {
       id: plan.id,
       title: plan.title,
@@ -85,7 +99,7 @@ export default function HomePage() {
       participants: [], // Will be loaded separately if needed
       participantCount: plan.people_joined,
       maxParticipants: plan.max_people,
-      images: sampleImages, // Backend doesn't have images yet, use sample
+      images: planImages[plan.id] || sampleImages, // Use uploaded images if available, otherwise use sample
       isJoined: false, // Will be checked from plansState
       isLiked: false,
       isSaved: false,
@@ -93,14 +107,96 @@ export default function HomePage() {
     }
   }
 
-  // Load plans from API
+  // Load plan images from localStorage on mount
+  useEffect(() => {
+    try {
+      const storedImages = JSON.parse(localStorage.getItem('ku-hangout-plan-images') || '{}')
+      setPlanImages(storedImages)
+    } catch (error) {
+      console.error('Error loading plan images from localStorage:', error)
+    }
+  }, [])
+
+  // Load plans from API and check join state
   useEffect(() => {
     const loadPlans = async () => {
       try {
         setLoading(true)
+        
+        // Load plan images from localStorage first
+        let storedImages: Record<string | number, string[]> = {}
+        try {
+          storedImages = JSON.parse(localStorage.getItem('ku-hangout-plan-images') || '{}')
+          setPlanImages(storedImages)
+        } catch (error) {
+          console.error('Error loading plan images from localStorage:', error)
+        }
+        
         const backendPlans = await plansService.getPlans(filterParams)
-        const convertedPlans = backendPlans.map(convertPlanToDetailData)
+        // Use storedImages directly in convertPlanToDetailData
+        const convertedPlans = backendPlans.map(plan => {
+          const eventDate = new Date(plan.event_time)
+          const days = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"]
+          const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
+          
+          const dayName = days[eventDate.getDay()]
+          const monthName = months[eventDate.getMonth()]
+          const day = eventDate.getDate()
+          const hours = eventDate.getHours()
+          const minutes = eventDate.getMinutes()
+          const ampm = hours >= 12 ? "PM" : "AM"
+          const displayHour = hours % 12 || 12
+          const formattedTime = `${displayHour}:${minutes.toString().padStart(2, '0')} ${ampm}`
+          
+          // Convert tags
+          const tags = (plan.tags_display || []).map(tag => ({
+            label: tag.name,
+            color: getTagColor(tag.name)
+          }))
+
+          // Store leader_id for owner check
+          setPlanOwners(prev => ({
+            ...prev,
+            [plan.id]: plan.leader_id
+          }))
+
+          return {
+            id: plan.id,
+            title: plan.title,
+            creatorName: plan.creator_username,
+            location: plan.location,
+            dateTime: `${dayName}, ${monthName} ${day} • ${formattedTime}`,
+            description: plan.description,
+            fullDescription: plan.description,
+            tags,
+            participants: [],
+            participantCount: plan.people_joined,
+            maxParticipants: plan.max_people,
+            images: storedImages[plan.id] || sampleImages, // Use stored images if available
+            isJoined: false,
+            isLiked: false,
+            isSaved: false,
+            requirements: []
+          }
+        })
         setPlans(convertedPlans)
+        
+        // Load join state from backend (now included in list API response)
+        const newPlansState: Record<string | number, {
+          isJoined: boolean
+          isLiked: boolean
+          isSaved: boolean
+        }> = {}
+        
+        for (const plan of backendPlans) {
+          newPlansState[plan.id] = {
+            isJoined: plan.joined || false,
+            isLiked: false, // Backend doesn't have like yet
+            isSaved: false, // Backend doesn't have save yet
+          }
+        }
+        
+        setPlansState(newPlansState)
       } catch (error) {
         console.error('Error loading plans:', error)
         // Fallback to empty array on error
@@ -111,7 +207,23 @@ export default function HomePage() {
     }
 
     loadPlans()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [filterParams])
+
+  // Update plans when planImages change (to show uploaded images)
+  useEffect(() => {
+    if (plans.length > 0 && Object.keys(planImages).length > 0) {
+      setPlans(prev => prev.map(plan => {
+        const planId = plan.id || ''
+        const uploadedImages = planImages[planId]
+        if (uploadedImages && uploadedImages.length > 0) {
+          return { ...plan, images: uploadedImages }
+        }
+        return plan
+      }))
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [planImages])
 
   const updatePlanState = (planId: string | number | undefined, updates: Partial<{
     isJoined: boolean
@@ -177,17 +289,32 @@ export default function HomePage() {
       if (isCurrentlyJoined) {
         // Leave plan
         const numericPlanId = typeof planId === 'string' ? parseInt(planId, 10) : planId
-        await plansService.leavePlan(numericPlanId)
+        if (isNaN(numericPlanId)) {
+          throw new Error('Invalid plan ID')
+        }
+        const response = await plansService.leavePlan(numericPlanId)
+        console.log('Leave plan response:', response)
         updatePlanState(planId, { isJoined: false })
-        // Update plan's people_joined count
-        setPlans(prev => prev.map(p => 
-          p.id === planId 
-            ? { ...p, participantCount: Math.max((p.participantCount || 0) - 1, 0) }
-            : p
-        ))
+        // Update plan's people_joined count from response
+        // Response is a Plan object with people_joined field
+        if (response && typeof response === 'object' && 'people_joined' in response) {
+          console.log('Updating participantCount to:', response.people_joined)
+          setPlans(prev => prev.map(p => {
+            if (p.id === planId) {
+              console.log('Before update:', p.participantCount, 'After update:', response.people_joined)
+              return { ...p, participantCount: response.people_joined }
+            }
+            return p
+          }))
+        } else {
+          console.error('Invalid response from leavePlan:', response)
+        }
       } else {
         // Join plan
         const numericPlanId = typeof planId === 'string' ? parseInt(planId, 10) : planId
+        if (isNaN(numericPlanId)) {
+          throw new Error('Invalid plan ID')
+        }
         const response = await plansService.joinPlan(numericPlanId)
         updatePlanState(planId, { isJoined: true })
         // Update plan's people_joined count
@@ -199,7 +326,41 @@ export default function HomePage() {
       }
     } catch (error) {
       console.error('Error joining/leaving plan:', error)
-      // Show error message to user (optional)
+      const errorMessage = error instanceof Error ? error.message : 'Failed to join/leave plan. Please try again.'
+      alert(errorMessage)
+    }
+  }
+
+  const handleDelete = async (planId: string | number | undefined) => {
+    if (!planId) return
+    
+    try {
+      const numericPlanId = typeof planId === 'string' ? parseInt(planId, 10) : planId
+      if (isNaN(numericPlanId)) {
+        throw new Error('Invalid plan ID')
+      }
+      
+      await plansService.deletePlan(numericPlanId)
+      
+      // Remove plan from list
+      setPlans(prev => prev.filter(p => p.id !== planId))
+      
+      // Remove from state
+      setPlansState(prev => {
+        const newState = { ...prev }
+        delete newState[planId]
+        return newState
+      })
+      
+      // Close detail panel if it's the deleted plan
+      if (selectedPlan && selectedPlan.id === planId) {
+        setIsDetailOpen(false)
+        setSelectedPlan(null)
+      }
+    } catch (error) {
+      console.error('Error deleting plan:', error)
+      const errorMessage = error instanceof Error ? error.message : 'Failed to delete plan. Please try again.'
+      alert(errorMessage)
     }
   }
 
@@ -240,6 +401,28 @@ export default function HomePage() {
       const eventDateTime = new Date(data.date)
       eventDateTime.setHours(parseInt(hours, 10), parseInt(minutes, 10), 0, 0)
 
+      // Convert uploaded images to base64 strings (for storage and display)
+      const imagePromises = data.images.map((img) => {
+        if (typeof img === 'string') {
+          return Promise.resolve(img)
+        }
+        // Convert File to base64 string
+        return new Promise<string>((resolve, reject) => {
+          const reader = new FileReader()
+          reader.onload = () => {
+            if (typeof reader.result === 'string') {
+              resolve(reader.result)
+            } else {
+              reject(new Error('Failed to convert image to base64'))
+            }
+          }
+          reader.onerror = () => reject(new Error('Failed to read image file'))
+          reader.readAsDataURL(img)
+        })
+      })
+      
+      const imageUrls = await Promise.all(imagePromises)
+
       // Create plan payload
       const payload = {
         title: data.title,
@@ -255,8 +438,27 @@ export default function HomePage() {
       // Call API to create plan
       const createdPlan = await plansService.createPlan(payload)
       
+      // Store images for this plan
+      if (imageUrls.length > 0) {
+        setPlanImages(prev => ({
+          ...prev,
+          [createdPlan.id]: imageUrls
+        }))
+        
+        // Also save to localStorage for persistence
+        try {
+          const storedImages = JSON.parse(localStorage.getItem('ku-hangout-plan-images') || '{}')
+          storedImages[createdPlan.id] = imageUrls
+          localStorage.setItem('ku-hangout-plan-images', JSON.stringify(storedImages))
+        } catch (error) {
+          console.error('Error saving plan images to localStorage:', error)
+        }
+      }
+      
       // Convert to frontend format and add to plans
       const newPlan = convertPlanToDetailData(createdPlan)
+      // Override images with uploaded images
+      newPlan.images = imageUrls.length > 0 ? imageUrls : sampleImages
       
       // Add new plan to plans array (will be added at the beginning)
       setPlans((prev) => [newPlan, ...prev])
@@ -279,12 +481,30 @@ export default function HomePage() {
     }
   }
 
-  // Save plans to localStorage whenever plans change (for message page)
+  // Save only plan IDs and titles to localStorage (for message page) - not full plans with images
   useEffect(() => {
     try {
-      localStorage.setItem('ku-hangout-plans', JSON.stringify(plans))
+      // Only save minimal data needed for message page (plan IDs and titles)
+      const minimalPlans = plans.map(plan => ({
+        id: plan.id,
+        title: plan.title,
+        creatorName: plan.creatorName
+      }))
+      localStorage.setItem('ku-hangout-plans', JSON.stringify(minimalPlans))
     } catch (error) {
       console.error('Error saving plans to localStorage:', error)
+      // If still fails, try to clear old data and save again
+      try {
+        localStorage.removeItem('ku-hangout-plans')
+        const minimalPlans = plans.map(plan => ({
+          id: plan.id,
+          title: plan.title,
+          creatorName: plan.creatorName
+        }))
+        localStorage.setItem('ku-hangout-plans', JSON.stringify(minimalPlans))
+      } catch (retryError) {
+        console.error('Error retrying save to localStorage:', retryError)
+      }
     }
   }, [plans])
 
@@ -368,6 +588,7 @@ export default function HomePage() {
                     <div className="space-y-4">
                       {plans.map((plan) => {
                       const planId = plan.id || ''
+                      const isOwner = !!(user && planOwners[planId] === user.id)
                       return (
                         <PlanCard
                           key={planId}
@@ -384,8 +605,10 @@ export default function HomePage() {
                           isJoined={plansState[planId]?.isJoined ?? plan.isJoined ?? false}
                           isLiked={plansState[planId]?.isLiked ?? plan.isLiked ?? false}
                           isSaved={plansState[planId]?.isSaved ?? plan.isSaved ?? false}
+                          isOwner={isOwner}
                           onClick={() => handlePlanClick(plan)}
                           onJoin={() => handleJoin(planId)}
+                          onDelete={() => handleDelete(planId)}
                           onLike={() => handleLike(planId)}
                           onSave={() => handleSave(planId)}
                           onChat={() => handleChat(planId)}
@@ -406,7 +629,9 @@ export default function HomePage() {
             plan={selectedPlan}
             isOpen={isDetailOpen}
             onClose={handleCloseDetail}
+            isOwner={user && selectedPlan ? planOwners[selectedPlan.id || ''] === user.id : false}
             onJoin={() => handleJoin(selectedPlan?.id)}
+            onDelete={() => handleDelete(selectedPlan?.id)}
             onLike={() => handleLike(selectedPlan?.id)}
             onSave={() => handleSave(selectedPlan?.id)}
             onChat={() => handleChat(selectedPlan?.id)}

@@ -36,7 +36,9 @@ interface PlanDetailPanelProps {
   plan: PlanDetailData | null
   isOpen: boolean
   onClose: () => void
+  isOwner?: boolean
   onJoin?: (e?: React.MouseEvent) => void
+  onDelete?: (e?: React.MouseEvent) => void
   onLike?: (e?: React.MouseEvent) => void
   onSave?: (e?: React.MouseEvent) => void
   onChat?: (e?: React.MouseEvent) => void
@@ -46,7 +48,9 @@ export function PlanDetailPanel({
   plan,
   isOpen,
   onClose,
+  isOwner = false,
   onJoin,
+  onDelete,
   onLike,
   onSave,
   onChat
@@ -99,7 +103,9 @@ export function PlanDetailPanel({
           <PlanCardSimpleActions
             isJoined={plan.isJoined || false}
             isLiked={plan.isLiked || false}
+            isOwner={isOwner}
             onJoin={handleJoin}
+            onDelete={onDelete}
             onLike={handleLike}
             onChat={handleChat}
           />
