@@ -171,7 +171,7 @@ class ChatConsumer(AsyncWebsocketConsumer):
             if hasattr(self, 'channel_layer') and self.channel_name:
                 # Try to accept first (required before sending messages)
                 try:
-        await self.accept()
+                    await self.accept()
                     print("[WebSocket] Connection accepted for rejection")
                 except Exception as accept_error:
                     print(f"[WebSocket] Error accepting connection for rejection: {accept_error}")
@@ -180,7 +180,7 @@ class ChatConsumer(AsyncWebsocketConsumer):
                 
                 # Send error message before closing
                 try:
-        await self.send(json.dumps({'error': error_message}))
+                    await self.send(json.dumps({'error': error_message}))
                     print("[WebSocket] Error message sent")
                 except Exception as send_error:
                     print(f"[WebSocket] Error sending error message: {send_error}")
