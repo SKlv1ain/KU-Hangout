@@ -4,11 +4,14 @@ from tags.models import Tags
 from participants.models import Participants
 
 class PlansSerializer(serializers.ModelSerializer):
-    tags = serializers.ListField(
-        child=serializers.CharField(),
-        required=False,
-        write_only=True
-    )
+    tags_data = validated_data.pop('tags', [])
+    if tags_data:
+        for name in tags_data:
+            name = name.strip()
+            if name:
+                tag_obj, _ = Tags.objects.get_or_create(name=name)  # creates new if not exist
+                Plans.tags.add(tag_obj)
+
     tags_display = serializers.SerializerMethodField()
     creator_username = serializers.CharField(source='leader_id.username', read_only=True)
     is_expired = serializers.SerializerMethodField()
