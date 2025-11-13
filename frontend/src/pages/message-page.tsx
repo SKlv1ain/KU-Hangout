@@ -10,6 +10,7 @@ import { Send, MessageSquare, Wifi, WifiOff } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { useWebSocket } from "@/hooks/useWebSocket"
 import { useAuth } from "@/context/AuthContext"
+import chatService from "@/services/chatService"
 
 interface Message {
   id: string | number
@@ -21,10 +22,13 @@ interface Message {
 
 interface ChatRoom {
   planId: string | number
+  threadId: number
   title: string
-  lastMessage?: string
+  lastMessage?: string | null
+  lastMessageSender?: string | null
   lastMessageTime?: Date
   unreadCount?: number
+  isOwner?: boolean
 }
 
 export default function MessagePage() {
@@ -38,100 +42,117 @@ export default function MessagePage() {
   const [selectedPlanId, setSelectedPlanId] = useState<string | null>(planId)
   const [connectionError, setConnectionError] = useState<string | null>(null)
 
-  // Load joined plans from localStorage
-  useEffect(() => {
-    const loadChatRooms = () => {
+  const loadChatRooms = useCallback(async () => {
+    try {
+      const threads = await chatService.getThreads()
+      const rooms: ChatRoom[] = threads.map((thread) => ({
+        planId: thread.plan_id,
+        threadId: thread.thread_id,
+        title: thread.plan_title || `Plan ${thread.plan_id}`,
+        lastMessage: thread.last_message ?? null,
+        lastMessageSender: thread.last_message_sender ?? null,
+        lastMessageTime: thread.last_message_timestamp ? new Date(thread.last_message_timestamp) : undefined,
+        unreadCount: 0,
+        isOwner: thread.is_owner,
+      }))
+
+      rooms.sort((a, b) => {
+        const timeA = a.lastMessageTime ? a.lastMessageTime.getTime() : 0
+        const timeB = b.lastMessageTime ? b.lastMessageTime.getTime() : 0
+        return timeB - timeA
+      })
+
+      setChatRooms(rooms)
+
+      // Persist minimal info for fallback scenarios
       try {
-        const storedPlans = localStorage.getItem('ku-hangout-plans')
-        const storedPlansState = localStorage.getItem('ku-hangout-plans-state')
-        
-        if (storedPlans && storedPlansState) {
-          const plans = JSON.parse(storedPlans)
-          const plansState = JSON.parse(storedPlansState)
-          
-          // Filter only joined plans
-          const joinedPlans = plans.filter((plan: any) => {
-            const planId = plan.id?.toString() || ''
-            return plansState[planId]?.isJoined === true || plan.isJoined === true
-          })
-          
-          const rooms: ChatRoom[] = joinedPlans.map((plan: any) => ({
-            planId: plan.id,
-            title: plan.title || `Plan ${plan.id}`,
-            lastMessage: "No messages yet",
-            lastMessageTime: new Date(),
-            unreadCount: 0
-          }))
-          
-          // Only update state if rooms actually changed (compare by planId)
-          setChatRooms((prev) => {
-            const prevIds = new Set(prev.map(r => r.planId.toString()))
-            const newIds = new Set(rooms.map(r => r.planId.toString()))
-            if (prevIds.size !== newIds.size || 
-                ![...prevIds].every(id => newIds.has(id)) ||
-                ![...newIds].every(id => prevIds.has(id))) {
-              return rooms
-            }
-            return prev // No change, return previous state
-          })
-        } else {
-          // Mock data for development if no localStorage data
-          setChatRooms((prev) => {
-            if (prev.length === 0) {
-              return [
-                { planId: "1", title: "Weekend Café Study Session", lastMessage: "Let's meet at 2 PM", lastMessageTime: new Date(), unreadCount: 0 },
-                { planId: "2", title: "Basketball Game at Sports Complex", lastMessage: "See you there!", lastMessageTime: new Date(), unreadCount: 0 },
-              ]
-            }
-            return prev
-          })
-        }
-      } catch (error) {
-        console.error('Error loading chat rooms:', error)
-        // Fallback to mock data only if no rooms exist
-        setChatRooms((prev) => {
-          if (prev.length === 0) {
-            return [
-              { planId: "1", title: "Weekend Café Study Session", lastMessage: "Let's meet at 2 PM", lastMessageTime: new Date(), unreadCount: 0 },
-            ]
-          }
-          return prev
-        })
+        localStorage.setItem('ku-hangout-chat-threads', JSON.stringify(rooms.map(room => ({
+          planId: room.planId,
+          title: room.title,
+        }))))
+      } catch (storageError) {
+        console.error('Failed to persist chat threads for fallback:', storageError)
       }
-    }
-    
-    loadChatRooms()
-    
-    // Listen for storage changes to update chat rooms when plans are joined
-    const handleStorageChange = () => {
-      loadChatRooms()
-    }
-    
-    window.addEventListener('storage', handleStorageChange)
-    
-    // Also check periodically (for same-tab updates) - reduced frequency to avoid unnecessary re-renders
-    const interval = setInterval(loadChatRooms, 5000) // Changed from 1s to 5s
-    
-    return () => {
-      window.removeEventListener('storage', handleStorageChange)
-      clearInterval(interval)
+    } catch (error) {
+      console.error('Error loading chat threads:', error)
+
+      // Fallback to cached data if available
+      try {
+        const cached = localStorage.getItem('ku-hangout-chat-threads')
+        if (cached) {
+          const parsed = JSON.parse(cached)
+          const fallbackRooms: ChatRoom[] = parsed.map((item: any) => ({
+            planId: item.planId,
+            threadId: -1,
+            title: item.title,
+            unreadCount: 0,
+          }))
+          setChatRooms(fallbackRooms)
+        }
+      } catch (cacheError) {
+        console.error('Error loading cached chat threads:', cacheError)
+      }
     }
   }, [])
 
-  // Update selected plan when planId from URL changes
+  useEffect(() => {
+    loadChatRooms()
+
+    const handleStorageChange = (event: StorageEvent) => {
+      if (event.key === 'ku-hangout-plans' || event.key === 'ku-hangout-plans-state') {
+        loadChatRooms()
+      }
+    }
+
+    const handleFocus = () => {
+      loadChatRooms()
+    }
+
+    window.addEventListener('storage', handleStorageChange)
+    window.addEventListener('focus', handleFocus)
+
+    return () => {
+      window.removeEventListener('storage', handleStorageChange)
+      window.removeEventListener('focus', handleFocus)
+    }
+  }, [loadChatRooms])
+
+  // Update selected plan when planId or chat rooms change
   useEffect(() => {
     if (planId) {
-      setSelectedPlanId(planId)
-      loadMessagesForPlan()
-    } else if (chatRooms.length > 0 && !selectedPlanId) {
-      // Auto-select first room if no planId in URL
-      const firstRoom = chatRooms[0]
-      setSelectedPlanId(firstRoom.planId.toString())
-      navigate(`/messages?planId=${firstRoom.planId}`, { replace: true })
-      loadMessagesForPlan()
+      const roomExists = chatRooms.some((room) => room.planId.toString() === planId)
+
+      if (!roomExists && chatRooms.length > 0) {
+        const firstRoom = chatRooms[0]
+        setSelectedPlanId(firstRoom.planId.toString())
+        navigate(`/messages?planId=${firstRoom.planId}`, { replace: true })
+        loadMessagesForPlan()
+        return
+      }
+
+      if (roomExists && selectedPlanId !== planId) {
+        setSelectedPlanId(planId)
+        loadMessagesForPlan()
+      }
+      return
+    }
+
+    if (chatRooms.length > 0) {
+      const hasSelectedRoom = selectedPlanId
+        ? chatRooms.some((room) => room.planId.toString() === selectedPlanId)
+        : false
+
+      if (!hasSelectedRoom) {
+        const firstRoom = chatRooms[0]
+        setSelectedPlanId(firstRoom.planId.toString())
+        navigate(`/messages?planId=${firstRoom.planId}`, { replace: true })
+        loadMessagesForPlan()
+      }
+    } else if (selectedPlanId) {
+      setSelectedPlanId(null)
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [planId]) // Only depend on planId, chatRooms will be checked when needed
+  }, [planId, chatRooms, selectedPlanId])
 
   // Handle WebSocket messages
   const handleWebSocketMessage = useCallback((data: any) => {
@@ -297,16 +318,18 @@ export default function MessagePage() {
                       <div className="flex items-start justify-between gap-2">
                         <div className="flex-1 min-w-0">
                           <h3 className="font-semibold text-sm truncate">{room.title}</h3>
-                          {room.lastMessage && (
-                            <p className="text-xs text-muted-foreground truncate mt-1">
-                              {room.lastMessage}
-                            </p>
-                          )}
-                          {room.lastMessageTime && (
-                            <p className="text-xs text-muted-foreground mt-1">
-                              {room.lastMessageTime.toLocaleDateString()}
-                            </p>
-                          )}
+                          <p className="text-xs text-muted-foreground truncate mt-1">
+                            {room.lastMessage
+                              ? room.lastMessageSender
+                                ? `${room.lastMessageSender}: ${room.lastMessage}`
+                                : room.lastMessage
+                              : "No messages yet"}
+                          </p>
+                          <p className="text-xs text-muted-foreground mt-1">
+                            {room.lastMessageTime
+                              ? room.lastMessageTime.toLocaleString()
+                              : ""}
+                          </p>
                         </div>
                         {room.unreadCount && room.unreadCount > 0 && (
                           <span className="bg-primary text-primary-foreground text-xs rounded-full px-2 py-1 flex-shrink-0">

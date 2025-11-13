@@ -155,6 +155,21 @@ class PlansSerializer(serializers.ModelSerializer):
                 defaults={"role": "LEADER"},
             )
 
+            # Initialize chat thread for this plan and add leader as member
+            try:
+                from chat.models import chat_threads, chat_member  # pylint: disable=import-outside-toplevel
+
+                thread, _ = chat_threads.objects.get_or_create(
+                    plan=plan,
+                    defaults={
+                        "title": f"Chat for {plan.title}",
+                        "created_by": plan.leader_id,
+                    },
+                )
+                chat_member.objects.get_or_create(thread=thread, user=plan.leader_id)
+            except Exception as chat_error:  # pragma: no cover - guard against chat failures
+                print(f"[PlansSerializer] Failed to initialize chat for plan {plan.id}: {chat_error}")
+
         # add tags if provided
         if tags_data:
             tag_names = [t.strip() for t in tags_data if t and t.strip()]

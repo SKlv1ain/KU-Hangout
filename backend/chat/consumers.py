@@ -38,6 +38,13 @@ class ChatConsumer(AsyncWebsocketConsumer):
 
             print(f"[WebSocket] User authenticated: {user.username} (ID: {user.id})")
 
+            # Ensure user has access to this plan's chat
+            has_access = await self.db.user_has_plan_access(self.plan_id, user)
+            if not has_access:
+                print(f"[WebSocket] Access denied for user {user.username} to plan {self.plan_id}")
+                await self._reject_connection('Please join this plan before accessing its chat.')
+                return
+
             # Get or create chat thread
             thread = await self.db.get_or_create_thread(self.plan_id, user)
             if not thread:

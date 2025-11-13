@@ -32,6 +32,9 @@ urlpatterns = [
     path('plans/', include('plans.urls.plan_summary_urls')),   # member ship of plan
     path('homepage/', include('plans.urls.homepage')),      # homepage plans
   
+    # Chat
+    path('chat/', include('chat.urls')),
+
     # JWT endpoints
     path('api/token/', TokenObtainPairView.as_view(), name='token_obtain_pair'),
     path('api/token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),

@@ -88,6 +88,19 @@ export function PlanCardSimpleActions({
             </AlertDialogFooter>
           </AlertDialogContent>
         </AlertDialog>
+        {onChat && (
+          <Button
+            onClick={(e) => {
+              e.stopPropagation()
+              onChat?.(e)
+            }}
+            variant="outline"
+            size="sm"
+            className="px-3 text-xs font-semibold border-border hover:bg-accent"
+          >
+            <MessageSquare className="h-3 w-3" />
+          </Button>
+        )}
         <Button
           onClick={onLike}
           variant="outline"

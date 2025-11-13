@@ -100,7 +100,7 @@ export default function HomePage() {
       participantCount: plan.people_joined,
       maxParticipants: plan.max_people,
       images: planImages[plan.id] || sampleImages, // Use uploaded images if available, otherwise use sample
-      isJoined: false, // Will be checked from plansState
+      isJoined: plan.joined ?? false,
       isLiked: false,
       isSaved: false,
       requirements: [] // Backend doesn't have requirements yet
@@ -173,7 +173,7 @@ export default function HomePage() {
             participantCount: plan.people_joined,
             maxParticipants: plan.max_people,
             images: storedImages[plan.id] || sampleImages, // Use stored images if available
-            isJoined: false,
+          isJoined: plan.joined ?? false,
             isLiked: false,
             isSaved: false,
             requirements: []
@@ -465,7 +465,7 @@ export default function HomePage() {
 
       // Initialize state for new plan
       updatePlanState(createdPlan.id, {
-        isJoined: false, // User is leader, but not "joined" in the same sense
+        isJoined: true,
         isLiked: false,
         isSaved: false,
       })

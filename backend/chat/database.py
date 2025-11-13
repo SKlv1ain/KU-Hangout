@@ -25,7 +25,7 @@ class ChatDatabase:
                 plan=plan,
                 defaults={
                     'title': f'Chat for {plan.title}',
-                    'created_by': user
+                    'created_by': plan.leader_id
                 }
             )
             return thread
@@ -42,6 +42,24 @@ class ChatDatabase:
         """Add user as a chat member if not already added."""
         from chat.models import chat_member
         chat_member.objects.get_or_create(thread=thread, user=user)
+
+    @staticmethod
+    @database_sync_to_async
+    def user_has_plan_access(plan_id, user):
+        """Check whether the user is allowed to access the plan's chat."""
+        from plans.models import Plans
+        from participants.models import Participants
+
+        try:
+            plan_id_int = int(plan_id) if not isinstance(plan_id, int) else plan_id
+            plan = Plans.objects.get(id=plan_id_int)
+        except Plans.DoesNotExist:
+            return False
+
+        if plan.leader_id_id == user.id:
+            return True
+
+        return Participants.objects.filter(plan=plan, user=user).exists()
 
     @staticmethod
     @database_sync_to_async

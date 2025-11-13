@@ -54,6 +54,21 @@ class PlanJoinView(APIView):
                 plan.refresh_from_db(fields=['people_joined'])
                 return Response({"detail": "Plan is full."}, status=status.HTTP_409_CONFLICT)
 
+        # Ensure chat membership for joining user (leaders and members)
+        try:
+            from chat.models import chat_threads, chat_member  # pylint: disable=import-outside-toplevel
+
+            thread, _ = chat_threads.objects.get_or_create(
+                plan=plan,
+                defaults={
+                    "title": f"Chat for {plan.title}",
+                    "created_by": plan.leader_id,
+                },
+            )
+            chat_member.objects.get_or_create(thread=thread, user=request.user)
+        except Exception as chat_error:  # pragma: no cover - prevent chat failure from blocking join
+            print(f"[PlanJoinView] Failed to ensure chat membership for plan {plan_id}: {chat_error}")
+
         # return full plan including 'members'
         data = PlansSerializer(plan, context={"request": request}).data
         return Response(data, status=status.HTTP_200_OK)
@@ -86,6 +101,13 @@ class PlanJoinView(APIView):
             if plan.people_joined < 1:
                 Plans.objects.filter(pk=plan.pk).update(people_joined=1)
                 plan.refresh_from_db(fields=['people_joined'])
+
+            # Remove user from chat thread for this plan
+            try:
+                from chat.models import chat_member  # pylint: disable=import-outside-toplevel
+                chat_member.objects.filter(thread__plan=plan, user=request.user).delete()
+            except Exception as chat_error:  # pragma: no cover - graceful degradation
+                print(f"[PlanJoinView] Failed to remove chat membership for plan {plan_id}: {chat_error}")
 
         # Reload plan from database to ensure we have the latest data
         plan = Plans.objects.get(pk=plan_id)  # pylint: disable=no-member
