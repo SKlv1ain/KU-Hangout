@@ -1,7 +1,9 @@
+from django.db import models
 from rest_framework import serializers
 from plans.models import Plans, PlanImage
 from tags.models import Tags
-from drf_extra_fields.fields import Base64ImageField
+from participants.models import Participants
+
 
 
 # ------------------- PlanImage Serializer -------------------
@@ -48,20 +50,45 @@ class PlansSerializer(serializers.ModelSerializer):
     creator_id = serializers.IntegerField(source='leader_id.id', read_only=True)
     is_expired = serializers.SerializerMethodField()
     time_until_event = serializers.SerializerMethodField()
-    image_count = serializers.SerializerMethodField()
+    members = serializers.SerializerMethodField()  # <- exact shape per your ask
+    joined = serializers.SerializerMethodField()  # Whether current user has joined this plan
+    role = serializers.SerializerMethodField()  # Current user's role in this plan (LEADER/MEMBER/None)
 
     class Meta:
         model = Plans
         fields = [
-            'id', 'title', 'description', 'location', 'leader_id', 
-            'creator_username', 'creator_id', 'event_time', 'max_people', 
-            'people_joined', 'created_at', 'tags', 'tags_display', 
-            'is_expired', 'time_until_event', 'image_count'
+            'id',
+            'title',
+            'description',
+            'location',
+            'lat',
+            'lng',
+            'leader_id',
+            'creator_username',
+            'event_time',
+            'max_people',
+            'people_joined',
+            'create_at',
+            'tags',               # write-only
+            'tags_display',       # read-only
+            'is_expired',         # read-only
+            'time_until_event',   # read-only
+            'members',            # read-only
+            'joined',             # read-only
+            'role',               # read-only
         ]
         read_only_fields = (
-            'id', 'leader_id', 'people_joined', 'created_at', 
-            'creator_username', 'creator_id', 'tags_display', 
-            'is_expired', 'time_until_event', 'image_count'
+            'id',
+            'leader_id',
+            'people_joined',
+            'create_at',
+            'creator_username',
+            'tags_display',
+            'is_expired',
+            'time_until_event',
+            'members',
+            'joined',
+            'role',
         )
 
     def get_tags_display(self, obj):
@@ -92,38 +119,113 @@ class PlansSerializer(serializers.ModelSerializer):
             return f"{hours}h {minutes}m"
         return f"{minutes}m"
 
-    def get_image_count(self, obj):
-        """Return number of images for this plan"""
-        return obj.images.count()
+    def get_members(self, obj):
+        """
+        Return only: user_id, username, role, joined_at
+        Leader first, then by join time.
+        """
+        qs = obj.participants.select_related('user').order_by(
+            models.Case(
+                models.When(role='LEADER', then=0),
+                default=1,
+                output_field=models.IntegerField()
+            ),
+            'joined_at'
+        )
+        out = []
+        for p in qs:
+            u = p.user
+            out.append({
+                "user_id": u.id,
+                "username": getattr(u, "username", None),
+                "role": p.role,
+                "joined_at": p.joined_at,
+            })
+        return out
 
-    def validate_max_people(self, value):
-        """Validate max_people is reasonable"""
-        if value < 1:
-            raise serializers.ValidationError("Maximum people must be at least 1.")
-        if value > 1000:
-            raise serializers.ValidationError("Maximum people cannot exceed 1000.")
-        return value
+    def get_joined(self, obj):
+        """Check if current user has joined this plan."""
+        request = self.context.get("request")
+        if not request or not request.user or not request.user.is_authenticated:
+            return False
+        
+        # Check if user is the leader
+        if obj.leader_id_id == request.user.id:
+            return True
+        
+        # Check if user is a participant
+        return Participants.objects.filter(plan=obj, user=request.user).exists()  # pylint: disable=no-member
+
+    def get_role(self, obj):
+        """Get current user's role in this plan."""
+        request = self.context.get("request")
+        if not request or not request.user or not request.user.is_authenticated:
+            return None
+        
+        # Check if user is the leader
+        if obj.leader_id_id == request.user.id:
+            return 'LEADER'
+        
+        # Check if user is a participant
+        participant = Participants.objects.filter(plan=obj, user=request.user).first()  # pylint: disable=no-member
+        if participant:
+            return participant.role
+        
+        return None
 
     def create(self, validated_data):
-        """Create plan with tags"""
-        tags_data = validated_data.pop("tags", [])
+        # pop tags BEFORE creating
+        tags_data = validated_data.pop('tags', [])
+
+        # attach current user as leader and count them as joined
         request = self.context.get("request")
         
         if request and request.user.is_authenticated:
             validated_data["leader_id"] = request.user
 
-        plan = Plans.objects.create(**validated_data)
+        # initial count to 1 (leader already joined)
+        validated_data["people_joined"] = 1
 
-        # Create/add tags
-        for name in tags_data:
-            tag_obj, _ = Tags.objects.get_or_create(name=name.strip())
-            plan.tags.add(tag_obj)
+        plan = Plans.objects.create(**validated_data)  # pylint: disable=no-member
+
+        # ensure leader participant row
+        if plan.leader_id_id:
+            Participants.objects.get_or_create(  # pylint: disable=no-member
+                user=plan.leader_id,
+                plan=plan,
+                defaults={"role": "LEADER"},
+            )
+
+            # Initialize chat thread for this plan and add leader as member
+            try:
+                from chat.models import chat_threads, chat_member  # pylint: disable=import-outside-toplevel
+
+                thread, _ = chat_threads.objects.get_or_create(
+                    plan=plan,
+                    defaults={
+                        "title": f"Chat for {plan.title}",
+                        "created_by": plan.leader_id,
+                    },
+                )
+                chat_member.objects.get_or_create(thread=thread, user=plan.leader_id)
+            except Exception as chat_error:  # pragma: no cover - guard against chat failures
+                print(f"[PlansSerializer] Failed to initialize chat for plan {plan.id}: {chat_error}")
+
+        # add tags if provided
+        if tags_data:
+            tag_names = [t.strip() for t in tags_data if t and t.strip()]
+            for name in tag_names:
+                tag_obj, _ = Tags.objects.get_or_create(name=name)  # pylint: disable=no-member
+                plan.tags.add(tag_obj)
 
         return plan
 
     def update(self, instance, validated_data):
-        """Update plan and tags"""
-        tags_data = validated_data.pop("tags", None)
+        # prevent client from changing leader/people count
+        validated_data.pop('leader_id', None)
+        validated_data.pop('people_joined', None)
+
+        tags_data = validated_data.pop('tags', None)
 
         # Update basic fields
         for attr, value in validated_data.items():
@@ -133,8 +235,9 @@ class PlansSerializer(serializers.ModelSerializer):
         # Update tags if provided
         if tags_data is not None:
             instance.tags.clear()
-            for name in tags_data:
-                tag_obj, _ = Tags.objects.get_or_create(name=name.strip())
+            tag_names = [t.strip() for t in tags_data if t and t.strip()]
+            for name in tag_names:
+                tag_obj, _ = Tags.objects.get_or_create(name=name)  # pylint: disable=no-member
                 instance.tags.add(tag_obj)
 
         return instance

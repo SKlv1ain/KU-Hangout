@@ -15,11 +15,11 @@ class PlansView(APIView):
         # 1) GET by ID
         if plan_id:
             try:
-                plan = Plans.objects.get(id=plan_id)
-            except Plans.DoesNotExist:
+                plan = Plans.objects.get(id=plan_id)  # pylint: disable=no-member
+            except Plans.DoesNotExist:  # pylint: disable=no-member
                 return Response({"error": "Plan not found"}, status=status.HTTP_404_NOT_FOUND)
 
-            serializer = PlansSerializer(plan)
+            serializer = PlansSerializer(plan, context={"request": request})
 
             # Support ?field=<field_name>
             field = request.query_params.get("field", None)
@@ -39,7 +39,7 @@ class PlansView(APIView):
         start_of_day = now.replace(hour=0, minute=0, second=0, microsecond=0)
 
         # Start with base queryset (only active plans)
-        plans_qs = Plans.objects.filter(event_time__gt=now)
+        plans_qs = Plans.objects.filter(event_time__gt=now)  # pylint: disable=no-member
 
         # Apply filter type
         if filter_type == "hot":
@@ -93,5 +93,5 @@ class PlansView(APIView):
                 Q(title__icontains=search.strip()) | Q(description__icontains=search.strip())
             ).distinct()
 
-        serializer = PlansSerializer(plans_qs, many=True)
+        serializer = PlansSerializer(plans_qs, many=True, context={"request": request})
         return Response(serializer.data, status=status.HTTP_200_OK)

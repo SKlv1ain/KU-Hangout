@@ -105,8 +105,15 @@ DATABASES = {
         'NAME': os.getenv('POSTGRES_DB', 'POSTGRES_DB'),
         'USER': os.getenv('POSTGRES_USER', 'POSTGRES_USER'),
         'PASSWORD': os.getenv('POSTGRES_PASSWORD', 'POSTGRES_PASSWORD'),
-        'HOST': os.getenv('POSTGRES_HOST', 'localhost'),
-        'PORT': os.getenv('POSTGRES_PORT', '5432'),
+        # Prefer DJANGO_DB_* if present; else POSTGRES_*; else default.
+        'HOST': (
+            os.getenv('POSTGRES_HOST')
+            or 'localhost'   # in Docker Compose, use service name e.g. 'postgres'
+        ),
+        'PORT': (
+            os.getenv('POSTGRES_PORT')
+            or '5433'
+        ),
     }
 }
 
@@ -182,6 +189,8 @@ CORS_ALLOWED_ORIGINS = [
     'http://localhost:5173',
     'http://127.0.0.1:5173',
     'http://localhost:3000',
+    'http://localhost:5174',  # เพิ่มบรรทัดนี้
+    'http://127.0.0.1:5174'  # เพิ่มบรรทัดนี้
 ]
 CORS_ALLOW_CREDENTIALS = True
 

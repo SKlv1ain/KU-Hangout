@@ -1,10 +1,7 @@
 from django.db import models
-from django.conf import settings
 from plans.models import Plans
 from users.models import Users
 
-
-# Model for participnats
 class Participants(models.Model):
     ROLE_CHOICES = (
         ('LEADER', 'Leader'),
@@ -17,7 +14,12 @@ class Participants(models.Model):
     joined_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
-        unique_together = ('user', 'plan')  # prevent duplicate join
+        constraints = [
+            models.UniqueConstraint(fields=['user', 'plan'], name='uniq_user_plan')
+        ]
+        indexes = [
+            models.Index(fields=['plan', 'user']),
+        ]
 
     def __str__(self):
-        return f'{self.user_id} -> {self.plan_id} ({self.role})'
+        return f'Participants(user={self.user_id}, plan={self.plan_id}, role={self.role})'
