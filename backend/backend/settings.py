@@ -17,17 +17,19 @@ from pathlib import Path
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
+# Load environment variables
+load_dotenv(os.path.join(BASE_DIR.parent, ".env"))
 
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/5.1/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'django-insecure-5wdu6h9okg@+*c4hh^!ddbj%cn6bi#yj6#h2xl=*p(0@fx-xtt'
+SECRET_KEY = os.getenv('SECRET_KEY', 'django-insecure-5wdu6h9okg@+*c4hh^!ddbj%cn6bi#yj6#h2xl=*p(0@fx-xtt')
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = os.getenv('DEBUG', 'True') == 'True'
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = os.getenv('ALLOWED_HOSTS', '').split(',') if os.getenv('ALLOWED_HOSTS') else []
 
 AUTH_USER_MODEL = 'users.Users'  # App name + Model name
 
@@ -47,6 +49,9 @@ INSTALLED_APPS = [
     'rest_framework',
     'rest_framework_simplejwt',
     'corsheaders',
+    'cloudinary_storage',  # Must be before django.contrib.staticfiles
+    'cloudinary',  # Add Cloudinary support
+    
     # Local apps
     'accounts',
     "users",
@@ -54,7 +59,8 @@ INSTALLED_APPS = [
     'tags',
     'participants',
     'chat',
-    #chanel for chat
+    
+    # Channels for chat
     "channels",
 ]
 
@@ -93,23 +99,14 @@ ASGI_APPLICATION = 'backend.asgi.application'
 # Database
 # https://docs.djangoproject.com/en/5.1/ref/settings/#databases
 
-load_dotenv(os.path.join(BASE_DIR.parent, ".env"))
-
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.postgresql',
         'NAME': os.getenv('POSTGRES_DB', 'POSTGRES_DB'),
         'USER': os.getenv('POSTGRES_USER', 'POSTGRES_USER'),
         'PASSWORD': os.getenv('POSTGRES_PASSWORD', 'POSTGRES_PASSWORD'),
-        # Prefer DJANGO_DB_* if present; else POSTGRES_*; else default.
-        'HOST': (
-            os.getenv('POSTGRES_HOST')
-            or 'localhost'   # in Docker Compose, use service name e.g. 'postgres'
-        ),
-        'PORT': (
-            os.getenv('POSTGRES_PORT')
-            or '5432'
-        ),
+        'HOST': os.getenv('POSTGRES_HOST', 'localhost'),
+        'PORT': os.getenv('POSTGRES_PORT', '5432'),
     }
 }
 
@@ -137,11 +134,8 @@ AUTH_PASSWORD_VALIDATORS = [
 # https://docs.djangoproject.com/en/5.1/topics/i18n/
 
 LANGUAGE_CODE = 'en-us'
-
 TIME_ZONE = 'Asia/Bangkok'
-
 USE_I18N = True
-
 USE_TZ = True
 
 
@@ -149,13 +143,12 @@ USE_TZ = True
 # https://docs.djangoproject.com/en/5.1/howto/static-files/
 
 STATIC_URL = 'static/'
+STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.1/ref/settings/#default-auto-field
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
-
-AUTH_USER_MODEL = "users.Users"  # app_name.model_name
 
 # REST Framework configuration
 REST_FRAMEWORK = {
@@ -214,16 +207,38 @@ CORS_ALLOW_METHODS = [
     'PUT',
 ]
 
-#add path for user profiles picture
-MEDIA_URL = '/media/'
-MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
+# ==================== FILE STORAGE CONFIGURATION ====================
+
+# Check if Cloudinary credentials are provided
+USE_CLOUDINARY = os.getenv('USE_CLOUDINARY', 'False') == 'True'
+
+if USE_CLOUDINARY:
+    # Cloudinary Configuration
+    CLOUDINARY_STORAGE = {
+        'CLOUD_NAME': os.getenv('CLOUDINARY_CLOUD_NAME'),
+        'API_KEY': os.getenv('CLOUDINARY_API_KEY'),
+        'API_SECRET': os.getenv('CLOUDINARY_API_SECRET'),
+    }
+    
+    # Use Cloudinary for media files (user uploads, images)
+    DEFAULT_FILE_STORAGE = 'cloudinary_storage.storage.MediaCloudinaryStorage'
+    
+    # Media URL points to Cloudinary
+    MEDIA_URL = '/media/'  # Cloudinary handles the actual URL
+else:
+    # Use local file storage (development fallback)
+    MEDIA_URL = '/media/'
+    MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
+    DEFAULT_FILE_STORAGE = 'django.core.files.storage.FileSystemStorage'
+
+# ==================== END FILE STORAGE CONFIGURATION ====================
 
 # Redis backend for Channels
 CHANNEL_LAYERS = {
     "default": {
         "BACKEND": "channels_redis.core.RedisChannelLayer",
         "CONFIG": {
-            "hosts": [("127.0.0.1", 6379)],
+            "hosts": [(os.getenv('REDIS_HOST', '127.0.0.1'), int(os.getenv('REDIS_PORT', 6379)))],
         },
     },
 }
