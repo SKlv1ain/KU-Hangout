@@ -1,53 +1,18 @@
 from django.db import models
 from rest_framework import serializers
-from plans.models import Plans, PlanImage
+from plans.models import Plans
 from tags.models import Tags
 from participants.models import Participants
 
 
-
-# ------------------- PlanImage Serializer -------------------
-class PlanImageSerializer(serializers.ModelSerializer):
-    # Use a custom field that handles both base64 and file uploads
-    image = serializers.ImageField(required=False)
-    image_base64 = Base64ImageField(required=False, write_only=True)
-
-    class Meta:
-        model = PlanImage
-        fields = ["id", "image", "image_base64", "uploaded_at"]
-        read_only_fields = ["id", "uploaded_at"]
-
-    def validate(self, attrs):
-        """Ensure either image or image_base64 is provided"""
-        if not attrs.get('image') and not attrs.get('image_base64'):
-            raise serializers.ValidationError({"image": "Image is required"})
-        
-        # If base64 provided, use it as the image
-        if attrs.get('image_base64'):
-            attrs['image'] = attrs.pop('image_base64')
-        
-        return attrs
-
-    def to_representation(self, instance):
-        """Return image URL in response"""
-        representation = super().to_representation(instance)
-        # Remove image_base64 from response
-        representation.pop('image_base64', None)
-        
-        if instance.image:
-            representation['image_url'] = instance.image.url
-        return representation
-    
-# ------------------- Plans Serializer (without images) -------------------
 class PlansSerializer(serializers.ModelSerializer):
     tags = serializers.ListField(
-        child=serializers.CharField(), 
-        required=False, 
+        child=serializers.CharField(),
+        required=False,
         write_only=True
     )
     tags_display = serializers.SerializerMethodField()
     creator_username = serializers.CharField(source='leader_id.username', read_only=True)
-    creator_id = serializers.IntegerField(source='leader_id.id', read_only=True)
     is_expired = serializers.SerializerMethodField()
     time_until_event = serializers.SerializerMethodField()
     members = serializers.SerializerMethodField()  # <- exact shape per your ask
@@ -92,32 +57,27 @@ class PlansSerializer(serializers.ModelSerializer):
         )
 
     def get_tags_display(self, obj):
-        """Return list of tags with id and name"""
         return [{'id': tag.id, 'name': tag.name} for tag in obj.tags.all()]
 
     def get_is_expired(self, obj):
-        """Check if event has passed"""
         from django.utils import timezone
         return obj.event_time <= timezone.now()
 
     def get_time_until_event(self, obj):
-        """Calculate human-readable time until event"""
         from django.utils import timezone
         now = timezone.now()
-        diff = obj.event_time - now
-        
-        if diff.total_seconds() <= 0:
+        time_diff = obj.event_time - now
+        if time_diff.total_seconds() <= 0:
             return "Expired"
-        
-        days, seconds = diff.days, diff.seconds
-        hours = seconds // 3600
-        minutes = (seconds % 3600) // 60
-        
+        days = time_diff.days
+        hours = time_diff.seconds // 3600
+        minutes = (time_diff.seconds % 3600) // 60
         if days > 0:
             return f"{days}d {hours}h"
         elif hours > 0:
             return f"{hours}h {minutes}m"
-        return f"{minutes}m"
+        else:
+            return f"{minutes}m"
 
     def get_members(self, obj):
         """
@@ -179,8 +139,7 @@ class PlansSerializer(serializers.ModelSerializer):
 
         # attach current user as leader and count them as joined
         request = self.context.get("request")
-        
-        if request and request.user.is_authenticated:
+        if request and request.user and request.user.is_authenticated:
             validated_data["leader_id"] = request.user
 
         # initial count to 1 (leader already joined)
@@ -227,12 +186,10 @@ class PlansSerializer(serializers.ModelSerializer):
 
         tags_data = validated_data.pop('tags', None)
 
-        # Update basic fields
         for attr, value in validated_data.items():
             setattr(instance, attr, value)
         instance.save()
 
-        # Update tags if provided
         if tags_data is not None:
             instance.tags.clear()
             tag_names = [t.strip() for t in tags_data if t and t.strip()]
@@ -241,12 +198,3 @@ class PlansSerializer(serializers.ModelSerializer):
                 instance.tags.add(tag_obj)
 
         return instance
-
-
-# ------------------- Plans with Images Serializer (for detail view) -------------------
-class PlansWithImagesSerializer(PlansSerializer):
-    """Extended serializer that includes images"""
-    images = PlanImageSerializer(many=True, read_only=True)
-
-    class Meta(PlansSerializer.Meta):
-        fields = PlansSerializer.Meta.fields + ['images']

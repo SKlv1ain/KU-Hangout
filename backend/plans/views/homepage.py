@@ -54,7 +54,7 @@ class PlansView(APIView):
         elif filter_type == "new":
             # return new plan
             last_48h = now - timedelta(hours=48)
-            plans_qs = plans_qs.filter(create_at__gte=last_48h).order_by("-created_at")
+            plans_qs = plans_qs.filter(create_at__gte=last_48h).order_by("-create_at")
 
         elif filter_type == "expiring":
             # return expiring plan (within next 3 days, but still active)
@@ -63,11 +63,11 @@ class PlansView(APIView):
         
         elif filter_type == "all":
             # return all active plans (not expired)
-            plans_qs = plans_qs.order_by("-created_at")
+            plans_qs = plans_qs.order_by("-create_at")
 
         else:
             # Default = active plans (not expired)
-            plans_qs = plans_qs.order_by("-created_at")
+            plans_qs = plans_qs.order_by("-create_at")
 
         # Apply category/tag filter if provided
         if category and category != "all":
