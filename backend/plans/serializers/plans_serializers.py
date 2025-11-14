@@ -83,9 +83,10 @@ class PlansSerializer(serializers.ModelSerializer):
 
     def get_members(self, obj):
         """
-        Return only: user_id, username, role, joined_at
+        Return: user_id, username, display_name, profile_picture, role, joined_at
         Leader first, then by join time.
         """
+        
         qs = obj.participants.select_related('user').order_by(
             models.Case(
                 models.When(role='LEADER', then=0),
@@ -97,9 +98,18 @@ class PlansSerializer(serializers.ModelSerializer):
         out = []
         for p in qs:
             u = p.user
+            # Get display_name or fallback to username
+            display_name = getattr(u, "display_name", None) or u.username
+            
+            # Get profile_picture URL
+            # profile_picture is now a URLField, so it's always a string (URL)
+            profile_picture_url = u.profile_picture if u.profile_picture else None
+            
             out.append({
                 "user_id": u.id,
                 "username": getattr(u, "username", None),
+                "display_name": display_name,
+                "profile_picture": profile_picture_url,
                 "role": p.role,
                 "joined_at": p.joined_at,
             })

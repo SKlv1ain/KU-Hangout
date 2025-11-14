@@ -14,7 +14,7 @@ class Users(AbstractUser):
     review_count = models.PositiveIntegerField(default=0)
     contact = models.CharField(max_length=100, blank=True, null=True)
     created_at = models.DateTimeField(auto_now_add=True)
-    profile_picture = models.ImageField(upload_to='profile_pictures/', blank=True, null=True) #filed for profile picture
+    profile_picture = models.URLField(max_length=500, blank=True, null=True) # Profile picture URL (stored in Cloudinary)
     display_name = models.CharField(max_length=50, blank=True, null=True) #filed for display name
 
     def __str__(self):

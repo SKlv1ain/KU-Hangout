@@ -226,6 +226,8 @@ export function PlanDetailPanel({
             <PlanCardParticipants
               participants={plan.participants}
               participantCount={plan.participantCount}
+              maxVisible={999} // Show all participants in detail panel (no limit)
+              separated={true} // Show avatars separated (not grouped)
             />
           </div>
         </div>

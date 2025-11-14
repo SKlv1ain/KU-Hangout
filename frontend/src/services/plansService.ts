@@ -1,5 +1,14 @@
 import api from './api'
 
+export interface PlanMember {
+  user_id: number
+  username: string
+  display_name: string
+  profile_picture: string | null
+  role: 'LEADER' | 'MEMBER'
+  joined_at: string
+}
+
 export interface Plan {
   id: number
   title: string
@@ -20,6 +29,7 @@ export interface Plan {
   joined?: boolean
   role?: 'LEADER' | 'MEMBER' | null
   images?: string[] // Array of image URLs from Cloudinary
+  members?: PlanMember[] // Array of plan members/participants
 }
 
 export interface CreatePlanPayload {

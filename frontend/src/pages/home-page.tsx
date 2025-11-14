@@ -9,6 +9,7 @@ import { CreatePlanDialog, type CreatePlanFormData } from "@/components/home/cre
 import { SidebarLayout } from "@/components/home/side-bar"
 import plansService, { type Plan } from "@/services/plansService"
 import { useAuth } from "@/context/AuthContext"
+import type { ParticipantData } from "@/components/plan-card/plan-card-participants"
 
 const sampleImages = [
   "https://images.unsplash.com/photo-1568036193587-84226a9c5a1b?ixlib=rb-4.1.0&auto=format&fit=crop&q=80&w=800",
@@ -83,6 +84,15 @@ export default function HomePage() {
       [plan.id]: plan.leader_id
     }))
 
+    // Convert members to ParticipantData format
+    const participants: ParticipantData[] = (plan.members || []).map(member => ({
+      id: member.user_id,
+      name: member.display_name || member.username || 'Unknown',
+      image: member.profile_picture,
+      designation: member.role === 'LEADER' ? 'Leader' : undefined,
+      role: member.role
+    }))
+
     return {
       id: plan.id,
       title: plan.title,
@@ -92,7 +102,7 @@ export default function HomePage() {
       description: plan.description,
       fullDescription: plan.description,
       tags,
-      participants: [], // Will be loaded separately if needed
+      participants, // Converted from plan.members
       participantCount: plan.people_joined,
       maxParticipants: plan.max_people,
       images: plan.images && plan.images.length > 0 ? plan.images : sampleImages, // Use images from API (Cloudinary URLs)
@@ -218,7 +228,7 @@ export default function HomePage() {
   }
 
   const handleJoin = async (planId: string | number | undefined) => {
-    if (!planId) return
+    if (!planId || !user) return
     const currentState = plansState[planId]
     const isCurrentlyJoined = currentState?.isJoined ?? false
     
@@ -232,20 +242,38 @@ export default function HomePage() {
         const response = await plansService.leavePlan(numericPlanId)
         console.log('Leave plan response:', response)
         updatePlanState(planId, { isJoined: false })
-        // Update plan's people_joined count from response
-        // Response is a Plan object with people_joined field
-        if (response && typeof response === 'object' && 'people_joined' in response) {
-          console.log('Updating participantCount to:', response.people_joined)
-          setPlans(prev => prev.map(p => {
-            if (p.id === planId) {
-              console.log('Before update:', p.participantCount, 'After update:', response.people_joined)
-              return { ...p, participantCount: response.people_joined }
+        
+        // Update plan: remove current user from participants and update count
+        setPlans(prev => prev.map(p => {
+          if (p.id === planId) {
+            // Remove current user from participants
+            const updatedParticipants = p.participants.filter(participant => participant.id !== user.id)
+            const updatedPlan = {
+              ...p,
+              participants: updatedParticipants,
+              participantCount: response && typeof response === 'object' && 'people_joined' in response 
+                ? response.people_joined 
+                : updatedParticipants.length
             }
-            return p
-          }))
-        } else {
-          console.error('Invalid response from leavePlan:', response)
-        }
+            // Update selectedPlan if it's the same plan
+            if (selectedPlan && selectedPlan.id === planId) {
+              setSelectedPlan(updatedPlan)
+            }
+            return updatedPlan
+          }
+          return p
+        }))
+        
+        // Reload plans from API in background to ensure consistency
+        setTimeout(async () => {
+          try {
+            await reloadPlans(false)
+            console.log('Plans reloaded successfully after leave')
+          } catch (reloadError) {
+            console.error('Error reloading plans after leave:', reloadError)
+            // Don't show error to user - optimistic update already showed the change
+          }
+        }, 500) // Wait 500ms for backend to process
       } else {
         // Join plan
         const numericPlanId = typeof planId === 'string' ? parseInt(planId, 10) : planId
@@ -254,12 +282,48 @@ export default function HomePage() {
         }
         const response = await plansService.joinPlan(numericPlanId)
         updatePlanState(planId, { isJoined: true })
-        // Update plan's people_joined count
-        setPlans(prev => prev.map(p => 
-          p.id === planId 
-            ? { ...p, participantCount: response.people_joined }
-            : p
-        ))
+        
+        // Create participant data for current user (optimistic update)
+        const newParticipant: ParticipantData = {
+          id: user.id,
+          name: user.username || 'Unknown',
+          image: user.profile_picture || null,
+          role: 'MEMBER'
+        }
+        
+        // Update plan: add current user to participants and update count
+        setPlans(prev => prev.map(p => {
+          if (p.id === planId) {
+            // Check if user is already in participants (avoid duplicates)
+            const isAlreadyInParticipants = p.participants.some(participant => participant.id === user.id)
+            const updatedParticipants = isAlreadyInParticipants 
+              ? p.participants 
+              : [...p.participants, newParticipant]
+            
+            const updatedPlan = {
+              ...p,
+              participants: updatedParticipants,
+              participantCount: response.people_joined || updatedParticipants.length
+            }
+            // Update selectedPlan if it's the same plan
+            if (selectedPlan && selectedPlan.id === planId) {
+              setSelectedPlan(updatedPlan)
+            }
+            return updatedPlan
+          }
+          return p
+        }))
+        
+        // Reload plans from API in background to ensure consistency
+        setTimeout(async () => {
+          try {
+            await reloadPlans(false)
+            console.log('Plans reloaded successfully after join')
+          } catch (reloadError) {
+            console.error('Error reloading plans after join:', reloadError)
+            // Don't show error to user - optimistic update already showed the change
+          }
+        }, 500) // Wait 500ms for backend to process
       }
     } catch (error) {
       console.error('Error joining/leaving plan:', error)
