@@ -10,16 +10,15 @@ from participants.models import Participants
 class PlanImageSerializer(serializers.ModelSerializer):
     # Use a custom field that handles both base64 and file uploads
     image = serializers.ImageField(required=False)
-    image_base64 = Base64ImageField(required=False, write_only=True)
 
     class Meta:
         model = PlanImage
-        fields = ["id", "image", "image_base64", "uploaded_at"]
+        fields = ["id", "image",  "uploaded_at"]
         read_only_fields = ["id", "uploaded_at"]
 
     def validate(self, attrs):
         """Ensure either image or image_base64 is provided"""
-        if not attrs.get('image') and not attrs.get('image_base64'):
+        if not attrs.get('image'):
             raise serializers.ValidationError({"image": "Image is required"})
         
         # If base64 provided, use it as the image
