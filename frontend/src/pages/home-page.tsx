@@ -56,9 +56,6 @@ export default function HomePage() {
 
   // Store plan leader_id mapping for owner check
   const [planOwners, setPlanOwners] = useState<Record<string | number, number>>({})
-  
-  // Store plan images (planId -> image URLs)
-  const [planImages, setPlanImages] = useState<Record<string | number, string[]>>({})
 
   // Convert backend Plan to frontend PlanDetailData
   const convertPlanToDetailData = (plan: Plan): PlanDetailData => {
@@ -99,7 +96,7 @@ export default function HomePage() {
       participants: [], // Will be loaded separately if needed
       participantCount: plan.people_joined,
       maxParticipants: plan.max_people,
-      images: planImages[plan.id] || sampleImages, // Use uploaded images if available, otherwise use sample
+      images: plan.images && plan.images.length > 0 ? plan.images : sampleImages, // Use images from API (Cloudinary URLs)
       isJoined: plan.joined ?? false,
       isLiked: false,
       isSaved: false,
@@ -107,15 +104,7 @@ export default function HomePage() {
     }
   }
 
-  // Load plan images from localStorage on mount
-  useEffect(() => {
-    try {
-      const storedImages = JSON.parse(localStorage.getItem('ku-hangout-plan-images') || '{}')
-      setPlanImages(storedImages)
-    } catch (error) {
-      console.error('Error loading plan images from localStorage:', error)
-    }
-  }, [])
+  // Images are now loaded from API, no need to load from localStorage
 
   // Load plans from API and check join state
   useEffect(() => {
@@ -123,17 +112,8 @@ export default function HomePage() {
       try {
         setLoading(true)
         
-        // Load plan images from localStorage first
-        let storedImages: Record<string | number, string[]> = {}
-        try {
-          storedImages = JSON.parse(localStorage.getItem('ku-hangout-plan-images') || '{}')
-          setPlanImages(storedImages)
-        } catch (error) {
-          console.error('Error loading plan images from localStorage:', error)
-        }
-        
         const backendPlans = await plansService.getPlans(filterParams)
-        // Use storedImages directly in convertPlanToDetailData
+        // Images are now included in API response
         const convertedPlans = backendPlans.map(plan => {
           const eventDate = new Date(plan.event_time)
           const days = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"]
@@ -172,7 +152,7 @@ export default function HomePage() {
             participants: [],
             participantCount: plan.people_joined,
             maxParticipants: plan.max_people,
-            images: storedImages[plan.id] || sampleImages, // Use stored images if available
+            images: plan.images && plan.images.length > 0 ? plan.images : sampleImages, // Use images from API (Cloudinary URLs)
           isJoined: plan.joined ?? false,
             isLiked: false,
             isSaved: false,
@@ -210,20 +190,7 @@ export default function HomePage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [filterParams])
 
-  // Update plans when planImages change (to show uploaded images)
-  useEffect(() => {
-    if (plans.length > 0 && Object.keys(planImages).length > 0) {
-      setPlans(prev => prev.map(plan => {
-        const planId = plan.id || ''
-        const uploadedImages = planImages[planId]
-        if (uploadedImages && uploadedImages.length > 0) {
-          return { ...plan, images: uploadedImages }
-        }
-        return plan
-      }))
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [planImages])
+  // Images are now loaded from API, no need to update from planImages state
 
   const updatePlanState = (planId: string | number | undefined, updates: Partial<{
     isJoined: boolean
@@ -401,64 +368,37 @@ export default function HomePage() {
       const eventDateTime = new Date(data.date)
       eventDateTime.setHours(parseInt(hours, 10), parseInt(minutes, 10), 0, 0)
 
-      // Convert uploaded images to base64 strings (for storage and display)
-      const imagePromises = data.images.map((img) => {
-        if (typeof img === 'string') {
-          return Promise.resolve(img)
+      // Create FormData to send images to backend
+      const formData = new FormData()
+      
+      // Add plan data
+      formData.append('title', data.title)
+      formData.append('description', data.description)
+      formData.append('location', data.location)
+      formData.append('event_time', eventDateTime.toISOString())
+      formData.append('max_people', data.maxParticipants.toString())
+      
+      // Add tags as JSON string (backend will parse it)
+      if (data.tags && data.tags.length > 0) {
+        formData.append('tags', JSON.stringify(data.tags))
+      }
+      
+      // Add images (only File objects, skip strings)
+      data.images.forEach((img) => {
+        if (img instanceof File) {
+          formData.append('images', img)
         }
-        // Convert File to base64 string
-        return new Promise<string>((resolve, reject) => {
-          const reader = new FileReader()
-          reader.onload = () => {
-            if (typeof reader.result === 'string') {
-              resolve(reader.result)
-            } else {
-              reject(new Error('Failed to convert image to base64'))
-            }
-          }
-          reader.onerror = () => reject(new Error('Failed to read image file'))
-          reader.readAsDataURL(img)
-        })
       })
-      
-      const imageUrls = await Promise.all(imagePromises)
 
-      // Create plan payload
-      const payload = {
-        title: data.title,
-        description: data.description,
-        location: data.location,
-        lat: null, // TODO: Add geocoding for lat/lng
-        lng: null,
-        event_time: eventDateTime.toISOString(),
-        max_people: data.maxParticipants,
-        tags: data.tags
-      }
-
-      // Call API to create plan
-      const createdPlan = await plansService.createPlan(payload)
-      
-      // Store images for this plan
-      if (imageUrls.length > 0) {
-        setPlanImages(prev => ({
-          ...prev,
-          [createdPlan.id]: imageUrls
-        }))
-        
-        // Also save to localStorage for persistence
-        try {
-          const storedImages = JSON.parse(localStorage.getItem('ku-hangout-plan-images') || '{}')
-          storedImages[createdPlan.id] = imageUrls
-          localStorage.setItem('ku-hangout-plan-images', JSON.stringify(storedImages))
-        } catch (error) {
-          console.error('Error saving plan images to localStorage:', error)
-        }
-      }
+      // Call API to create plan with FormData
+      const createdPlan = await plansService.createPlan(formData)
       
       // Convert to frontend format and add to plans
       const newPlan = convertPlanToDetailData(createdPlan)
-      // Override images with uploaded images
-      newPlan.images = imageUrls.length > 0 ? imageUrls : sampleImages
+      // Use images from API response (Cloudinary URLs)
+      newPlan.images = createdPlan.images && createdPlan.images.length > 0 
+        ? createdPlan.images 
+        : sampleImages
       
       // Add new plan to plans array (will be added at the beginning)
       setPlans((prev) => [newPlan, ...prev])
@@ -476,7 +416,7 @@ export default function HomePage() {
       console.log('Plan created successfully:', createdPlan)
     } catch (error) {
       console.error('Error creating plan:', error)
-      // Show error message to user (optional)
+      // Show error message to user
       alert('Failed to create plan. Please try again.')
     }
   }

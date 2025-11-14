@@ -19,6 +19,7 @@ export interface Plan {
   time_until_event: string
   joined?: boolean
   role?: 'LEADER' | 'MEMBER' | null
+  images?: string[] // Array of image URLs from Cloudinary
 }
 
 export interface CreatePlanPayload {
@@ -30,6 +31,7 @@ export interface CreatePlanPayload {
   event_time: string // ISO 8601 format
   max_people: number
   tags?: string[]
+  // Images will be sent as FormData, not in this interface
 }
 
 export interface JoinPlanResponse {
@@ -66,8 +68,9 @@ const plansService = {
 
   /**
    * Create a new plan
+   * @param payload - Can be either CreatePlanPayload (JSON) or FormData (with images)
    */
-  async createPlan(payload: CreatePlanPayload): Promise<Plan> {
+  async createPlan(payload: CreatePlanPayload | FormData): Promise<Plan> {
     return api.post('/plans/create/', payload)
   },
 
