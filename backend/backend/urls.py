@@ -31,6 +31,7 @@ urlpatterns = [
     path('plans/', include('plans.urls.plan_join_urls')),   # join/leave plans
     path('plans/', include('plans.urls.plan_summary_urls')),   # member ship of plan
     path('homepage/', include('plans.urls.homepage')),      # homepage plans
+    path('plans/', include('plans.urls.plan_history')),     # history of plan that user have join
   
     # Chat
     path('chat/', include('chat.urls')),
