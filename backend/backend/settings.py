@@ -10,15 +10,17 @@ For the full list of settings and their values, see
 https://docs.djangoproject.com/en/5.1/ref/settings/
 """
 import os
+import sys
 from datetime import timedelta
 from dotenv import load_dotenv
 from pathlib import Path
 
-# Build paths inside the project like this: BASE_DIR / 'subdir'.
-BASE_DIR = Path(__file__).resolve().parent.parent
+# Base directories
+BASE_DIR = Path(__file__).resolve().parent.parent  # backend/backend
+PROJECT_ROOT = BASE_DIR.parent  # KU-HANGOUT
 
-# Load environment variables
-load_dotenv(os.path.join(BASE_DIR.parent, ".env"))
+# Load .env from project root
+load_dotenv(PROJECT_ROOT / '.env')
 
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/5.1/howto/deployment/checklist/
@@ -218,29 +220,37 @@ CORS_ALLOW_METHODS = [
 
 # ==================== FILE STORAGE CONFIGURATION ====================
 
-# Check if Cloudinary credentials are provided
 USE_CLOUDINARY = os.getenv('USE_CLOUDINARY', 'False') == 'True'
 
 if USE_CLOUDINARY:
-    # Cloudinary Configuration
+    # Cloudinary configuration
     CLOUDINARY_STORAGE = {
         'CLOUD_NAME': os.getenv('CLOUDINARY_CLOUD_NAME'),
         'API_KEY': os.getenv('CLOUDINARY_API_KEY'),
         'API_SECRET': os.getenv('CLOUDINARY_API_SECRET'),
     }
     
-    # Use Cloudinary for media files (user uploads, images)
+    # Ensure these are set for Cloudinary
     DEFAULT_FILE_STORAGE = 'cloudinary_storage.storage.MediaCloudinaryStorage'
+    STATICFILES_STORAGE = 'cloudinary_storage.storage.StaticCloudinaryStorage'
     
-    # Media URL points to Cloudinary
-    MEDIA_URL = '/media/'  # Cloudinary handles the actual URL
+    # Cloudinary URLs
+    MEDIA_URL = '/media/'
+    STATIC_URL = '/static/'
+    
+    print("=== Cloudinary Storage ENABLED ===")  # Debug line
 else:
-    # Use local file storage (development fallback)
+    # Local storage
     MEDIA_URL = '/media/'
     MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
+    STATIC_URL = '/static/'
+    STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
+    
     DEFAULT_FILE_STORAGE = 'django.core.files.storage.FileSystemStorage'
+    print("=== Local File Storage ENABLED ===")  # Debug line
 
 # ==================== END FILE STORAGE CONFIGURATION ====================
+
 
 # Redis backend for Channels
 CHANNEL_LAYERS = {
@@ -251,3 +261,36 @@ CHANNEL_LAYERS = {
         },
     },
 }
+
+# ==================== FORCE CLOUDINARY STORAGE MONKEY PATCH ====================
+
+print("=== FINAL STORAGE CONFIGURATION ===")
+print(f"USE_CLOUDINARY: {USE_CLOUDINARY}")
+print(f"DEFAULT_FILE_STORAGE: {DEFAULT_FILE_STORAGE}")
+
+if USE_CLOUDINARY:
+    # Import required modules
+    import django.core.files.storage
+    from cloudinary_storage.storage import MediaCloudinaryStorage
+    
+    # Create a new Cloudinary storage instance
+    cloudinary_storage = MediaCloudinaryStorage()
+    
+    # Monkey patch the default_storage at module level
+    django.core.files.storage.default_storage = cloudinary_storage
+    
+    # Also update the storage module in sys.modules to ensure it's cached correctly
+    if 'django.core.files.storage' in sys.modules:
+        storage_module = sys.modules['django.core.files.storage']
+        storage_module.default_storage = cloudinary_storage
+    
+    print("✓ CLOUDINARY STORAGE MONKEY PATCHED")
+    print(f"MONKEY PATCHED STORAGE: {django.core.files.storage.default_storage}")
+    print(f"MONKEY PATCHED STORAGE CLASS: {django.core.files.storage.default_storage.__class__}")
+
+# Test the storage immediately
+from django.core.files.storage import default_storage as final_storage
+print(f"FINAL VERIFIED STORAGE: {final_storage}")
+print(f"FINAL VERIFIED STORAGE CLASS: {final_storage.__class__}")
+
+# ==================== END FORCE CLOUDINARY STORAGE MONKEY PATCH ====================

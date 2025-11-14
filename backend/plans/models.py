@@ -1,6 +1,7 @@
 from django.db import models
 from users.models import Users
 from tags.models import Tags
+from django.core.files.storage import default_storage
 
 
 class Plans(models.Model):
@@ -24,7 +25,11 @@ class Plans(models.Model):
 
 class PlanImage(models.Model):
     plan = models.ForeignKey(Plans, on_delete=models.CASCADE, related_name='images')
-    image = models.ImageField(upload_to='plan_images/')  # Uploads to Cloudinary automatically
+    image = models.ImageField(
+        upload_to='plan_images/',
+        storage=default_storage  # ← ADD THIS LINE
+    )
+    uploaded_at = models.DateTimeField(auto_now_add=True)
     uploaded_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
