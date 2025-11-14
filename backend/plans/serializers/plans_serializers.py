@@ -1,6 +1,6 @@
 from django.db import models
 from rest_framework import serializers
-from plans.models import Plans
+from plans.models import Plans, PlanImage
 from tags.models import Tags
 from participants.models import Participants
 
@@ -18,6 +18,7 @@ class PlansSerializer(serializers.ModelSerializer):
     members = serializers.SerializerMethodField()  # <- exact shape per your ask
     joined = serializers.SerializerMethodField()  # Whether current user has joined this plan
     role = serializers.SerializerMethodField()  # Current user's role in this plan (LEADER/MEMBER/None)
+    images = serializers.SerializerMethodField()  # Read-only field for image URLs
 
     class Meta:
         model = Plans
@@ -41,6 +42,7 @@ class PlansSerializer(serializers.ModelSerializer):
             'members',            # read-only
             'joined',             # read-only
             'role',               # read-only
+            'images',             # read-only
         ]
         read_only_fields = (
             'id',
@@ -133,6 +135,10 @@ class PlansSerializer(serializers.ModelSerializer):
         
         return None
 
+    def get_images(self, obj):
+        """Return list of image URLs for this plan."""
+        return [img.image_url for img in obj.images.all()]
+
     def create(self, validated_data):
         # pop tags BEFORE creating
         tags_data = validated_data.pop('tags', [])
@@ -146,6 +152,25 @@ class PlansSerializer(serializers.ModelSerializer):
         validated_data["people_joined"] = 1
 
         plan = Plans.objects.create(**validated_data)  # pylint: disable=no-member
+
+        # Upload images to Cloudinary if provided
+        if request and hasattr(request, 'FILES'):
+            images = request.FILES.getlist('images')
+            if images:
+                from plans.utils import upload_image_to_cloudinary  # pylint: disable=import-outside-toplevel
+                
+                for image_file in images:
+                    try:
+                        # Upload to Cloudinary
+                        image_url = upload_image_to_cloudinary(image_file)
+                        # Create PlanImage record
+                        PlanImage.objects.create(  # pylint: disable=no-member
+                            plan=plan,
+                            image_url=image_url
+                        )
+                    except Exception as e:
+                        print(f"[PlansSerializer] Failed to upload image: {e}")
+                        # Continue with other images even if one fails
 
         # ensure leader participant row
         if plan.leader_id_id:

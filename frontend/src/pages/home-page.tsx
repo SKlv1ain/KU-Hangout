@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react"
+import { useState, useEffect, useCallback } from "react"
 import { useNavigate } from "react-router-dom"
 import Navbar from "@/components/navbar"
 import MessageDockDemo from "@/components/home/message-dock"
@@ -15,6 +15,24 @@ const sampleImages = [
   "https://images.unsplash.com/photo-1509042239860-f550ce710b93?w=800&q=80",
   "https://images.unsplash.com/photo-1654054041538-ad6a3fb653d5?ixlib=rb-4.1.0&auto=format&fit=crop&q=80&w=800",
 ]
+
+// Helper function to generate tag colors (moved outside component for better performance)
+const getTagColor = (tagLabel: string): string => {
+  const tagColors: Record<string, string> = {
+    "Study": "bg-blue-500/20 text-blue-700 dark:text-blue-300 border-blue-400/30",
+    "Café": "bg-amber-500/20 text-amber-700 dark:text-amber-300 border-amber-400/30",
+    "Weekend": "bg-purple-500/20 text-purple-700 dark:text-purple-300 border-purple-400/30",
+    "Group": "bg-emerald-500/20 text-emerald-700 dark:text-emerald-300 border-emerald-400/30",
+    "Sports": "bg-green-500/20 text-green-700 dark:text-green-300 border-green-400/30",
+    "Outdoor": "bg-orange-500/20 text-orange-700 dark:text-orange-300 border-orange-400/30",
+    "Entertainment": "bg-pink-500/20 text-pink-700 dark:text-pink-300 border-pink-400/30",
+    "Social": "bg-indigo-500/20 text-indigo-700 dark:text-indigo-300 border-indigo-400/30",
+    "Evening": "bg-violet-500/20 text-violet-700 dark:text-violet-300 border-violet-400/30",
+    "Food": "bg-amber-500/20 text-amber-700 dark:text-amber-300 border-amber-400/30",
+    "Adventure": "bg-rose-500/20 text-rose-700 dark:text-rose-300 border-rose-400/30",
+  }
+  return tagColors[tagLabel] || "bg-gray-500/20 text-gray-700 dark:text-gray-300 border-gray-400/30"
+}
 
 export default function HomePage() {
   const navigate = useNavigate()
@@ -35,30 +53,11 @@ export default function HomePage() {
   // Plans state - initialize empty, will be loaded from API
   const [plans, setPlans] = useState<PlanDetailData[]>([])
 
-  // Helper function to generate tag colors
-  const getTagColor = (tagLabel: string): string => {
-    const tagColors: Record<string, string> = {
-      "Study": "bg-blue-500/20 text-blue-700 dark:text-blue-300 border-blue-400/30",
-      "Café": "bg-amber-500/20 text-amber-700 dark:text-amber-300 border-amber-400/30",
-      "Weekend": "bg-purple-500/20 text-purple-700 dark:text-purple-300 border-purple-400/30",
-      "Group": "bg-emerald-500/20 text-emerald-700 dark:text-emerald-300 border-emerald-400/30",
-      "Sports": "bg-green-500/20 text-green-700 dark:text-green-300 border-green-400/30",
-      "Outdoor": "bg-orange-500/20 text-orange-700 dark:text-orange-300 border-orange-400/30",
-      "Entertainment": "bg-pink-500/20 text-pink-700 dark:text-pink-300 border-pink-400/30",
-      "Social": "bg-indigo-500/20 text-indigo-700 dark:text-indigo-300 border-indigo-400/30",
-      "Evening": "bg-violet-500/20 text-violet-700 dark:text-violet-300 border-violet-400/30",
-      "Food": "bg-amber-500/20 text-amber-700 dark:text-amber-300 border-amber-400/30",
-      "Adventure": "bg-rose-500/20 text-rose-700 dark:text-rose-300 border-rose-400/30",
-    }
-    return tagColors[tagLabel] || "bg-gray-500/20 text-gray-700 dark:text-gray-300 border-gray-400/30"
-  }
-
-
   // Store plan leader_id mapping for owner check
   const [planOwners, setPlanOwners] = useState<Record<string | number, number>>({})
 
-  // Convert backend Plan to frontend PlanDetailData
-  const convertPlanToDetailData = (plan: Plan): PlanDetailData => {
+  // Convert backend Plan to frontend PlanDetailData (memoized to prevent unnecessary re-renders)
+  const convertPlanToDetailData = useCallback((plan: Plan): PlanDetailData => {
     const eventDate = new Date(plan.event_time)
     const days = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"]
     const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
@@ -102,93 +101,64 @@ export default function HomePage() {
       isSaved: false,
       requirements: [] // Backend doesn't have requirements yet
     }
-  }
+  }, []) // Empty deps - setPlanOwners is a state setter and doesn't change
 
-  // Images are now loaded from API, no need to load from localStorage
+  // Helper function to convert array of backend plans to frontend format (memoized)
+  const convertPlansArray = useCallback((backendPlans: Plan[]): PlanDetailData[] => {
+    return backendPlans.map(plan => convertPlanToDetailData(plan))
+  }, [convertPlanToDetailData])
 
-  // Load plans from API and check join state
-  useEffect(() => {
-    const loadPlans = async () => {
-      try {
+  // Helper function to reload plans from API (reusable, memoized)
+  const reloadPlans = useCallback(async (showLoading = false) => {
+    try {
+      if (showLoading) {
         setLoading(true)
-        
-        const backendPlans = await plansService.getPlans(filterParams)
-        // Images are now included in API response
-        const convertedPlans = backendPlans.map(plan => {
-          const eventDate = new Date(plan.event_time)
-          const days = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"]
-          const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
-          
-          const dayName = days[eventDate.getDay()]
-          const monthName = months[eventDate.getMonth()]
-          const day = eventDate.getDate()
-          const hours = eventDate.getHours()
-          const minutes = eventDate.getMinutes()
-          const ampm = hours >= 12 ? "PM" : "AM"
-          const displayHour = hours % 12 || 12
-          const formattedTime = `${displayHour}:${minutes.toString().padStart(2, '0')} ${ampm}`
-          
-          // Convert tags
-          const tags = (plan.tags_display || []).map(tag => ({
-            label: tag.name,
-            color: getTagColor(tag.name)
-          }))
-
-          // Store leader_id for owner check
-          setPlanOwners(prev => ({
-            ...prev,
-            [plan.id]: plan.leader_id
-          }))
-
-          return {
-            id: plan.id,
-            title: plan.title,
-            creatorName: plan.creator_username,
-            location: plan.location,
-            dateTime: `${dayName}, ${monthName} ${day} • ${formattedTime}`,
-            description: plan.description,
-            fullDescription: plan.description,
-            tags,
-            participants: [],
-            participantCount: plan.people_joined,
-            maxParticipants: plan.max_people,
-            images: plan.images && plan.images.length > 0 ? plan.images : sampleImages, // Use images from API (Cloudinary URLs)
-          isJoined: plan.joined ?? false,
-            isLiked: false,
-            isSaved: false,
-            requirements: []
-          }
-        })
-        setPlans(convertedPlans)
-        
-        // Load join state from backend (now included in list API response)
-        const newPlansState: Record<string | number, {
-          isJoined: boolean
-          isLiked: boolean
-          isSaved: boolean
-        }> = {}
-        
-        for (const plan of backendPlans) {
-          newPlansState[plan.id] = {
-            isJoined: plan.joined || false,
-            isLiked: false, // Backend doesn't have like yet
-            isSaved: false, // Backend doesn't have save yet
-          }
+      }
+      
+      const backendPlans = await plansService.getPlans(filterParams)
+      const convertedPlans = convertPlansArray(backendPlans)
+      setPlans(convertedPlans)
+      
+      // Update plans state from backend
+      const newPlansState: Record<string | number, {
+        isJoined: boolean
+        isLiked: boolean
+        isSaved: boolean
+      }> = {}
+      
+      for (const plan of backendPlans) {
+        newPlansState[plan.id] = {
+          isJoined: plan.joined || false,
+          isLiked: false, // Backend doesn't have like yet
+          isSaved: false, // Backend doesn't have save yet
         }
-        
-        setPlansState(newPlansState)
-      } catch (error) {
-        console.error('Error loading plans:', error)
-        // Fallback to empty array on error
-        setPlans([])
-      } finally {
+      }
+      
+      setPlansState(prev => ({
+        ...prev,
+        ...newPlansState
+      }))
+      
+      return convertedPlans
+    } catch (error) {
+      console.error('Error reloading plans:', error)
+      throw error
+    } finally {
+      if (showLoading) {
         setLoading(false)
       }
     }
+  }, [filterParams, convertPlansArray])
 
-    loadPlans()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [filterParams])
+  // Images are now loaded from API, no need to load from localStorage
+
+  // Load plans from API when filterParams change
+  useEffect(() => {
+    reloadPlans(true).catch(() => {
+      // On error, keep existing plans or set empty array
+      setPlans([])
+    })
+  }, [reloadPlans])
 
   // Images are now loaded from API, no need to update from planImages state
 
@@ -393,14 +363,14 @@ export default function HomePage() {
       // Call API to create plan with FormData
       const createdPlan = await plansService.createPlan(formData)
       
-      // Convert to frontend format and add to plans
+      // OPTIMISTIC UPDATE: Convert to frontend format and add to plans immediately
       const newPlan = convertPlanToDetailData(createdPlan)
       // Use images from API response (Cloudinary URLs)
       newPlan.images = createdPlan.images && createdPlan.images.length > 0 
         ? createdPlan.images 
         : sampleImages
       
-      // Add new plan to plans array (will be added at the beginning)
+      // Add new plan to the beginning of the array (optimistic update)
       setPlans((prev) => [newPlan, ...prev])
 
       // Initialize state for new plan
@@ -410,14 +380,34 @@ export default function HomePage() {
         isSaved: false,
       })
 
-      // Close dialog
+      // Close dialog immediately for better UX
       setIsCreateDialogOpen(false)
 
       console.log('Plan created successfully:', createdPlan)
+
+      // RELOAD: Refresh plans from API in background to ensure consistency
+      // Wait a bit for backend to process and ensure plan is in the list
+      setTimeout(async () => {
+        try {
+          await reloadPlans(false)
+          console.log('Plans reloaded successfully after creation')
+        } catch (reloadError) {
+          console.error('Error reloading plans after creation:', reloadError)
+          // Don't show error to user - optimistic update already showed the plan
+          // If reload fails, the optimistic update is still visible
+        }
+      }, 1000) // Wait 1 second for backend to process
+      
     } catch (error) {
       console.error('Error creating plan:', error)
       // Show error message to user
-      alert('Failed to create plan. Please try again.')
+      const errorMessage = error instanceof Error 
+        ? error.message 
+        : 'Failed to create plan. Please try again.'
+      alert(errorMessage)
+      
+      // Don't close dialog on error so user can retry
+      // setIsCreateDialogOpen(false) - commented out to keep dialog open
     }
   }
 
@@ -528,10 +518,12 @@ export default function HomePage() {
                     <div className="space-y-4">
                       {plans.map((plan) => {
                       const planId = plan.id || ''
+                      // Use stable key format to ensure React can track components properly
+                      const stableKey = `plan-${planId}`
                       const isOwner = !!(user && planOwners[planId] === user.id)
                       return (
                         <PlanCard
-                          key={planId}
+                          key={stableKey}
                           id={planId}
                           title={plan.title}
                           creatorName={plan.creatorName}

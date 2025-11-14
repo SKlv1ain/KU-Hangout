@@ -1,6 +1,7 @@
 from django.db import models
 from django.conf import settings
 from django.contrib.auth.models import AbstractUser
+from django.utils import timezone
 from users.models import Users
 from tags.models import Tags
 
@@ -17,3 +18,18 @@ class Plans(models.Model):
     tags = models.ManyToManyField(Tags, related_name='plans', default=" ", null=True)
     people_joined = models.IntegerField(default=0)
     create_at = models.DateTimeField(auto_now_add=True)
+
+
+# Model for plan images stored in Cloudinary
+class PlanImage(models.Model):
+    plan = models.ForeignKey(Plans, related_name='images', on_delete=models.CASCADE)
+    image_url = models.URLField(max_length=500)
+    uploaded_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['uploaded_at']
+        verbose_name = 'Plan Image'
+        verbose_name_plural = 'Plan Images'
+
+    def __str__(self):
+        return f"Image for {self.plan.title} (uploaded at {self.uploaded_at})"
