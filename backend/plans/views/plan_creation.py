@@ -30,37 +30,61 @@ class PlansCreate(APIView):
         return formatted_errors
 
     def post(self, request):
-        """Create a new plan"""
-        
-        # Check if user is authenticated (extra safety check)
+        """
+        Create a new plan.
+
+        Returns clear, human-friendly error messages so the frontend
+        can show them as notifications.
+        """
+
+        # Extra safety check (though IsAuthenticated already enforced)
         if not request.user.is_authenticated:
             return Response(
-                {"message": "You must login before creating a plan"},
-                status=status.HTTP_401_UNAUTHORIZED
+                {
+                    "message": "You cannot create a plan.",
+                    "reason": "You must log in before creating a plan.",
+                    "status_code": status.HTTP_401_UNAUTHORIZED,
+                },
+                status=status.HTTP_401_UNAUTHORIZED,
             )
-        
+
         serializer = PlansSerializer(data=request.data, context={"request": request})
-        
+
         if serializer.is_valid():
-            plan = serializer.save()
+            try:
+                plan = serializer.save()
+            except Exception as e:
+                # Catch unexpected errors during save (DB issues, etc.)
+                return Response(
+                    {
+                        "message": "You cannot create this plan right now.",
+                        "reason": "An unexpected error occurred while saving the plan.",
+                        "detail": str(e),  # you can remove this in production
+                        "status_code": status.HTTP_500_INTERNAL_SERVER_ERROR,
+                    },
+                    status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                )
+
             return Response(
                 {
-                    "message": "Plan created successfully",
-                    "plan": PlansSerializer(plan, context={"request": request}).data
+                    "message": "Plan created successfully.",
+                    "status_code": status.HTTP_201_CREATED,
+                    "plan": PlansSerializer(plan, context={"request": request}).data,
                 },
-                status=status.HTTP_201_CREATED
+                status=status.HTTP_201_CREATED,
             )
-        
-        # Format errors to be more readable
+
+        # Validation failed
         formatted_errors = self.format_errors(serializer.errors)
-        
         return Response(
             {
-                "message": "Failed to create plan",
-                "errors": formatted_errors
+                "message": "You cannot create this plan because some information is invalid.",
+                "status_code": status.HTTP_400_BAD_REQUEST,
+                "errors": formatted_errors,
             },
-            status=status.HTTP_400_BAD_REQUEST
+            status=status.HTTP_400_BAD_REQUEST,
         )
+
 
     def get(self, request, pk=None):
         """Get plan details (single or list)"""
@@ -94,116 +118,194 @@ class PlansCreate(APIView):
             )
 
     def put(self, request, pk):
-        """Update an existing plan (full update)"""
+        """Full update of a plan with human-friendly error messages."""
         plan = self.get_object(pk)
+
         if not plan:
             return Response(
-                {"message": "Plan not found"}, 
-                status=status.HTTP_404_NOT_FOUND
+                {
+                    "message": "You cannot update this plan.",
+                    "reason": "The plan you are trying to edit does not exist.",
+                    "status_code": status.HTTP_404_NOT_FOUND,
+                },
+                status=status.HTTP_404_NOT_FOUND,
             )
 
-        # Check permission
+        # Permission check
         if plan.leader_id != request.user:
             return Response(
-                {"message": "You do not have permission to edit this plan"},
-                status=status.HTTP_403_FORBIDDEN
+                {
+                    "message": "You cannot update this plan.",
+                    "reason": "Only the leader who created the plan can edit it.",
+                    "status_code": status.HTTP_403_FORBIDDEN,
+                },
+                status=status.HTTP_403_FORBIDDEN,
             )
 
-        # Prevent leader changes
+        # Prevent leader change
         incoming = request.data.copy()
         incoming.pop("leader_id", None)
 
         serializer = PlansSerializer(
-            plan, 
-            data=incoming, 
+            plan,
+            data=incoming,
             partial=False,
-            context={"request": request}
+            context={"request": request},
         )
-        
+
         if serializer.is_valid():
-            updated_plan = serializer.save()
+            try:
+                updated_plan = serializer.save()
+            except Exception as e:
+                return Response(
+                    {
+                        "message": "Plan update failed.",
+                        "reason": "An unexpected error occurred while saving.",
+                        "detail": str(e),
+                        "status_code": status.HTTP_500_INTERNAL_SERVER_ERROR,
+                    },
+                    status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                )
+
             return Response(
                 {
-                    "message": "Plan updated successfully",
-                    "plan": PlansSerializer(updated_plan, context={"request": request}).data
+                    "message": "Plan updated successfully.",
+                    "status_code": status.HTTP_200_OK,
+                    "plan": PlansSerializer(updated_plan, context={"request": request}).data,
                 },
-                status=status.HTTP_200_OK
+                status=status.HTTP_200_OK,
             )
-        
+
+        # Validation error → human friendly
         formatted_errors = self.format_errors(serializer.errors)
         return Response(
             {
-                "message": "Failed to update plan",
-                "errors": formatted_errors
+                "message": "You cannot update this plan because some information is invalid.",
+                "errors": formatted_errors,
+                "status_code": status.HTTP_400_BAD_REQUEST,
             },
-            status=status.HTTP_400_BAD_REQUEST
+            status=status.HTTP_400_BAD_REQUEST,
         )
 
     def patch(self, request, pk):
-        """Partial update of a plan"""
+        """Partial update of a plan with consistent notifications."""
         plan = self.get_object(pk)
+
         if not plan:
             return Response(
-                {"message": "Plan not found"}, 
-                status=status.HTTP_404_NOT_FOUND
+                {
+                    "message": "You cannot update this plan.",
+                    "reason": "The plan you are trying to edit does not exist.",
+                    "status_code": status.HTTP_404_NOT_FOUND,
+                },
+                status=status.HTTP_404_NOT_FOUND,
             )
 
-        # Check permission
+        # Permission check
         if plan.leader_id != request.user:
             return Response(
-                {"message": "You do not have permission to edit this plan"},
-                status=status.HTTP_403_FORBIDDEN
+                {
+                    "message": "You cannot update this plan.",
+                    "reason": "Only the leader who created the plan can edit it.",
+                    "status_code": status.HTTP_403_FORBIDDEN,
+                },
+                status=status.HTTP_403_FORBIDDEN,
             )
 
-        # Prevent leader changes
+        # Prevent leader change
         incoming = request.data.copy()
         incoming.pop("leader_id", None)
 
         serializer = PlansSerializer(
-            plan, 
-            data=incoming, 
+            plan,
+            data=incoming,
             partial=True,
-            context={"request": request}
+            context={"request": request},
         )
-        
+
         if serializer.is_valid():
-            updated_plan = serializer.save()
+            try:
+                updated_plan = serializer.save()
+            except Exception as e:
+                return Response(
+                    {
+                        "message": "Plan update failed.",
+                        "reason": "An unexpected error occurred while saving.",
+                        "detail": str(e),
+                        "status_code": status.HTTP_500_INTERNAL_SERVER_ERROR,
+                    },
+                    status=status.HTTP_500_INTERNAL_SERVER_INTERNAL_SERVER_ERROR,
+                )
+
             return Response(
                 {
-                    "message": "Plan updated successfully",
-                    "plan": PlansSerializer(updated_plan, context={"request": request}).data
+                    "message": "Plan updated successfully.",
+                    "status_code": status.HTTP_200_OK,
+                    "plan": PlansSerializer(updated_plan, context={"request": request}).data,
                 },
-                status=status.HTTP_200_OK
+                status=status.HTTP_200_OK,
             )
-        
+
+        # Validation error → human friendly
         formatted_errors = self.format_errors(serializer.errors)
         return Response(
             {
-                "message": "Failed to update plan",
-                "errors": formatted_errors
+                "message": "You cannot update this plan because some information is invalid.",
+                "errors": formatted_errors,
+                "status_code": status.HTTP_400_BAD_REQUEST,
             },
-            status=status.HTTP_400_BAD_REQUEST
+            status=status.HTTP_400_BAD_REQUEST,
         )
 
     def delete(self, request, pk):
-        """Delete a plan"""
+        """
+        Delete a plan.
+
+        Returns clear messages for:
+        - Plan not found
+        - No permission (not leader)
+        - Successful delete
+        """
         plan = self.get_object(pk)
         if not plan:
             return Response(
-                {"message": "Plan not found"}, 
-                status=status.HTTP_404_NOT_FOUND
+                {
+                    "message": "You cannot delete this plan.",
+                    "reason": "The plan you are trying to delete does not exist.",
+                    "status_code": status.HTTP_404_NOT_FOUND,
+                },
+                status=status.HTTP_404_NOT_FOUND,
             )
 
         # Check permission
         if plan.leader_id != request.user:
             return Response(
-                {"message": "You do not have permission to delete this plan"},
-                status=status.HTTP_403_FORBIDDEN
+                {
+                    "message": "You cannot delete this plan.",
+                    "reason": "Only the leader who created the plan can delete it.",
+                    "status_code": status.HTTP_403_FORBIDDEN,
+                },
+                status=status.HTTP_403_FORBIDDEN,
             )
 
         plan_title = plan.title
-        plan.delete()
+        try:
+            plan.delete()
+        except Exception as e:
+            return Response(
+                {
+                    "message": "You cannot delete this plan right now.",
+                    "reason": "An unexpected error occurred while deleting the plan.",
+                    "detail": str(e),  # remove in production if you don't want to expose
+                    "status_code": status.HTTP_500_INTERNAL_SERVER_ERROR,
+                },
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
+
         return Response(
-            {"message": f"Plan '{plan_title}' deleted successfully"}, 
-            status=status.HTTP_200_OK
+            {
+                "message": f"Plan '{plan_title}' deleted successfully.",
+                "status_code": status.HTTP_200_OK,
+            },
+            status=status.HTTP_200_OK,
         )
