@@ -3,6 +3,7 @@ from rest_framework import serializers
 from plans.models import Plans, PlanImage
 from tags.models import Tags
 from participants.models import Participants
+from users.models import Users
 
 
 
@@ -46,12 +47,9 @@ class PlansSerializer(serializers.ModelSerializer):
     )
     tags_display = serializers.SerializerMethodField()
     creator_username = serializers.CharField(source='leader_id.username', read_only=True)
-    creator_id = serializers.IntegerField(source='leader_id.id', read_only=True)
     is_expired = serializers.SerializerMethodField()
     time_until_event = serializers.SerializerMethodField()
     members = serializers.SerializerMethodField()  # <- exact shape per your ask
-    joined = serializers.SerializerMethodField()  # Whether current user has joined this plan
-    role = serializers.SerializerMethodField()  # Current user's role in this plan (LEADER/MEMBER/None)
 
     class Meta:
         model = Plans
@@ -60,34 +58,30 @@ class PlansSerializer(serializers.ModelSerializer):
             'title',
             'description',
             'location',
-            'lat',
-            'lng',
             'leader_id',
             'creator_username',
             'event_time',
             'max_people',
             'people_joined',
-            'create_at',
+            'created_at',
             'tags',               # write-only
             'tags_display',       # read-only
             'is_expired',         # read-only
             'time_until_event',   # read-only
             'members',            # read-only
-            'joined',             # read-only
-            'role',               # read-only
+            'people_joined',             # read-only
         ]
         read_only_fields = (
             'id',
             'leader_id',
             'people_joined',
-            'create_at',
+            'created_at',
             'creator_username',
             'tags_display',
             'is_expired',
             'time_until_event',
             'members',
             'joined',
-            'role',
         )
 
     def get_tags_display(self, obj):
