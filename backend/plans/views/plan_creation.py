@@ -2,8 +2,11 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
+
 from plans.models import Plans
 from plans.serializers.plans_serializers import PlansSerializer, PlansWithImagesSerializer
+from participants.models import Participants
+from notifications.models import Notification
 
 
 class PlansCreate(APIView):
@@ -29,6 +32,38 @@ class PlansCreate(APIView):
                     formatted_errors.append(f"{readable_field}: {str(error)}")
         return formatted_errors
 
+    # ---------- helper: send notifications on update ----------
+    def _notify_plan_updated(self, plan):
+        """
+        Create notifications when a plan is updated:
+        - Leader: "You updated your plan 'X'."
+        - Members: "<leader> updated the plan 'X'."
+        """
+        leader = plan.leader_id
+
+        # Notify leader
+        if leader:
+            Notification.objects.create(
+                user=leader,
+                message=f"You updated your plan '{plan.title}'.",
+                notification_type="PLAN_UPDATED",
+                plan=plan,
+            )
+
+        # Notify members (all participants except leader)
+        members = Participants.objects.filter(plan=plan).select_related("user")
+        if leader:
+            members = members.exclude(user=leader)
+
+        for participant in members:
+            Notification.objects.create(
+                user=participant.user,
+                message=f"{leader.username} updated the plan '{plan.title}'.",
+                notification_type="PLAN_UPDATED",
+                plan=plan,
+            )
+
+    # ---------- POST: CREATE ----------
     def post(self, request):
         """
         Create a new plan.
@@ -53,6 +88,15 @@ class PlansCreate(APIView):
         if serializer.is_valid():
             try:
                 plan = serializer.save()
+
+                # Notification for creator/leader
+                Notification.objects.create(
+                    user=request.user,
+                    message=f"You created the plan '{plan.title}'.",
+                    notification_type="PLAN_CREATED",
+                    plan=plan,
+                )
+
             except Exception as e:
                 # Catch unexpected errors during save (DB issues, etc.)
                 return Response(
@@ -85,15 +129,14 @@ class PlansCreate(APIView):
             status=status.HTTP_400_BAD_REQUEST,
         )
 
-
+    # ---------- GET ----------
     def get(self, request, pk=None):
         """Get plan details (single or list)"""
         if pk:
-            # Get single plan with images
             plan = self.get_object(pk)
             if not plan:
                 return Response(
-                    {"message": "Plan not found"}, 
+                    {"message": "Plan not found"},
                     status=status.HTTP_404_NOT_FOUND
                 )
             serializer = PlansWithImagesSerializer(plan, context={"request": request})
@@ -105,7 +148,6 @@ class PlansCreate(APIView):
                 status=status.HTTP_200_OK
             )
         else:
-            # List all plans (without images for performance)
             plans = Plans.objects.all().order_by('-created_at')
             serializer = PlansSerializer(plans, many=True, context={"request": request})
             return Response(
@@ -117,6 +159,7 @@ class PlansCreate(APIView):
                 status=status.HTTP_200_OK
             )
 
+    # ---------- PUT (full update) ----------
     def put(self, request, pk):
         """Full update of a plan with human-friendly error messages."""
         plan = self.get_object(pk)
@@ -156,6 +199,10 @@ class PlansCreate(APIView):
         if serializer.is_valid():
             try:
                 updated_plan = serializer.save()
+
+                # send notifications about the update
+                self._notify_plan_updated(updated_plan)
+
             except Exception as e:
                 return Response(
                     {
@@ -176,7 +223,6 @@ class PlansCreate(APIView):
                 status=status.HTTP_200_OK,
             )
 
-        # Validation error → human friendly
         formatted_errors = self.format_errors(serializer.errors)
         return Response(
             {
@@ -187,6 +233,7 @@ class PlansCreate(APIView):
             status=status.HTTP_400_BAD_REQUEST,
         )
 
+    # ---------- PATCH (partial update) ----------
     def patch(self, request, pk):
         """Partial update of a plan with consistent notifications."""
         plan = self.get_object(pk)
@@ -212,7 +259,6 @@ class PlansCreate(APIView):
                 status=status.HTTP_403_FORBIDDEN,
             )
 
-        # Prevent leader change
         incoming = request.data.copy()
         incoming.pop("leader_id", None)
 
@@ -226,6 +272,10 @@ class PlansCreate(APIView):
         if serializer.is_valid():
             try:
                 updated_plan = serializer.save()
+
+                # send notifications about the update
+                self._notify_plan_updated(updated_plan)
+
             except Exception as e:
                 return Response(
                     {
@@ -234,7 +284,7 @@ class PlansCreate(APIView):
                         "detail": str(e),
                         "status_code": status.HTTP_500_INTERNAL_SERVER_ERROR,
                     },
-                    status=status.HTTP_500_INTERNAL_SERVER_INTERNAL_SERVER_ERROR,
+                    status=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 )
 
             return Response(
@@ -246,7 +296,6 @@ class PlansCreate(APIView):
                 status=status.HTTP_200_OK,
             )
 
-        # Validation error → human friendly
         formatted_errors = self.format_errors(serializer.errors)
         return Response(
             {
@@ -265,6 +314,7 @@ class PlansCreate(APIView):
         - Plan not found
         - No permission (not leader)
         - Successful delete
+        Also sends notifications to leader and members.
         """
         plan = self.get_object(pk)
         if not plan:
@@ -289,17 +339,49 @@ class PlansCreate(APIView):
             )
 
         plan_title = plan.title
+        leader = plan.leader_id
+        leader_name = leader.username if leader else "The leader"
+
+        # Get all participants BEFORE deleting the plan (because delete will cascade)
+        participants = list(
+            Participants.objects.filter(plan=plan).select_related("user")
+        )
+
         try:
+            # Delete the plan (Participants will be deleted via FK)
             plan.delete()
         except Exception as e:
             return Response(
                 {
                     "message": "You cannot delete this plan right now.",
                     "reason": "An unexpected error occurred while deleting the plan.",
-                    "detail": str(e),  # remove in production if you don't want to expose
+                    "detail": str(e),
                     "status_code": status.HTTP_500_INTERNAL_SERVER_ERROR,
                 },
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
+
+        # --- Notifications after successful delete ---
+
+        # 1) Notify leader
+        if leader:
+            Notification.objects.create(
+                user=leader,
+                message=f"You deleted your plan '{plan_title}'.",
+                notification_type="PLAN_DELETED",
+                plan=None,  # plan has been deleted
+            )
+
+        # 2) Notify other participants (members)
+        for participant in participants:
+            if leader and participant.user_id == leader.id:
+                continue  # don't double-notify leader as "member"
+
+            Notification.objects.create(
+                user=participant.user,
+                message=f"{leader_name} deleted the plan '{plan_title}'.",
+                notification_type="PLAN_DELETED",
+                plan=None,
             )
 
         return Response(

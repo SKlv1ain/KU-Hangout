@@ -8,6 +8,7 @@ from rest_framework import status
 from plans.models import Plans
 from participants.models import Participants
 from plans.serializers.plans_serializers import PlansSerializer
+from notifications.models import Notification  
 
 
 class PlanJoinView(APIView):
@@ -89,6 +90,22 @@ class PlanJoinView(APIView):
                     },
                     status=status.HTTP_409_CONFLICT,
                 )
+
+            # notifications for leader & member on successful join
+            if plan.leader_id:
+                Notification.objects.create(
+                    user=plan.leader_id,
+                    message=f"{request.user.username} joined your plan '{plan.title}'.",
+                    notification_type="PLAN_JOINED",
+                    plan=plan,
+                )
+
+            Notification.objects.create(
+                user=request.user,
+                message=f"You joined the plan '{plan.title}'.",
+                notification_type="PLAN_JOINED",
+                plan=plan,
+            )
 
         # Ensure chat membership for joining user (leaders and members)
         try:
@@ -190,6 +207,21 @@ class PlanJoinView(APIView):
                 chat_member.objects.filter(thread__plan=plan, user=request.user).delete()
             except Exception as chat_error:  # pragma: no cover - graceful degradation
                 print(f"[PlanJoinView] Failed to remove chat membership for plan {plan_id}: {chat_error}")
+
+            # notifications for leave
+            Notification.objects.create(
+                user=request.user,
+                message=f"You left the plan '{plan.title}'.",
+                notification_type="PLAN_LEFT",
+                plan=plan,
+            )
+            if plan.leader_id:
+                Notification.objects.create(
+                    user=plan.leader_id,
+                    message=f"{request.user.username} left your plan '{plan.title}'.",
+                    notification_type="PLAN_LEFT",
+                    plan=plan,
+                )
 
         # Reload plan from database to ensure latest data
         plan = Plans.objects.get(pk=plan_id)  # pylint: disable=no-member
