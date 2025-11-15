@@ -19,7 +19,7 @@ export default function HomePage() {
   const [planOwners, setPlanOwners] = useState<Record<string | number, number>>({})
 
   // Custom hooks
-  const { filterParams, handleFilterChange, handleClearFilters } = usePlanFilters()
+  const { filterParams, handleFilterChange, handleClearFilters, activeTab, setActiveTab } = usePlanFilters()
   const { plansState, updatePlanState } = usePlanState()
   const { plans, setPlans, loading, reloadPlans } = usePlans(filterParams, setPlanOwners)
   const { handleJoin, handleDelete, handleLike, handleSave, handleChat } = usePlanActions(
@@ -69,6 +69,26 @@ export default function HomePage() {
     setSelectedPlan(null)
   }
 
+  // Calculate saved plans count (only count plans that exist in current plans array)
+  const savedCount = plans.filter(plan => {
+    const planId = plan.id || ''
+    return plansState[planId]?.isSaved === true
+  }).length
+
+  // Filter plans based on active tab and other filters
+  const filteredPlans = plans.filter(plan => {
+    // First filter by saved status if on saved tab
+    if (activeTab === 'saved') {
+      const planId = plan.id || ''
+      if (!plansState[planId]?.isSaved) {
+        return false
+      }
+    }
+    // Other filters (date, category, status) are handled by backend via filterParams
+    // So we just return true here as filtering is done server-side
+    return true
+  })
+
   // Save only plan IDs and titles to localStorage (for message page) - not full plans with images
   useEffect(() => {
     try {
@@ -117,24 +137,22 @@ export default function HomePage() {
                       : (filterParams.category === option.id || (option.id === 'all' && !filterParams.category))
                   }))
                 }))}
-                savedButtonText="Saved"
                 createButtonText="Create Plan"
+                activeTab={activeTab}
+                savedCount={savedCount}
                 onDateChange={(date: Date | undefined) => {
                   // TODO: Implement date filter
                   console.log('Date changed:', date)
                 }}
                 onFilterChange={handleFilterChange}
                 onClearFilters={handleClearFilters}
-                onSavedClick={() => {
-                  // TODO: Implement saved plans filter
-                  console.log('Saved clicked')
-                }}
+                onTabChange={setActiveTab}
                 onCreateClick={handleCreatePlan}
               />
               <div className="py-8">
                 <div className="space-y-8 pb-8">
                   <PlanList
-                    plans={plans}
+                    plans={filteredPlans}
                     plansState={plansState}
                     planOwners={planOwners}
                     user={user}

@@ -1,7 +1,7 @@
 "use client"
 
 import { useState } from "react"
-import { BookmarkIcon, FilterIcon, X, Plus } from "lucide-react"
+import { BookmarkIcon, FilterIcon, X, Plus, Home } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import {
   DropdownMenu,
@@ -14,6 +14,8 @@ import {
 } from "@/components/ui/dropdown-menu"
 import { Checkbox } from "@/components/ui/checkbox"
 import { DatePicker } from "@/components/ui/shadcn-io/navbar-15/DatePicker"
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { Badge } from "@/components/ui/badge"
 import { cn } from "@/lib/utils"
 
 export interface FilterGroup {
@@ -29,12 +31,13 @@ export interface FilterGroup {
 export interface FilterDockProps {
   filterGroups?: FilterGroup[]
   selectedDate?: Date
-  savedButtonText?: string
   createButtonText?: string
+  activeTab?: 'feed' | 'saved'
+  savedCount?: number
   onDateChange?: (date: Date | undefined) => void
   onFilterChange?: (groupId: string, optionId: string, checked: boolean) => void
   onClearFilters?: () => void
-  onSavedClick?: () => void
+  onTabChange?: (tab: 'feed' | 'saved') => void
   onCreateClick?: () => void
   className?: string
 }
@@ -42,12 +45,13 @@ export interface FilterDockProps {
 export function FilterDock({
   filterGroups = [],
   selectedDate,
-  savedButtonText = "Saved",
   createButtonText = "Create Plan",
+  activeTab = 'feed',
+  savedCount = 0,
   onDateChange,
   onFilterChange,
   onClearFilters,
-  onSavedClick,
+  onTabChange,
   onCreateClick,
   className
 }: FilterDockProps) {
@@ -174,28 +178,32 @@ export function FilterDock({
             </DropdownMenu>
           </div>
 
-          {/* Right side - Date picker, Saved button, and Create button */}
+          {/* Right side - Tabs, Date picker, and Create button */}
           <div className="flex items-center gap-2 flex-shrink-0">
+            <Tabs value={activeTab} onValueChange={(value) => onTabChange?.(value as 'feed' | 'saved')}>
+              <TabsList className="h-9">
+                <TabsTrigger value="feed" className="gap-1.5">
+                  <Home className="h-4 w-4" />
+                  <span>Feed</span>
+                </TabsTrigger>
+                <TabsTrigger value="saved" className="gap-1.5 relative">
+                  <BookmarkIcon className="h-4 w-4" />
+                  <span>Saved</span>
+                  {savedCount > 0 && (
+                    <Badge 
+                      variant="secondary" 
+                      className="absolute -top-1.5 -right-1.5 h-5 w-5 rounded-full p-0 flex items-center justify-center text-xs font-semibold"
+                    >
+                      {savedCount > 99 ? '99+' : savedCount}
+                    </Badge>
+                  )}
+                </TabsTrigger>
+              </TabsList>
+            </Tabs>
             <DatePicker 
               date={selectedDate}
               onDateChange={onDateChange}
             />
-            <Button
-              size="sm"
-              variant="outline"
-              className="text-sm max-sm:aspect-square max-sm:p-0"
-              onClick={(e) => {
-                e.preventDefault()
-                if (onSavedClick) onSavedClick()
-              }}
-            >
-              <BookmarkIcon
-                className="text-muted-foreground/80 sm:-ms-1"
-                size={16}
-                aria-hidden="true"
-              />
-              <span className="max-sm:sr-only">{savedButtonText}</span>
-            </Button>
             <Button
               size="sm"
               className="gap-2 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white shadow-md hover:shadow-lg transition-all duration-200 font-medium"

@@ -8,6 +8,7 @@ type FilterParams = {
 
 export function usePlanFilters() {
   const [filterParams, setFilterParams] = useState<FilterParams>({})
+  const [activeTab, setActiveTab] = useState<'feed' | 'saved'>('feed')
 
   const handleFilterChange = useCallback((
     groupId: string,
@@ -37,7 +38,9 @@ export function usePlanFilters() {
     filterParams,
     setFilterParams,
     handleFilterChange,
-    handleClearFilters
+    handleClearFilters,
+    activeTab,
+    setActiveTab
   }
 }
 
