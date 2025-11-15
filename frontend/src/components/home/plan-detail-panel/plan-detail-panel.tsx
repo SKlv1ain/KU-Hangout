@@ -9,13 +9,15 @@ import { PlanCardDescription } from "../plan-card/plan-card-description"
 import { PlanCardParticipants } from "@/components/plan-card/plan-card-participants"
 import { PlanCardActions } from "../plan-card/plan-card-actions"
 import { Separator } from "@/components/ui/separator"
-import { MapPin, Calendar, Users, User } from "lucide-react"
+import { MapPin, Calendar, Users } from "lucide-react"
 import type { ParticipantData } from "@/components/plan-card/plan-card-participants"
 
 export interface PlanDetailData {
   id?: string | number
   title: string
   creatorName: string
+  creatorUsername?: string
+  creatorId?: number
   location: string
   dateTime: string
   description: string
@@ -137,6 +139,8 @@ export function PlanDetailPanel({
           <PlanCardHeader
             title={plan.title}
             creatorName={plan.creatorName}
+            creatorId={plan.creatorId}
+            creatorUsername={plan.creatorUsername}
             location={plan.location}
             dateTime={plan.dateTime}
           />
@@ -193,14 +197,6 @@ export function PlanDetailPanel({
                   </div>
                 </div>
               )}
-
-              <div className="flex items-start gap-3">
-                <User className="h-4 w-4 text-muted-foreground mt-0.5" />
-                <div>
-                  <p className="text-xs text-muted-foreground">Created by</p>
-                  <p className="text-sm font-medium">{plan.creatorName}</p>
-                </div>
-              </div>
             </div>
           </div>
 

@@ -50,6 +50,8 @@ export const convertPlanToDetailData = (
     [plan.id]: plan.leader_id
   }))
 
+  // Debug logging removed to reduce console noise
+
   // Convert tags
   const tags = (plan.tags_display || []).map(tag => ({
     label: tag.name,
@@ -65,10 +67,16 @@ export const convertPlanToDetailData = (
     role: member.role
   }))
 
+  // Find leader in members to get their username
+  const leaderMember = plan.members?.find(m => m.role === 'LEADER')
+  const creatorUsername = leaderMember?.username || plan.creator_username
+
   return {
     id: plan.id,
     title: plan.title,
-    creatorName: plan.creator_username,
+    creatorName: leaderMember?.display_name || plan.creator_username,
+    creatorUsername: creatorUsername,
+    creatorId: plan.leader_id,
     location: plan.location,
     dateTime: formatDateTime(plan.event_time),
     description: plan.description,

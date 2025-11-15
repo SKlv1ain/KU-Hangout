@@ -14,6 +14,8 @@ export interface PlanCardProps {
   id?: string | number
   title: string
   creatorName: string
+  creatorId?: number
+  creatorUsername?: string
   location: string
   dateTime: string
   description: string
@@ -38,6 +40,8 @@ export interface PlanCardProps {
 export function PlanCard({
   title,
   creatorName,
+  creatorId,
+  creatorUsername,
   location,
   dateTime,
   description,
@@ -127,6 +131,8 @@ export function PlanCard({
             <PlanCardHeader
               title={title}
               creatorName={creatorName}
+              creatorId={creatorId}
+              creatorUsername={creatorUsername}
               location={location}
               dateTime={dateTime}
             />

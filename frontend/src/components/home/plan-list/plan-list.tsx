@@ -65,6 +65,8 @@ export function PlanList({
             id={planId}
             title={plan.title}
             creatorName={plan.creatorName}
+            creatorId={plan.creatorId}
+            creatorUsername={plan.creatorUsername}
             location={plan.location}
             dateTime={plan.dateTime}
             description={plan.description}
