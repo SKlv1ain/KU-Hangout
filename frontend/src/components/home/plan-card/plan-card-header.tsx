@@ -2,7 +2,7 @@
 
 import { MapPin, Calendar, Crown } from "lucide-react"
 
-interface PlanCardSimpleHeaderProps {
+interface PlanCardHeaderProps {
   title: string
   creatorName: string
   location: string
@@ -10,7 +10,7 @@ interface PlanCardSimpleHeaderProps {
   className?: string
 }
 
-export function PlanCardSimpleHeader({
+export function PlanCardHeader({
   title,
   creatorName,
   location,

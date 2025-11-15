@@ -15,7 +15,7 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog"
 
-interface PlanCardSimpleActionsProps {
+interface PlanCardActionsProps {
   isJoined: boolean
   isLiked: boolean
   isOwner?: boolean
@@ -26,7 +26,7 @@ interface PlanCardSimpleActionsProps {
   className?: string
 }
 
-export function PlanCardSimpleActions({
+export function PlanCardActions({
   isJoined,
   isLiked,
   isOwner = false,

@@ -14,7 +14,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
-import { ImageUploadGrid } from "./image-upload-grid"
+import { ImageUploadGrid } from "../image-upload-grid"
 import { DatePicker } from "@/components/ui/shadcn-io/navbar-15/DatePicker"
 import { cn } from "@/lib/utils"
 

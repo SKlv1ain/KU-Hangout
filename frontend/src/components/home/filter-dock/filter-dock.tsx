@@ -39,7 +39,7 @@ export interface FilterDockProps {
   className?: string
 }
 
-export default function FilterDock({
+export function FilterDock({
   filterGroups = [],
   selectedDate,
   savedButtonText = "Saved",

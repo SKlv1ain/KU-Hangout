@@ -4,10 +4,10 @@ import { useNavigate } from "react-router-dom"
 import { Bookmark } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { ImageCarousel } from "@/components/plan-card/image-carousel"
-import { PlanCardSimpleHeader } from "./plan-card-simple-header"
-import { PlanCardSimpleDescription } from "./plan-card-simple-description"
+import { PlanCardHeader } from "./plan-card-header"
+import { PlanCardDescription } from "./plan-card-description"
 import { PlanCardParticipants } from "@/components/plan-card/plan-card-participants"
-import { PlanCardSimpleActions } from "./plan-card-simple-actions"
+import { PlanCardActions } from "./plan-card-actions"
 import type { ParticipantData } from "@/components/plan-card/plan-card-participants"
 
 export interface PlanCardProps {
@@ -124,14 +124,14 @@ export function PlanCard({
         {/* Content Section - 60% */}
         <div className="flex-1 p-5 flex flex-col justify-between min-h-[280px] bg-background group-hover:bg-accent/5 transition-colors duration-200">
           <div className="space-y-2">
-            <PlanCardSimpleHeader
+            <PlanCardHeader
               title={title}
               creatorName={creatorName}
               location={location}
               dateTime={dateTime}
             />
 
-            <PlanCardSimpleDescription
+            <PlanCardDescription
               description={description}
               tags={tags}
             />
@@ -143,7 +143,7 @@ export function PlanCard({
               participantCount={participantCount}
             />
 
-            <PlanCardSimpleActions
+            <PlanCardActions
               isJoined={isJoined}
               isLiked={isLiked}
               isOwner={isOwner}

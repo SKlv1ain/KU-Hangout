@@ -4,12 +4,12 @@ import { useState, useEffect } from "react"
 import { X, Bookmark } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { ImageCarousel } from "@/components/plan-card/image-carousel"
-import { PlanCardSimpleHeader } from "./plan-card-simple-header"
-import { PlanCardSimpleDescription } from "./plan-card-simple-description"
+import { PlanCardHeader } from "../plan-card/plan-card-header"
+import { PlanCardDescription } from "../plan-card/plan-card-description"
 import { PlanCardParticipants } from "@/components/plan-card/plan-card-participants"
-import { PlanCardSimpleActions } from "./plan-card-simple-actions"
+import { PlanCardActions } from "../plan-card/plan-card-actions"
 import { Separator } from "@/components/ui/separator"
-import { MapPin, Calendar, Clock, Users, User } from "lucide-react"
+import { MapPin, Calendar, Users, User } from "lucide-react"
 import type { ParticipantData } from "@/components/plan-card/plan-card-participants"
 
 export interface PlanDetailData {
@@ -100,7 +100,7 @@ export function PlanDetailPanel({
               }`} 
             />
           </Button>
-          <PlanCardSimpleActions
+          <PlanCardActions
             isJoined={plan.isJoined || false}
             isLiked={plan.isLiked || false}
             isOwner={isOwner}
@@ -134,7 +134,7 @@ export function PlanDetailPanel({
 
         <div className="p-6 space-y-6">
           {/* Header Info */}
-          <PlanCardSimpleHeader
+          <PlanCardHeader
             title={plan.title}
             creatorName={plan.creatorName}
             location={plan.location}
@@ -154,7 +154,7 @@ export function PlanDetailPanel({
           {/* Tags */}
           <div className="space-y-2">
             <h3 className="text-sm font-semibold">Tags</h3>
-            <PlanCardSimpleDescription
+            <PlanCardDescription
               description=""
               tags={plan.tags}
             />

@@ -34,7 +34,7 @@ const customCharacters: Character[] = [
   },
 ];
 
-export default function MessageDockDemo() {
+export function MessageDockDemo() {
   const handleMessageSend = (message: string, character: Character, index: number) => {
     console.log("Message sent:", { message, character: character.name, index });
   };

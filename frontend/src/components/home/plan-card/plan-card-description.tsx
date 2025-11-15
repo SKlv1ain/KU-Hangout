@@ -7,17 +7,17 @@ interface Tag {
   color: string
 }
 
-interface PlanCardSimpleDescriptionProps {
+interface PlanCardDescriptionProps {
   description: string
   tags: Tag[]
   className?: string
 }
 
-export function PlanCardSimpleDescription({
+export function PlanCardDescription({
   description,
   tags,
   className = ""
-}: PlanCardSimpleDescriptionProps) {
+}: PlanCardDescriptionProps) {
   return (
     <div className={className}>
       <p className="text-muted-foreground text-sm line-clamp-2">
