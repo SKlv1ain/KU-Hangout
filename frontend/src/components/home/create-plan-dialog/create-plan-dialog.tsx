@@ -1,7 +1,7 @@
 "use client"
 
 import { useState } from "react"
-import { X } from "lucide-react"
+import { X, Clock } from "lucide-react"
 import {
   Dialog,
   DialogContent,
@@ -111,6 +111,16 @@ export function CreatePlanDialog({
 
     if (!formData.date) {
       newErrors.date = "Date is required"
+    } else {
+      // Check if date is in the past
+      const today = new Date()
+      today.setHours(0, 0, 0, 0)
+      const selectedDate = new Date(formData.date)
+      selectedDate.setHours(0, 0, 0, 0)
+      
+      if (selectedDate < today) {
+        newErrors.date = "Date cannot be in the past"
+      }
     }
 
     if (!formData.time.trim()) {
@@ -257,54 +267,66 @@ export function CreatePlanDialog({
               required
             />
 
-            {/* Date & Time */}
+            {/* Date */}
+            <div className="space-y-2">
+              <Label>
+                Date <span className="text-destructive">*</span>
+              </Label>
+              <DatePicker
+                date={formData.date}
+                onDateChange={(date) => handleInputChange("date", date)}
+                placeholder="Tomorrow or next week"
+                error={errors.date}
+              />
+            </div>
+
+            {/* Time & Max Participants */}
             <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label>
-                  Date <span className="text-destructive">*</span>
-                </Label>
-                <DatePicker
-                  date={formData.date}
-                  onDateChange={(date) => handleInputChange("date", date)}
-                  placeholder="Pick a date"
-                />
-                {errors.date && (
-                  <p className="text-xs text-destructive">{errors.date}</p>
-                )}
-              </div>
               <div className="space-y-2">
                 <Label htmlFor="time">
                   Time <span className="text-destructive">*</span>
                 </Label>
-                <Input
-                  id="time"
-                  type="time"
-                  value={formData.time}
-                  onChange={(e) => handleInputChange("time", e.target.value)}
-                  className={cn(errors.time && "border-destructive")}
-                />
+                <div className="relative flex gap-2">
+                  <Input
+                    id="time"
+                    type="time"
+                    value={formData.time}
+                    onChange={(e) => handleInputChange("time", e.target.value)}
+                    className={cn("bg-background pr-10", errors.time && "border-destructive")}
+                  />
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    className="absolute top-1/2 right-2 size-6 -translate-y-1/2"
+                    onClick={() => {
+                      const timeInput = document.getElementById("time") as HTMLInputElement
+                      timeInput?.showPicker?.()
+                    }}
+                  >
+                    <Clock className="size-3.5" />
+                    <span className="sr-only">Select time</span>
+                  </Button>
+                </div>
                 {errors.time && (
                   <p className="text-xs text-destructive">{errors.time}</p>
                 )}
               </div>
-            </div>
-
-            {/* Max Participants */}
-            <div className="space-y-2">
-              <Label htmlFor="maxParticipants">
-                Max Participants <span className="text-destructive">*</span>
-              </Label>
-              <Input
-                id="maxParticipants"
-                type="number"
-                min="1"
-                value={formData.maxParticipants}
-                onChange={(e) => handleInputChange("maxParticipants", parseInt(e.target.value) || 1)}
-                className={cn(errors.maxParticipants && "border-destructive")}
-              />
-              {errors.maxParticipants && (
-                <p className="text-xs text-destructive">{errors.maxParticipants}</p>
-              )}
+              <div className="space-y-2">
+                <Label htmlFor="maxParticipants">
+                  Max Participants <span className="text-destructive">*</span>
+                </Label>
+                <Input
+                  id="maxParticipants"
+                  type="number"
+                  min="1"
+                  value={formData.maxParticipants}
+                  onChange={(e) => handleInputChange("maxParticipants", parseInt(e.target.value) || 1)}
+                  className={cn(errors.maxParticipants && "border-destructive")}
+                />
+                {errors.maxParticipants && (
+                  <p className="text-xs text-destructive">{errors.maxParticipants}</p>
+                )}
+              </div>
             </div>
 
             {/* Tags */}

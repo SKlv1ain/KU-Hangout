@@ -182,4 +182,18 @@ button:focus-visible {
   body {
     @apply bg-background text-foreground;
   }
+  
+  /* Hide native time picker icon since we're using custom Clock icon button */
+  input[type="time"]::-webkit-calendar-picker-indicator {
+    display: none !important;
+  }
+  
+  /* For Firefox */
+  input[type="time"] {
+    color-scheme: light;
+  }
+  
+  .dark input[type="time"] {
+    color-scheme: dark;
+  }
 }

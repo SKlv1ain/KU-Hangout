@@ -45,12 +45,46 @@ export function usePlanCreation(
         : data.location
       formData.append('location', location)
       
-      // Add lat/lng if available (backend now supports up to 8 decimal places)
+      // Add lat/lng if available (backend: max_digits=11, decimal_places=8)
+      // Need to ensure total digits (including decimal point) <= 11
+      // Format: round to 8 decimal places and ensure total digits <= 11
       if (data.lat !== undefined && data.lat !== null) {
-        formData.append('lat', data.lat.toString())
+        // Round to 8 decimal places
+        const latRounded = Math.round(data.lat * 100000000) / 100000000
+        // Convert to string and check total digits (excluding decimal point)
+        const latStr = latRounded.toString()
+        const latDigits = latStr.replace(/[.-]/g, '').length
+        if (latDigits <= 11) {
+          formData.append('lat', latRounded.toString())
+        } else {
+          // If still too many digits, truncate to fit max_digits=11
+          // Keep integer part and adjust decimal places
+          const latParts = latStr.split('.')
+          const intPart = latParts[0]
+          const decPart = latParts[1] || ''
+          const maxDecPlaces = Math.max(0, 11 - intPart.length)
+          const truncatedLat = parseFloat(`${intPart}.${decPart.substring(0, maxDecPlaces)}`)
+          formData.append('lat', truncatedLat.toString())
+        }
       }
       if (data.lng !== undefined && data.lng !== null) {
-        formData.append('lng', data.lng.toString())
+        // Round to 8 decimal places
+        const lngRounded = Math.round(data.lng * 100000000) / 100000000
+        // Convert to string and check total digits (excluding decimal point)
+        const lngStr = lngRounded.toString()
+        const lngDigits = lngStr.replace(/[.-]/g, '').length
+        if (lngDigits <= 11) {
+          formData.append('lng', lngRounded.toString())
+        } else {
+          // If still too many digits, truncate to fit max_digits=11
+          // Keep integer part and adjust decimal places
+          const lngParts = lngStr.split('.')
+          const intPart = lngParts[0]
+          const decPart = lngParts[1] || ''
+          const maxDecPlaces = Math.max(0, 11 - intPart.length)
+          const truncatedLng = parseFloat(`${intPart}.${decPart.substring(0, maxDecPlaces)}`)
+          formData.append('lng', truncatedLng.toString())
+        }
       }
       
       formData.append('event_time', eventDateTime.toISOString())

@@ -3,6 +3,59 @@ import type { PlanDetailData } from "@/components/home/plan-detail-panel"
 import type { ParticipantData } from "@/components/plan-card/plan-card-participants"
 import { SAMPLE_IMAGES } from "./constants"
 
+const cleanTagLabel = (label: string): string =>
+  label.replace(/[\[\]"']/g, "").trim()
+
+const expandTagString = (value: string): string[] => {
+  const trimmed = value.trim()
+  if (!trimmed) return []
+
+  if (trimmed.startsWith("[") && trimmed.endsWith("]")) {
+    try {
+      const parsed = JSON.parse(trimmed)
+      if (Array.isArray(parsed)) {
+        return parsed.map((item) =>
+          typeof item === "string" ? cleanTagLabel(item) : cleanTagLabel(String(item))
+        )
+      }
+    } catch {
+      // Ignore parse error and fall through to manual splitting
+    }
+  }
+
+  if (trimmed.includes(",")) {
+    return trimmed
+      .split(",")
+      .map((segment) => cleanTagLabel(segment))
+      .filter(Boolean)
+  }
+
+  return [cleanTagLabel(trimmed)]
+}
+
+const normalizeTagInput = (input: unknown): string[] => {
+  if (!input) return []
+
+  if (Array.isArray(input)) {
+    return input.flatMap((item) => normalizeTagInput(item))
+  }
+
+  if (typeof input === "string") {
+    return expandTagString(input)
+  }
+
+  if (typeof input === "object") {
+    if ("name" in (input as Record<string, unknown>)) {
+      return normalizeTagInput((input as Record<string, unknown>).name)
+    }
+    if ("label" in (input as Record<string, unknown>)) {
+      return normalizeTagInput((input as Record<string, unknown>).label)
+    }
+  }
+
+  return []
+}
+
 // Helper function to generate tag colors
 export const getTagColor = (tagLabel: string): string => {
   const tagColors: Record<string, string> = {
@@ -53,10 +106,25 @@ export const convertPlanToDetailData = (
   // Debug logging removed to reduce console noise
 
   // Convert tags
-  const tags = (plan.tags_display || []).map(tag => ({
-    label: tag.name,
-    color: getTagColor(tag.name)
-  }))
+  // Handle both tags_display (array of objects) and tags (array/string from legacy plans)
+  let tags: Array<{ label: string; color: string }> = []
+
+  if (plan.tags_display && plan.tags_display.length > 0) {
+    const tagNames = plan.tags_display.flatMap((tag) => normalizeTagInput(tag.name))
+    tags = tagNames.map((tagName) => ({
+      label: tagName,
+      color: getTagColor(tagName),
+    }))
+  } else if (plan.tags && plan.tags.length > 0) {
+    const tagNames = normalizeTagInput(plan.tags)
+      .map((tagName) => tagName.trim())
+      .filter(Boolean)
+
+    tags = tagNames.map((tagName) => ({
+      label: tagName,
+      color: getTagColor(tagName),
+    }))
+  }
 
   // Convert members to ParticipantData format
   const participants: ParticipantData[] = (plan.members || []).map(member => ({
@@ -71,6 +139,15 @@ export const convertPlanToDetailData = (
   const leaderMember = plan.members?.find(m => m.role === 'LEADER')
   const creatorUsername = leaderMember?.username || plan.creator_username
 
+  const normalizeCoordinate = (value?: number | string | null): number | null => {
+    if (value === undefined || value === null) return null
+    if (typeof value === "number") {
+      return Number.isFinite(value) ? value : null
+    }
+    const parsed = parseFloat(value)
+    return Number.isFinite(parsed) ? parsed : null
+  }
+
   return {
     id: plan.id,
     title: plan.title,
@@ -78,8 +155,8 @@ export const convertPlanToDetailData = (
     creatorUsername: creatorUsername,
     creatorId: plan.leader_id,
     location: plan.location,
-    lat: plan.lat ?? null,
-    lng: plan.lng ?? null,
+    lat: normalizeCoordinate(plan.lat),
+    lng: normalizeCoordinate(plan.lng),
     dateTime: formatDateTime(plan.event_time),
     description: plan.description,
     fullDescription: plan.description,
