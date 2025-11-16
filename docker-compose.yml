@@ -1,3 +1,5 @@
+version: "3.9"
+
 services:
   postgres:
     image: postgres:16
@@ -9,7 +11,7 @@ services:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
       POSTGRES_DB: ${POSTGRES_DB}
     ports:
-      - "5433:5432"     
+      - "5432:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
     healthcheck:
@@ -31,6 +33,50 @@ services:
         condition: service_healthy
     ports:
       - "8080:80"
+
+  redis:
+    image: redis:7
+    container_name: kuhangout_redis
+    restart: always
+    ports:
+      - "6379:6379"
+
+  backend:
+    build: .
+    container_name: kuhangout_backend
+    restart: always
+    command: >
+      sh -c "python manage.py migrate &&
+            python manage.py collectstatic --noinput &&
+            daphne -b 0.0.0.0 -p 8000 backend.asgi:application"
+    working_dir: /code/backend
+    volumes:
+      - .:/code
+    env_file: .env
+    environment:
+      # Map DJANGO_* from .env to what settings.py expects
+      SECRET_KEY: ${DJANGO_SECRET_KEY}
+      DEBUG: ${DJANGO_DEBUG}
+      ALLOWED_HOSTS: ${DJANGO_ALLOWED_HOSTS}
+
+      # Database (override host for Docker)
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: 5432
+
+      # Channels + Redis
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    ports:
+      - "8000:8000"
 
 volumes:
   pgdata:

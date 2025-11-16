@@ -61,7 +61,7 @@ INSTALLED_APPS = [
     'tags',
     'participants',
     'chat',
-    'notifications',
+    'notifications.apps.NotificationsConfig',
     
     # Channels for chat
     "channels",
