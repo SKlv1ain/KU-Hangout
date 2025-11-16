@@ -78,6 +78,8 @@ export const convertPlanToDetailData = (
     creatorUsername: creatorUsername,
     creatorId: plan.leader_id,
     location: plan.location,
+    lat: plan.lat ?? null,
+    lng: plan.lng ?? null,
     dateTime: formatDateTime(plan.event_time),
     description: plan.description,
     fullDescription: plan.description,

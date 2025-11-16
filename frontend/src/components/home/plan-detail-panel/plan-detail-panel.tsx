@@ -1,6 +1,5 @@
 "use client"
 
-import { useState, useEffect } from "react"
 import { X, Bookmark } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { ImageCarousel } from "@/components/plan-card/image-carousel"
@@ -10,6 +9,7 @@ import { PlanCardParticipants } from "@/components/plan-card/plan-card-participa
 import { PlanCardActions } from "../plan-card/plan-card-actions"
 import { Separator } from "@/components/ui/separator"
 import { MapPin, Calendar, Users } from "lucide-react"
+import { LocationMap } from "@/components/maps/LocationMap"
 import type { ParticipantData } from "@/components/plan-card/plan-card-participants"
 
 export interface PlanDetailData {
@@ -19,6 +19,8 @@ export interface PlanDetailData {
   creatorUsername?: string
   creatorId?: number
   location: string
+  lat?: number | null
+  lng?: number | null
   dateTime: string
   description: string
   tags: Array<{ label: string; color: string }>
@@ -78,6 +80,9 @@ export function PlanDetailPanel({
   }
 
   if (!isOpen || !plan) return null
+
+  // Check if we have location data for map
+  const hasLocation = (plan.lat && plan.lng) || plan.location
 
   return (
     <div 
@@ -172,11 +177,23 @@ export function PlanDetailPanel({
             <div className="space-y-3">
               <div className="flex items-start gap-3">
                 <MapPin className="h-4 w-4 text-muted-foreground mt-0.5" />
-                <div>
+                <div className="flex-1">
                   <p className="text-xs text-muted-foreground">Location</p>
                   <p className="text-sm font-medium">{plan.location}</p>
                 </div>
               </div>
+              
+              {/* Map Preview - Clickable */}
+              {hasLocation && (
+                <div className="mt-3">
+                  <LocationMap
+                    location={plan.location}
+                    lat={plan.lat ?? undefined}
+                    lng={plan.lng ?? undefined}
+                    height="200px"
+                  />
+                </div>
+              )}
               
               <div className="flex items-start gap-3">
                 <Calendar className="h-4 w-4 text-muted-foreground mt-0.5" />

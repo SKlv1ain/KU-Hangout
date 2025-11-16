@@ -39,7 +39,20 @@ export function usePlanCreation(
       // Add plan data
       formData.append('title', data.title)
       formData.append('description', data.description)
-      formData.append('location', data.location)
+      // Truncate location to 100 characters (backend max_length limit)
+      const location = data.location.length > 100 
+        ? data.location.substring(0, 100)
+        : data.location
+      formData.append('location', location)
+      
+      // Add lat/lng if available (backend now supports up to 8 decimal places)
+      if (data.lat !== undefined && data.lat !== null) {
+        formData.append('lat', data.lat.toString())
+      }
+      if (data.lng !== undefined && data.lng !== null) {
+        formData.append('lng', data.lng.toString())
+      }
+      
       formData.append('event_time', eventDateTime.toISOString())
       formData.append('max_people', data.maxParticipants.toString())
 
@@ -95,11 +108,41 @@ export function usePlanCreation(
 
     } catch (error) {
       console.error('Error creating plan:', error)
-      // Show error message to user
-      const errorMessage = error instanceof Error
-        ? error.message
-        : 'Failed to create plan. Please try again.'
+      
+      // Try to extract detailed error message from response
+      let errorMessage = 'Failed to create plan. Please try again.'
+      
+      if (error instanceof Error) {
+        // Check if error has response data (from api.ts)
+        const errorWithResponse = error as any
+        if (errorWithResponse.response?.data) {
+          const errorData = errorWithResponse.response.data
+          
+          // Format validation errors from Django REST Framework
+          if (typeof errorData === 'object') {
+            const errorMessages: string[] = []
+            for (const [field, messages] of Object.entries(errorData)) {
+              if (Array.isArray(messages)) {
+                errorMessages.push(`${field}: ${messages.join(', ')}`)
+              } else {
+                errorMessages.push(`${field}: ${String(messages)}`)
+              }
+            }
+            if (errorMessages.length > 0) {
+              errorMessage = errorMessages.join('\n')
+            } else {
+              errorMessage = error.message
+            }
+          } else {
+            errorMessage = String(errorData) || error.message
+          }
+        } else {
+          errorMessage = error.message
+        }
+      }
+      
       alert(errorMessage)
+      console.error('Detailed error:', error)
 
       // Don't close dialog on error so user can retry
       // setIsCreateDialogOpen(false) - commented out to keep dialog open

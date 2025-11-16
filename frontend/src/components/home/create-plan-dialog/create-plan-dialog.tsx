@@ -16,12 +16,15 @@ import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { ImageUploadGrid } from "../image-upload-grid"
 import { DatePicker } from "@/components/ui/shadcn-io/navbar-15/DatePicker"
+import { GooglePlacesAutocomplete } from "../google-places-autocomplete"
 import { cn } from "@/lib/utils"
 
 export interface CreatePlanFormData {
   title: string
   description: string
   location: string
+  lat?: number
+  lng?: number
   date: Date | undefined
   time: string
   tags: string[]
@@ -45,6 +48,8 @@ export function CreatePlanDialog({
     title: "",
     description: "",
     location: "",
+    lat: undefined,
+    lng: undefined,
     date: undefined,
     time: "",
     tags: [],
@@ -100,6 +105,8 @@ export function CreatePlanDialog({
 
     if (!formData.location.trim()) {
       newErrors.location = "Location is required"
+    } else if (formData.location.length > 100) {
+      newErrors.location = "Location must be no more than 100 characters"
     }
 
     if (!formData.date) {
@@ -130,6 +137,8 @@ export function CreatePlanDialog({
         title: "",
         description: "",
         location: "",
+        lat: undefined,
+        lng: undefined,
         date: undefined,
         time: "",
         tags: [],
@@ -149,6 +158,8 @@ export function CreatePlanDialog({
       title: "",
       description: "",
       location: "",
+      lat: undefined,
+      lng: undefined,
       date: undefined,
       time: "",
       tags: [],
@@ -229,21 +240,22 @@ export function CreatePlanDialog({
             </div>
 
             {/* Location */}
-            <div className="space-y-2">
-              <Label htmlFor="location">
-                Location <span className="text-destructive">*</span>
-              </Label>
-              <Input
-                id="location"
-                value={formData.location}
-                onChange={(e) => handleInputChange("location", e.target.value)}
-                placeholder="Enter location"
-                className={cn(errors.location && "border-destructive")}
-              />
-              {errors.location && (
-                <p className="text-xs text-destructive">{errors.location}</p>
-              )}
-            </div>
+            <GooglePlacesAutocomplete
+              id="location"
+              value={formData.location}
+              onChange={(value) => handleInputChange("location", value)}
+              onPlaceSelect={(place) => {
+                // Extract lat/lng from place geometry
+                if (place.geometry?.location) {
+                  handleInputChange("lat", place.geometry.location.lat())
+                  handleInputChange("lng", place.geometry.location.lng())
+                }
+              }}
+              placeholder="Enter location"
+              error={errors.location}
+              label="Location"
+              required
+            />
 
             {/* Date & Time */}
             <div className="grid grid-cols-2 gap-4">
