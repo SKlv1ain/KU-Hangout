@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import Navbar from "@/components/navbar"
 import { MessageDockDemo } from "@/components/home/message-dock"
 import { FilterDock } from "@/components/home/filter-dock"
@@ -17,6 +17,9 @@ export default function HomePage() {
 
   // Store plan leader_id mapping for owner check
   const [planOwners, setPlanOwners] = useState<Record<string | number, number>>({})
+  
+  // Ref for scroll container
+  const scrollContainerRef = useRef<HTMLDivElement>(null)
 
   // Custom hooks
   const { filterParams, handleFilterChange, handleClearFilters, activeTab, setActiveTab } = usePlanFilters()
@@ -69,24 +72,49 @@ export default function HomePage() {
     setSelectedPlan(null)
   }
 
-  // Calculate saved plans count (use isSaved from plan data or plansState)
+  // Calculate saved plans count (prioritize plansState for immediate updates)
   const savedCount = plans.filter(plan => {
     const planId = plan.id || ''
-    // Check both plan.isSaved (from API) and plansState (from local state)
-    return plan.isSaved === true || plansState[planId]?.isSaved === true
+    // Prioritize plansState (optimistic update) over plan.isSaved (from API)
+    // This ensures badge updates immediately when unsaving
+    if (plansState[planId]?.isSaved !== undefined) {
+      return plansState[planId]?.isSaved === true
+    }
+    // Fallback to plan.isSaved if plansState doesn't have this plan yet
+    return plan.isSaved === true
+  }).length
+
+  // Calculate my plans count (plans created by current user)
+  const myPlansCount = plans.filter(plan => {
+    const planId = plan.id || ''
+    return user && planOwners[planId] === user.id
   }).length
 
   // Filter plans based on active tab and other filters
   const filteredPlans = plans.filter(plan => {
-    // First filter by saved status if on saved tab
+    const planId = plan.id || ''
+    
+    // Filter by tab
     if (activeTab === 'saved') {
-      const planId = plan.id || ''
-      // Check both plan.isSaved (from API) and plansState (from local state)
-      const isSaved = plan.isSaved === true || plansState[planId]?.isSaved === true
+      // Prioritize plansState (optimistic update) over plan.isSaved (from API)
+      // This ensures immediate filtering when unsaving
+      let isSaved: boolean
+      if (plansState[planId]?.isSaved !== undefined) {
+        isSaved = plansState[planId]?.isSaved === true
+      } else {
+        isSaved = plan.isSaved === true
+      }
       if (!isSaved) {
         return false
       }
+    } else if (activeTab === 'my-plans') {
+      // Show only plans created by current user
+      if (!user || planOwners[planId] !== user.id) {
+        return false
+      }
     }
+    // For 'feed' tab, show all plans (no additional filtering needed)
+    
     // Other filters (date, category, status) are handled by backend via filterParams
     // So we just return true here as filtering is done server-side
     return true
@@ -119,6 +147,16 @@ export default function HomePage() {
     }
   }, [plans])
 
+  // Scroll to top when tab changes
+  useEffect(() => {
+    if (scrollContainerRef.current) {
+      scrollContainerRef.current.scrollTo({
+        top: 0,
+        behavior: 'smooth'
+      })
+    }
+  }, [activeTab])
+
   return (
     <SidebarLayout contentClassName="h-screen bg-background overflow-hidden">
       <div className="flex flex-col h-screen overflow-hidden">
@@ -126,6 +164,7 @@ export default function HomePage() {
         <div className="flex flex-1 overflow-hidden" style={{ height: 'calc(100vh - 4rem)', maxHeight: 'calc(100vh - 4rem)' }}>
           {/* Main Content - 60% when detail is open, 100% when closed */}
           <div 
+            ref={scrollContainerRef}
             className={`${isDetailOpen ? 'flex-[3]' : 'flex-1'} transition-all duration-300`}
             style={{ height: '100%', maxHeight: '100%', overflowY: 'auto', overflowX: 'hidden' }}
           >
@@ -143,6 +182,7 @@ export default function HomePage() {
                 createButtonText="Create Plan"
                 activeTab={activeTab}
                 savedCount={savedCount}
+                myPlansCount={myPlansCount}
                 onDateChange={(date: Date | undefined) => {
                   // TODO: Implement date filter
                   console.log('Date changed:', date)

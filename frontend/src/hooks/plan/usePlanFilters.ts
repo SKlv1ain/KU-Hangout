@@ -8,7 +8,7 @@ type FilterParams = {
 
 export function usePlanFilters() {
   const [filterParams, setFilterParams] = useState<FilterParams>({})
-  const [activeTab, setActiveTab] = useState<'feed' | 'saved'>('feed')
+  const [activeTab, setActiveTab] = useState<'feed' | 'saved' | 'my-plans'>('feed')
 
   const handleFilterChange = useCallback((
     groupId: string,

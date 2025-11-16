@@ -1,7 +1,7 @@
 "use client"
 
 import { useState } from "react"
-import { BookmarkIcon, FilterIcon, X, Plus, Home } from "lucide-react"
+import { BookmarkIcon, FilterIcon, X, Plus, Home, Sparkles } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import {
   DropdownMenu,
@@ -32,12 +32,13 @@ export interface FilterDockProps {
   filterGroups?: FilterGroup[]
   selectedDate?: Date
   createButtonText?: string
-  activeTab?: 'feed' | 'saved'
+  activeTab?: 'feed' | 'saved' | 'my-plans'
   savedCount?: number
+  myPlansCount?: number
   onDateChange?: (date: Date | undefined) => void
   onFilterChange?: (groupId: string, optionId: string, checked: boolean) => void
   onClearFilters?: () => void
-  onTabChange?: (tab: 'feed' | 'saved') => void
+  onTabChange?: (tab: 'feed' | 'saved' | 'my-plans') => void
   onCreateClick?: () => void
   className?: string
 }
@@ -48,6 +49,7 @@ export function FilterDock({
   createButtonText = "Create Plan",
   activeTab = 'feed',
   savedCount = 0,
+  myPlansCount = 0,
   onDateChange,
   onFilterChange,
   onClearFilters,
@@ -180,7 +182,7 @@ export function FilterDock({
 
           {/* Right side - Tabs, Date picker, and Create button */}
           <div className="flex items-center gap-2 flex-shrink-0">
-            <Tabs value={activeTab} onValueChange={(value) => onTabChange?.(value as 'feed' | 'saved')}>
+            <Tabs value={activeTab} onValueChange={(value) => onTabChange?.(value as 'feed' | 'saved' | 'my-plans')}>
               <TabsList className="h-9">
                 <TabsTrigger value="feed" className="gap-1.5">
                   <Home className="h-4 w-4" />
@@ -195,6 +197,18 @@ export function FilterDock({
                       className="absolute -top-1.5 -right-1.5 h-5 w-5 rounded-full p-0 flex items-center justify-center text-xs font-semibold"
                     >
                       {savedCount > 99 ? '99+' : savedCount}
+                    </Badge>
+                  )}
+                </TabsTrigger>
+                <TabsTrigger value="my-plans" className="gap-1.5 relative">
+                  <Sparkles className="h-4 w-4" />
+                  <span>My Plans</span>
+                  {myPlansCount > 0 && (
+                    <Badge 
+                      variant="secondary" 
+                      className="absolute -top-1.5 -right-1.5 h-5 w-5 rounded-full p-0 flex items-center justify-center text-xs font-semibold"
+                    >
+                      {myPlansCount > 99 ? '99+' : myPlansCount}
                     </Badge>
                   )}
                 </TabsTrigger>
