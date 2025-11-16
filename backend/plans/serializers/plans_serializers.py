@@ -19,6 +19,7 @@ class PlansSerializer(serializers.ModelSerializer):
     joined = serializers.SerializerMethodField()  # Whether current user has joined this plan
     role = serializers.SerializerMethodField()  # Current user's role in this plan (LEADER/MEMBER/None)
     images = serializers.SerializerMethodField()  # Read-only field for image URLs
+    is_saved = serializers.SerializerMethodField()  # Whether current user has saved this plan
 
     class Meta:
         model = Plans
@@ -43,6 +44,7 @@ class PlansSerializer(serializers.ModelSerializer):
             'joined',             # read-only
             'role',               # read-only
             'images',             # read-only
+            'is_saved',           # read-only
         ]
         read_only_fields = (
             'id',
@@ -56,6 +58,7 @@ class PlansSerializer(serializers.ModelSerializer):
             'members',
             'joined',
             'role',
+            'is_saved',
         )
 
     def get_tags_display(self, obj):
@@ -148,6 +151,15 @@ class PlansSerializer(serializers.ModelSerializer):
     def get_images(self, obj):
         """Return list of image URLs for this plan."""
         return [img.image_url for img in obj.images.all()]
+
+    def get_is_saved(self, obj):
+        """Check if current user has saved this plan."""
+        request = self.context.get("request")
+        if not request or not request.user or not request.user.is_authenticated:
+            return False
+        
+        from plans.models import SavedPlan  # pylint: disable=import-outside-toplevel
+        return SavedPlan.objects.filter(user=request.user, plan=obj).exists()  # pylint: disable=no-member
 
     def create(self, validated_data):
         # pop tags BEFORE creating

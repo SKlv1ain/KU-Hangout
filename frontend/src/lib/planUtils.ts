@@ -88,7 +88,7 @@ export const convertPlanToDetailData = (
     images: plan.images && plan.images.length > 0 ? plan.images : SAMPLE_IMAGES,
     isJoined: plan.joined ?? false,
     isLiked: false,
-    isSaved: false,
+    isSaved: plan.is_saved ?? false,
     requirements: []
   }
 }

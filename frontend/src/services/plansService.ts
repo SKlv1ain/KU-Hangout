@@ -30,6 +30,7 @@ export interface Plan {
   role?: 'LEADER' | 'MEMBER' | null
   images?: string[] // Array of image URLs from Cloudinary
   members?: PlanMember[] // Array of plan members/participants
+  is_saved?: boolean // Whether current user has saved this plan
 }
 
 export interface CreatePlanPayload {

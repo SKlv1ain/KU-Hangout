@@ -33,3 +33,19 @@ class PlanImage(models.Model):
 
     def __str__(self):
         return f"Image for {self.plan.title} (uploaded at {self.uploaded_at})"
+
+
+# Model for saved plans (user bookmarks)
+class SavedPlan(models.Model):
+    user = models.ForeignKey(Users, related_name='saved_plans', on_delete=models.CASCADE)
+    plan = models.ForeignKey(Plans, related_name='saved_by_users', on_delete=models.CASCADE)
+    saved_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        unique_together = ('user', 'plan')
+        ordering = ['-saved_at']
+        verbose_name = 'Saved Plan'
+        verbose_name_plural = 'Saved Plans'
+
+    def __str__(self):
+        return f"{self.user.username} saved {self.plan.title}"

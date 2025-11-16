@@ -14,7 +14,7 @@ export default function HomePage() {
   const { user } = useAuth()
   const [selectedPlan, setSelectedPlan] = useState<PlanDetailData | null>(null)
   const [isDetailOpen, setIsDetailOpen] = useState(false)
-  
+
   // Store plan leader_id mapping for owner check
   const [planOwners, setPlanOwners] = useState<Record<string | number, number>>({})
 
@@ -43,12 +43,12 @@ export default function HomePage() {
     if (selectedPlan) {
       const currentState = plansState[selectedPlan.id || '']
       if (currentState) {
-        setSelectedPlan(prev => prev ? {
-          ...prev,
+      setSelectedPlan(prev => prev ? {
+        ...prev,
           ...currentState
-        } : null)
-      }
+      } : null)
     }
+  }
   }, [plansState, selectedPlan?.id])
 
   const handlePlanClick = (planData: PlanDetailData) => {
@@ -69,10 +69,11 @@ export default function HomePage() {
     setSelectedPlan(null)
   }
 
-  // Calculate saved plans count (only count plans that exist in current plans array)
+  // Calculate saved plans count (use isSaved from plan data or plansState)
   const savedCount = plans.filter(plan => {
     const planId = plan.id || ''
-    return plansState[planId]?.isSaved === true
+    // Check both plan.isSaved (from API) and plansState (from local state)
+    return plan.isSaved === true || plansState[planId]?.isSaved === true
   }).length
 
   // Filter plans based on active tab and other filters
@@ -80,7 +81,9 @@ export default function HomePage() {
     // First filter by saved status if on saved tab
     if (activeTab === 'saved') {
       const planId = plan.id || ''
-      if (!plansState[planId]?.isSaved) {
+      // Check both plan.isSaved (from API) and plansState (from local state)
+      const isSaved = plan.isSaved === true || plansState[planId]?.isSaved === true
+      if (!isSaved) {
         return false
       }
     }
@@ -163,10 +166,10 @@ export default function HomePage() {
                     onLike={handleLike}
                     onSave={handleSave}
                     onChat={handleChat}
-                  />
-                  <MessageDockDemo />
-                </div>
-              </div>
+                        />
+        <MessageDockDemo />
+      </div>
+    </div>
             </div>
           </div>
 

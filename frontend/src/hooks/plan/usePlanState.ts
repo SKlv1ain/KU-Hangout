@@ -1,4 +1,6 @@
 import { useState, useEffect } from "react"
+import { useAuth } from "@/context/AuthContext"
+import savedPlansService from "@/services/savedPlansService"
 
 type PlanState = {
   isJoined: boolean
@@ -9,10 +11,12 @@ type PlanState = {
 type PlansState = Record<string | number, PlanState>
 
 export function usePlanState() {
+  const { user } = useAuth()
   const [plansState, setPlansState] = useState<PlansState>(() => {
-    // Load from localStorage on mount
+    // Load from localStorage on mount (user-specific)
+    const storageKey = user ? `ku-hangout-plans-state-${user.id}` : 'ku-hangout-plans-state'
     try {
-      const stored = localStorage.getItem('ku-hangout-plans-state')
+      const stored = localStorage.getItem(storageKey)
       if (stored) {
         return JSON.parse(stored)
       }
@@ -22,14 +26,73 @@ export function usePlanState() {
     return {}
   })
 
-  // Save to localStorage whenever plansState changes
+  // Load saved plans from API on mount (if user is authenticated)
   useEffect(() => {
+    if (!user) {
+      // Clear saved state if user logs out
+      setPlansState(prev => {
+        const newState = { ...prev }
+        Object.keys(newState).forEach(key => {
+          newState[key] = { ...newState[key], isSaved: false }
+        })
+        return newState
+      })
+      return
+    }
+
+    // Load saved plan IDs from API
+    const loadSavedPlans = async () => {
+      try {
+        const savedPlanIds = await savedPlansService.getSavedPlanIds()
+        setPlansState(prev => {
+          const newState = { ...prev }
+          // Mark all saved plans
+          savedPlanIds.forEach(planId => {
+            newState[planId] = {
+              ...newState[planId],
+              isJoined: newState[planId]?.isJoined || false,
+              isLiked: newState[planId]?.isLiked || false,
+              isSaved: true
+            }
+          })
+          // Unmark plans that are no longer saved
+          Object.keys(newState).forEach(key => {
+            const planId = typeof key === 'string' ? parseInt(key, 10) : key
+            if (!isNaN(planId) && !savedPlanIds.includes(planId)) {
+              newState[key] = {
+                ...newState[key],
+                isSaved: false
+              }
+            }
+          })
+          return newState
+        })
+      } catch (error) {
+        console.error('Error loading saved plans from API:', error)
+      }
+    }
+
+    loadSavedPlans()
+  }, [user])
+
+  // Save to localStorage whenever plansState changes (user-specific)
+  useEffect(() => {
+    const storageKey = user ? `ku-hangout-plans-state-${user.id}` : 'ku-hangout-plans-state'
     try {
-      localStorage.setItem('ku-hangout-plans-state', JSON.stringify(plansState))
+      // Only save isJoined and isLiked to localStorage, not isSaved (it comes from API)
+      const stateToSave: PlansState = {}
+      Object.keys(plansState).forEach(key => {
+        stateToSave[key] = {
+          isJoined: plansState[key].isJoined,
+          isLiked: plansState[key].isLiked,
+          isSaved: false // Don't persist isSaved in localStorage
+        }
+      })
+      localStorage.setItem(storageKey, JSON.stringify(stateToSave))
     } catch (error) {
       console.error('Error saving plans state to localStorage:', error)
     }
-  }, [plansState])
+  }, [plansState, user])
 
   const updatePlanState = (
     planId: string | number | undefined,

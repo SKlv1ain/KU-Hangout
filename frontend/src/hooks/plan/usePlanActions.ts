@@ -1,6 +1,7 @@
 import { useCallback } from "react"
 import { useNavigate } from "react-router-dom"
 import plansService from "@/services/plansService"
+import savedPlansService from "@/services/savedPlansService"
 import type { PlanDetailData } from "@/components/home/plan-detail-panel"
 import type { ParticipantData } from "@/components/plan-card/plan-card-participants"
 
@@ -164,12 +165,35 @@ export function usePlanActions(
     console.log('Plan liked:', planId, newLiked)
   }, [plansState, updatePlanState])
 
-  const handleSave = useCallback((planId: string | number | undefined) => {
+  const handleSave = useCallback(async (planId: string | number | undefined) => {
     if (!planId) return
     const currentState = plansState[planId]
-    const newSaved = !(currentState?.isSaved ?? false)
+    const isCurrentlySaved = currentState?.isSaved ?? false
+    const numericPlanId = typeof planId === 'string' ? parseInt(planId, 10) : planId
+    
+    if (isNaN(numericPlanId)) {
+      console.error('Invalid plan ID for save:', planId)
+      return
+    }
+
+    // Optimistic update
+    const newSaved = !isCurrentlySaved
     updatePlanState(planId, { isSaved: newSaved })
-    console.log('Plan saved:', planId, newSaved)
+
+    try {
+      if (newSaved) {
+        await savedPlansService.savePlan(numericPlanId)
+      } else {
+        await savedPlansService.unsavePlan(numericPlanId)
+      }
+      // State already updated optimistically, no need to update again
+    } catch (error) {
+      // Revert on error
+      updatePlanState(planId, { isSaved: isCurrentlySaved })
+      console.error('Error saving/unsaving plan:', error)
+      const errorMessage = error instanceof Error ? error.message : 'Failed to save/unsave plan. Please try again.'
+      alert(errorMessage)
+    }
   }, [plansState, updatePlanState])
 
   const handleChat = useCallback((planId: string | number | undefined) => {
