@@ -101,3 +101,88 @@ export const convertPlansArray = (
   return backendPlans.map(plan => convertPlanToDetailData(plan, setPlanOwners))
 }
 
+// Check if a plan is saved (prioritize plansState for optimistic updates)
+export const isPlanSaved = (
+  plan: PlanDetailData,
+  plansState: Record<string | number, { isSaved?: boolean }>
+): boolean => {
+  const planId = plan.id || ''
+  // Prioritize plansState (optimistic update) over plan.isSaved (from API)
+  if (plansState[planId]?.isSaved !== undefined) {
+    return plansState[planId]?.isSaved === true
+  }
+  // Fallback to plan.isSaved if plansState doesn't have this plan yet
+  return plan.isSaved === true
+}
+
+// Calculate saved plans count
+export const calculateSavedCount = (
+  plans: PlanDetailData[],
+  plansState: Record<string | number, { isSaved?: boolean }>
+): number => {
+  return plans.filter(plan => isPlanSaved(plan, plansState)).length
+}
+
+// Calculate my plans count (plans created by current user)
+export const calculateMyPlansCount = (
+  plans: PlanDetailData[],
+  planOwners: Record<string | number, number>,
+  userId: number | undefined
+): number => {
+  if (!userId) return 0
+  return plans.filter(plan => {
+    const planId = plan.id || ''
+    return planOwners[planId] === userId
+  }).length
+}
+
+// Filter plans by active tab
+export const filterPlansByTab = (
+  plans: PlanDetailData[],
+  activeTab: 'feed' | 'saved' | 'my-plans',
+  plansState: Record<string | number, { isSaved?: boolean }>,
+  planOwners: Record<string | number, number>,
+  userId: number | undefined
+): PlanDetailData[] => {
+  return plans.filter(plan => {
+    const planId = plan.id || ''
+    
+    if (activeTab === 'saved') {
+      return isPlanSaved(plan, plansState)
+    }
+    
+    if (activeTab === 'my-plans') {
+      return userId !== undefined && planOwners[planId] === userId
+    }
+    
+    // For 'feed' tab, show all plans
+    return true
+  })
+}
+
+// Save minimal plan data to localStorage for message page
+export const savePlansToLocalStorage = (plans: PlanDetailData[]): void => {
+  try {
+    const minimalPlans = plans.map(plan => ({
+      id: plan.id,
+      title: plan.title,
+      creatorName: plan.creatorName
+    }))
+    localStorage.setItem('ku-hangout-plans', JSON.stringify(minimalPlans))
+  } catch (error) {
+    console.error('Error saving plans to localStorage:', error)
+    // Retry once after clearing old data
+    try {
+      localStorage.removeItem('ku-hangout-plans')
+      const minimalPlans = plans.map(plan => ({
+        id: plan.id,
+        title: plan.title,
+        creatorName: plan.creatorName
+      }))
+      localStorage.setItem('ku-hangout-plans', JSON.stringify(minimalPlans))
+    } catch (retryError) {
+      console.error('Error retrying save to localStorage:', retryError)
+    }
+  }
+}
+

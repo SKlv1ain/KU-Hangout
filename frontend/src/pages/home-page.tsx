@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react"
+import { useState, useEffect, useRef, useMemo } from "react"
 import Navbar from "@/components/navbar"
 import { MessageDockDemo } from "@/components/home/message-dock"
 import { FilterDock } from "@/components/home/filter-dock"
@@ -9,6 +9,12 @@ import { PlanList } from "@/components/home/plan-list"
 import { useAuth } from "@/context/AuthContext"
 import { usePlans, usePlanState, usePlanFilters, usePlanActions, usePlanCreation } from "@/hooks/plan"
 import { FILTER_GROUPS } from "@/lib/constants"
+import {
+  calculateSavedCount,
+  calculateMyPlansCount,
+  filterPlansByTab,
+  savePlansToLocalStorage
+} from "@/lib/planUtils"
 
 export default function HomePage() {
   const { user } = useAuth()
@@ -46,17 +52,17 @@ export default function HomePage() {
     if (selectedPlan) {
       const currentState = plansState[selectedPlan.id || '']
       if (currentState) {
-      setSelectedPlan(prev => prev ? {
-        ...prev,
+        setSelectedPlan(prev => prev ? {
+          ...prev,
           ...currentState
-      } : null)
+        } : null)
+      }
     }
-  }
   }, [plansState, selectedPlan?.id])
 
   const handlePlanClick = (planData: PlanDetailData) => {
-    const planId = planData.id
-    const currentState = plansState[planId || '']
+    const planId = planData.id || ''
+    const currentState = plansState[planId]
     
     setSelectedPlan({
       ...planData,
@@ -72,79 +78,46 @@ export default function HomePage() {
     setSelectedPlan(null)
   }
 
-  // Calculate saved plans count (prioritize plansState for immediate updates)
-  const savedCount = plans.filter(plan => {
-    const planId = plan.id || ''
-    // Prioritize plansState (optimistic update) over plan.isSaved (from API)
-    // This ensures badge updates immediately when unsaving
-    if (plansState[planId]?.isSaved !== undefined) {
-      return plansState[planId]?.isSaved === true
-    }
-    // Fallback to plan.isSaved if plansState doesn't have this plan yet
-    return plan.isSaved === true
-  }).length
+  // Calculate counts using utility functions
+  const savedCount = useMemo(
+    () => calculateSavedCount(plans, plansState),
+    [plans, plansState]
+  )
 
-  // Calculate my plans count (plans created by current user)
-  const myPlansCount = plans.filter(plan => {
-    const planId = plan.id || ''
-    return user && planOwners[planId] === user.id
-  }).length
+  const myPlansCount = useMemo(
+    () => calculateMyPlansCount(plans, planOwners, user?.id),
+    [plans, planOwners, user?.id]
+  )
 
-  // Filter plans based on active tab and other filters
-  const filteredPlans = plans.filter(plan => {
-    const planId = plan.id || ''
-    
-    // Filter by tab
-    if (activeTab === 'saved') {
-      // Prioritize plansState (optimistic update) over plan.isSaved (from API)
-      // This ensures immediate filtering when unsaving
-      let isSaved: boolean
-      if (plansState[planId]?.isSaved !== undefined) {
-        isSaved = plansState[planId]?.isSaved === true
-      } else {
-        isSaved = plan.isSaved === true
-      }
-      if (!isSaved) {
-        return false
-      }
-    } else if (activeTab === 'my-plans') {
-      // Show only plans created by current user
-      if (!user || planOwners[planId] !== user.id) {
-        return false
-      }
-    }
-    // For 'feed' tab, show all plans (no additional filtering needed)
-    
-    // Other filters (date, category, status) are handled by backend via filterParams
-    // So we just return true here as filtering is done server-side
-    return true
-  })
+  // Filter plans by active tab
+  const filteredPlans = useMemo(
+    () => filterPlansByTab(plans, activeTab, plansState, planOwners, user?.id),
+    [plans, activeTab, plansState, planOwners, user?.id]
+  )
 
-  // Save only plan IDs and titles to localStorage (for message page) - not full plans with images
-  useEffect(() => {
-    try {
-      // Only save minimal data needed for message page (plan IDs and titles)
-      const minimalPlans = plans.map(plan => ({
-        id: plan.id,
-        title: plan.title,
-        creatorName: plan.creatorName
+  // Prepare filter groups with checked state
+  const filterGroupsWithState = useMemo(
+    () => FILTER_GROUPS.map(group => ({
+      ...group,
+      options: group.options.map(option => ({
+        ...option,
+        checked: group.id === 'status'
+          ? (filterParams.filter === option.id || (option.id === 'all' && !filterParams.filter))
+          : (filterParams.category === option.id || (option.id === 'all' && !filterParams.category))
       }))
-      localStorage.setItem('ku-hangout-plans', JSON.stringify(minimalPlans))
-    } catch (error) {
-      console.error('Error saving plans to localStorage:', error)
-      // If still fails, try to clear old data and save again
-      try {
-        localStorage.removeItem('ku-hangout-plans')
-        const minimalPlans = plans.map(plan => ({
-          id: plan.id,
-          title: plan.title,
-          creatorName: plan.creatorName
-        }))
-        localStorage.setItem('ku-hangout-plans', JSON.stringify(minimalPlans))
-      } catch (retryError) {
-        console.error('Error retrying save to localStorage:', retryError)
-      }
-    }
+    })),
+    [filterParams]
+  )
+
+  // Calculate isOwner for selected plan
+  const isOwner = useMemo(
+    () => user && selectedPlan ? planOwners[selectedPlan.id || ''] === user.id : false,
+    [user, selectedPlan, planOwners]
+  )
+
+  // Save minimal plan data to localStorage for message page
+  useEffect(() => {
+    savePlansToLocalStorage(plans)
   }, [plans])
 
   // Scroll to top when tab changes
@@ -170,15 +143,7 @@ export default function HomePage() {
           >
             <div className="container mx-auto px-4">
               <FilterDock
-                filterGroups={FILTER_GROUPS.map(group => ({
-                  ...group,
-                  options: group.options.map(option => ({
-                    ...option,
-                    checked: group.id === 'status'
-                      ? (filterParams.filter === option.id || (option.id === 'all' && !filterParams.filter))
-                      : (filterParams.category === option.id || (option.id === 'all' && !filterParams.category))
-                  }))
-                }))}
+                filterGroups={filterGroupsWithState}
                 createButtonText="Create Plan"
                 activeTab={activeTab}
                 savedCount={savedCount}
@@ -218,7 +183,7 @@ export default function HomePage() {
             plan={selectedPlan}
             isOpen={isDetailOpen}
             onClose={handleCloseDetail}
-            isOwner={user && selectedPlan ? planOwners[selectedPlan.id || ''] === user.id : false}
+            isOwner={isOwner}
             onJoin={() => handleJoin(selectedPlan?.id)}
             onDelete={() => handleDelete(selectedPlan?.id)}
             onLike={() => handleLike(selectedPlan?.id)}
