@@ -5,11 +5,13 @@ import { fetchMe, loginUser, registerUser, logoutUser } from "../services/authSe
 export interface User {
   id: number;
   username: string;
+  display_name?: string;
   role: string;
   avg_rating?: number;
   review_count?: number;
   contact?: string;
   profile_picture?: string;
+  bio?: string;
   created_at?: string;
 }
 
@@ -26,6 +28,7 @@ interface AuthContextType {
     contact?: string;
   }) => Promise<User>;
   logout: () => Promise<void>;
+  refreshUser: () => Promise<void>;
   loading: boolean;
 }
 
@@ -109,11 +112,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     localStorage.removeItem("kh_token");
   }, []);
 
+  // ฟังก์ชันรีเฟรชข้อมูลผู้ใช้: ดึงข้อมูลล่าสุดจาก API
+  const refreshUser = useCallback(async () => {
+    try {
+      const res = await fetchMe();
+      const u = (res as any).user || res;
+      setUser(u as User);
+      setRole((u as User)?.role ?? "user");
+    } catch (error) {
+      console.error('Failed to refresh user:', error);
+    }
+  }, []);
+
   const isAdmin = role === "admin";
 
   // ให้ทุกหน้าที่อยู่ใต้ AuthProvider ใช้ค่าเหล่านี้ได้ผ่าน useAuth()
   return (
-    <AuthContext.Provider value={{ user, role, isAdmin, login, register, logout, loading }}>
+    <AuthContext.Provider value={{ user, role, isAdmin, login, register, logout, refreshUser, loading }}>
       {children}
     </AuthContext.Provider>
   );

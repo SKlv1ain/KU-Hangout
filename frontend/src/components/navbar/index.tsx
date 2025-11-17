@@ -55,12 +55,10 @@ export default function Navbar() {
   const handleUserItemClick = async (item: string) => {
     switch (item) {
       case 'profile':
-        // TODO: Navigate to profile page
-        console.log('Navigate to profile')
+        navigate('/profile/edit')
         break
       case 'settings':
-        // TODO: Navigate to settings page
-        console.log('Navigate to settings')
+        navigate('/profile/edit')
         break
       case 'billing':
         // TODO: Navigate to billing page

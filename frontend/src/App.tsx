@@ -5,6 +5,7 @@ import { Toaster } from "@/components/ui/sonner"
 import LoginPage from "@/pages/login-page"
 import HomePage from "@/pages/home-page"
 import MessagePage from "@/pages/message-page"
+import ProfileEditPage from "@/pages/profile-edit-page"
 import ProtectedRoute from "@/components/ProtectedRoute"
 
 function App() {
@@ -28,6 +29,14 @@ function App() {
               element={
                 <ProtectedRoute>
                   <MessagePage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/profile/edit"
+              element={
+                <ProtectedRoute>
+                  <ProfileEditPage />
                 </ProtectedRoute>
               }
             />

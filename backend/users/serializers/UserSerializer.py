@@ -45,6 +45,7 @@ class UserSerializer(serializers.ModelSerializer):
 
     def update(self, instance, validated_data):
         instance.username = validated_data.get('username', instance.username)
+        instance.display_name = validated_data.get('display_name', instance.display_name)
         instance.role = validated_data.get('role', instance.role)
         instance.avg_rating = validated_data.get('avg_rating', instance.avg_rating)
         instance.review_count = validated_data.get('review_count', instance.review_count)
