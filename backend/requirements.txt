@@ -18,7 +18,6 @@ cryptography==46.0.3
 daphne==4.2.1
 distlib==0.4.0
 dj-rest-auth==7.0.1
-daphne
 Django==5.2.5
 django-allauth==65.13.0
 django-cloudinary-storage==0.3.0
@@ -87,4 +86,5 @@ typing_extensions==4.15.0
 uritemplate==4.2.0
 urllib3==2.5.0
 virtualenv==20.34.0
+whitenoise==6.11.0
 zope.interface==8.0.1
