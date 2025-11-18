@@ -41,8 +41,8 @@ class PlanImageSerializer(serializers.ModelSerializer):
 # ------------------- Plans Serializer (without images) -------------------
 class PlansSerializer(serializers.ModelSerializer):
     tags = serializers.ListField(
-        child=serializers.CharField(), 
-        required=False, 
+        child=serializers.CharField(),
+        required=False,
         write_only=True
     )
     tags_display = serializers.SerializerMethodField()
@@ -50,6 +50,10 @@ class PlansSerializer(serializers.ModelSerializer):
     is_expired = serializers.SerializerMethodField()
     time_until_event = serializers.SerializerMethodField()
     members = serializers.SerializerMethodField()  # <- exact shape per your ask
+    joined = serializers.SerializerMethodField()  # Whether current user has joined this plan
+    role = serializers.SerializerMethodField()  # Current user's role in this plan (LEADER/MEMBER/None)
+    images = serializers.SerializerMethodField()  # Read-only field for image URLs
+    is_saved = serializers.SerializerMethodField()  # Whether current user has saved this plan
 
     class Meta:
         model = Plans
@@ -70,6 +74,10 @@ class PlansSerializer(serializers.ModelSerializer):
             'time_until_event',   # read-only
             'members',            # read-only
             'people_joined',             # read-only
+            'joined',             # read-only
+            'role',               # read-only
+            'images',             # read-only
+            'is_saved',           # read-only
         ]
         read_only_fields = (
             'id',
@@ -82,41 +90,39 @@ class PlansSerializer(serializers.ModelSerializer):
             'time_until_event',
             'members',
             'joined',
+            'role',
+            'is_saved',
         )
 
     def get_tags_display(self, obj):
-        """Return list of tags with id and name"""
         return [{'id': tag.id, 'name': tag.name} for tag in obj.tags.all()]
 
     def get_is_expired(self, obj):
-        """Check if event has passed"""
         from django.utils import timezone
         return obj.event_time <= timezone.now()
 
     def get_time_until_event(self, obj):
-        """Calculate human-readable time until event"""
         from django.utils import timezone
         now = timezone.now()
-        diff = obj.event_time - now
-        
-        if diff.total_seconds() <= 0:
+        time_diff = obj.event_time - now
+        if time_diff.total_seconds() <= 0:
             return "Expired"
-        
-        days, seconds = diff.days, diff.seconds
-        hours = seconds // 3600
-        minutes = (seconds % 3600) // 60
-        
+        days = time_diff.days
+        hours = time_diff.seconds // 3600
+        minutes = (time_diff.seconds % 3600) // 60
         if days > 0:
             return f"{days}d {hours}h"
         elif hours > 0:
             return f"{hours}h {minutes}m"
-        return f"{minutes}m"
+        else:
+            return f"{minutes}m"
 
     def get_members(self, obj):
         """
-        Return only: user_id, username, role, joined_at
+        Return: user_id, username, display_name, profile_picture, role, joined_at
         Leader first, then by join time.
         """
+        
         qs = obj.participants.select_related('user').order_by(
             models.Case(
                 models.When(role='LEADER', then=0),
@@ -128,9 +134,18 @@ class PlansSerializer(serializers.ModelSerializer):
         out = []
         for p in qs:
             u = p.user
+            # Get display_name or fallback to username
+            display_name = getattr(u, "display_name", None) or u.username
+            
+            # Get profile_picture URL
+            # profile_picture is now a URLField, so it's always a string (URL)
+            profile_picture_url = u.profile_picture if u.profile_picture else None
+            
             out.append({
                 "user_id": u.id,
                 "username": getattr(u, "username", None),
+                "display_name": display_name,
+                "profile_picture": profile_picture_url,
                 "role": p.role,
                 "joined_at": p.joined_at,
             })
@@ -166,20 +181,51 @@ class PlansSerializer(serializers.ModelSerializer):
         
         return None
 
+    def get_images(self, obj):
+        """Return list of image URLs for this plan."""
+        return [img.image_url for img in obj.images.all()]
+
+    def get_is_saved(self, obj):
+        """Check if current user has saved this plan."""
+        request = self.context.get("request")
+        if not request or not request.user or not request.user.is_authenticated:
+            return False
+        
+        from plans.models import SavedPlan  # pylint: disable=import-outside-toplevel
+        return SavedPlan.objects.filter(user=request.user, plan=obj).exists()  # pylint: disable=no-member
+
     def create(self, validated_data):
         # pop tags BEFORE creating
         tags_data = validated_data.pop('tags', [])
 
         # attach current user as leader and count them as joined
         request = self.context.get("request")
-        
-        if request and request.user.is_authenticated:
+        if request and request.user and request.user.is_authenticated:
             validated_data["leader_id"] = request.user
 
         # initial count to 1 (leader already joined)
         validated_data["people_joined"] = 1
 
         plan = Plans.objects.create(**validated_data)  # pylint: disable=no-member
+
+        # Upload images to Cloudinary if provided
+        if request and hasattr(request, 'FILES'):
+            images = request.FILES.getlist('images')
+            if images:
+                from plans.utils import upload_image_to_cloudinary  # pylint: disable=import-outside-toplevel
+                
+                for image_file in images:
+                    try:
+                        # Upload to Cloudinary
+                        image_url = upload_image_to_cloudinary(image_file)
+                        # Create PlanImage record
+                        PlanImage.objects.create(  # pylint: disable=no-member
+                            plan=plan,
+                            image_url=image_url
+                        )
+                    except Exception as e:
+                        print(f"[PlansSerializer] Failed to upload image: {e}")
+                        # Continue with other images even if one fails
 
         # ensure leader participant row
         if plan.leader_id_id:
@@ -220,12 +266,10 @@ class PlansSerializer(serializers.ModelSerializer):
 
         tags_data = validated_data.pop('tags', None)
 
-        # Update basic fields
         for attr, value in validated_data.items():
             setattr(instance, attr, value)
         instance.save()
 
-        # Update tags if provided
         if tags_data is not None:
             instance.tags.clear()
             tag_names = [t.strip() for t in tags_data if t and t.strip()]
@@ -234,12 +278,3 @@ class PlansSerializer(serializers.ModelSerializer):
                 instance.tags.add(tag_obj)
 
         return instance
-
-
-# ------------------- Plans with Images Serializer (for detail view) -------------------
-class PlansWithImagesSerializer(PlansSerializer):
-    """Extended serializer that includes images"""
-    images = PlanImageSerializer(many=True, read_only=True)
-
-    class Meta(PlansSerializer.Meta):
-        fields = PlansSerializer.Meta.fields + ['images']

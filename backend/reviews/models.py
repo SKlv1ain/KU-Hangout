@@ -1,13 +1,15 @@
 from django.db import models
-from django.conf import settings
-from users import users
-from plans import plans
+from users.models import Users
+from plans.models import Plans
 
 # Model reviews
 class reviews(models.Model):
-    reviewer_id = models.ForeignKey(users, on_delete=models.CASCADE,related_name="review_made")
-    leader_id = models.ForeignKey(users, on_delete=models.CASCADE,related_name="review_recived")
-    plan_id = models.ForeignKey(plans, on_delete=models.CASCADE,related_name="reviews")
-    rating = models.DecimalField(decimal_places=2)
-    comment = models.TextField(max_length=200)
+    reviewer_id = models.ForeignKey(Users, on_delete=models.CASCADE, related_name="review_made")
+    leader_id = models.ForeignKey(Users, on_delete=models.CASCADE, related_name="review_recived")
+    plan_id = models.ForeignKey(Plans, on_delete=models.CASCADE, related_name="reviews", null=True, blank=True)
+    rating = models.DecimalField(max_digits=3, decimal_places=2)
+    comment = models.TextField(max_length=200, blank=True, null=True)
     created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        unique_together = ('reviewer_id', 'leader_id')
