@@ -247,9 +247,10 @@ const api = {
       const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(data?.detail || `DELETE ${endpoint} failed with status ${response.status}`);
+        throw new Error(data?.detail || data?.message || `DELETE ${endpoint} failed with status ${response.status}`);
       }
 
+      // Return data even if it contains a message (for idempotent operations)
       return data;
     } catch (err) {
       if (err instanceof Error) throw err;

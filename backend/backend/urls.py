@@ -31,6 +31,7 @@ urlpatterns = [
     path('plans/', include('plans.urls.plan_join_urls')),   # join/leave plans
     path('plans/', include('plans.urls.plan_summary_urls')),   # member ship of plan
     path('plans/', include('plans.urls.saved_plan_urls')),   # save/unsave plans
+    path('plans/', include('plans.urls.pinned_plan_urls')),   # pin/unpin plans
     path('homepage/', include('plans.urls.homepage')),      # homepage plans
   
     # Chat

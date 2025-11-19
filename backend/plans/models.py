@@ -49,3 +49,19 @@ class SavedPlan(models.Model):
 
     def __str__(self):
         return f"{self.user.username} saved {self.plan.title}"
+
+
+# Model for pinned plans (for profile page)
+class PinnedPlan(models.Model):
+    user = models.ForeignKey(Users, related_name='pinned_plans', on_delete=models.CASCADE)
+    plan = models.ForeignKey(Plans, related_name='pinned_by_users', on_delete=models.CASCADE)
+    pinned_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        unique_together = ('user', 'plan')
+        ordering = ['-pinned_at']
+        verbose_name = 'Pinned Plan'
+        verbose_name_plural = 'Pinned Plans'
+
+    def __str__(self):
+        return f"{self.user.username} pinned {self.plan.title}"
