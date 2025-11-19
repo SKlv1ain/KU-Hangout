@@ -29,6 +29,10 @@ export default function UserProfilePage() {
     return null;
   }
 
+  const handleEditProfile = () => {
+    console.log("[UserProfilePage] Edit profile clicked", targetUsername)
+  }
+
   return (
     <SidebarLayout contentClassName="min-h-screen bg-background">
       <div className="flex flex-col h-screen overflow-hidden">
@@ -45,7 +49,7 @@ export default function UserProfilePage() {
             <div className="flex flex-col lg:flex-row gap-6 items-start">
               {/* Left: 3D Card */}
               <div className="flex-shrink-0 w-full lg:w-auto">
-                <ThreeDCardDemo username={targetUsername} />
+                <ThreeDCardDemo username={targetUsername} onEditProfile={handleEditProfile} />
               </div>
 
               {/* Right: Pin Section & Contribution Graph */}

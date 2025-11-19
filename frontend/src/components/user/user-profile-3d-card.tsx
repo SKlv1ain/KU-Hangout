@@ -5,12 +5,14 @@ import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { useAuth } from "@/context/AuthContext";
 import userService, { type UserProfile } from "@/services/userService";
 import { Star, Mail, Calendar } from "lucide-react";
+import UserProfileEditButton from "@/components/user/user-profile-edit-button";
 
 interface ThreeDCardDemoProps {
   username?: string;
+  onEditProfile?: (profile?: UserProfile | null) => void;
 }
 
-export default function ThreeDCardDemo({ username }: ThreeDCardDemoProps = {}) {
+export default function ThreeDCardDemo({ username, onEditProfile }: ThreeDCardDemoProps = {}) {
   const { user: authUser } = useAuth();
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
@@ -72,6 +74,8 @@ export default function ThreeDCardDemo({ username }: ThreeDCardDemoProps = {}) {
     }
   };
 
+  const canEditProfile = !username || authUser?.username === username;
+
   if (loading) {
     return (
       <CardContainer className="inter-var" containerClassName="py-8">
@@ -89,6 +93,12 @@ export default function ThreeDCardDemo({ username }: ThreeDCardDemoProps = {}) {
   return (
     <CardContainer className="inter-var" containerClassName="py-8">
       <CardBody className="bg-gray-50 relative group/card shadow-lg shadow-black/10 dark:shadow-[0_12px_45px_rgba(255,255,255,0.2)] hover:shadow-[0_30px_95px_rgba(0,0,0,0.35)] dark:hover:shadow-[0_55px_160px_rgba(255,255,255,0.95)] dark:bg-black dark:border-white/[0.25] border-black/[0.08] w-auto sm:w-[24rem] h-auto rounded-xl p-6 border transition-shadow duration-300">
+        {canEditProfile && (
+          <UserProfileEditButton
+            className="absolute top-4 right-4"
+            onClick={() => onEditProfile?.(userProfile)}
+          />
+        )}
         <CardItem translateZ="150" className="w-full mt-4 flex justify-center">
           <div className="relative h-52 w-52 rounded-full overflow-hidden border-4 border-white/80 dark:border-white/40 shadow-lg transition-transform duration-500 ease-out group-hover/card:scale-115">
             <Avatar className="h-full w-full">
