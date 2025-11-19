@@ -1,8 +1,9 @@
 "use client"
 
 import { useState } from "react"
-import { BookmarkIcon, FilterIcon, X, Plus, Home, Sparkles } from "lucide-react"
+import { BookmarkIcon, FilterIcon, X, Home, Sparkles } from "lucide-react"
 import { Button } from "@/components/ui/button"
+import { LiquidButton } from "@/components/ui/shadcn-io/liquid-button"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -46,7 +47,7 @@ export interface FilterDockProps {
 export function FilterDock({
   filterGroups = [],
   selectedDate,
-  createButtonText = "Create Plan",
+  createButtonText = "Create plan",
   activeTab = 'feed',
   savedCount = 0,
   myPlansCount = 0,
@@ -218,17 +219,15 @@ export function FilterDock({
               date={selectedDate}
               onDateChange={onDateChange}
             />
-            <Button
+            <LiquidButton
               size="sm"
-              className="gap-2 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white shadow-md hover:shadow-lg transition-all duration-200 font-medium"
               onClick={(e) => {
                 e.preventDefault()
                 if (onCreateClick) onCreateClick()
               }}
             >
-              <Plus className="h-4 w-4" />
-              <span className="hidden sm:inline">{createButtonText}</span>
-            </Button>
+              {createButtonText}
+            </LiquidButton>
           </div>
         </div>
       </div>
