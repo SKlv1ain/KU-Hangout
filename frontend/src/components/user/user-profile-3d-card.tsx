@@ -4,15 +4,21 @@ import { CardBody, CardContainer, CardItem } from "@/components/ui/shadcn-io/3d-
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { useAuth } from "@/context/AuthContext";
 import userService, { type UserProfile } from "@/services/userService";
-import { Star, Mail, Calendar } from "lucide-react";
+import { Star, Mail, Calendar, Globe } from "lucide-react";
 import UserProfileEditButton from "@/components/user/user-profile-edit-button";
+
+type PreviewProfile = Partial<UserProfile> & { profile_picture_preview?: string | null }
 
 interface ThreeDCardDemoProps {
   username?: string;
   onEditProfile?: (profile?: UserProfile | null) => void;
+  containerClassName?: string;
+  showEditButton?: boolean;
+  refreshKey?: number;
+  previewProfile?: PreviewProfile | null;
 }
 
-export default function ThreeDCardDemo({ username, onEditProfile }: ThreeDCardDemoProps = {}) {
+export default function ThreeDCardDemo({ username, onEditProfile, containerClassName, showEditButton = true, refreshKey, previewProfile = null }: ThreeDCardDemoProps = {}) {
   const { user: authUser } = useAuth();
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
@@ -40,18 +46,101 @@ export default function ThreeDCardDemo({ username, onEditProfile }: ThreeDCardDe
     };
 
     loadUserProfile();
-  }, [username, authUser?.id]);
+  }, [username, authUser?.id, refreshKey]);
 
-  const displayName = userProfile?.display_name || authUser?.username || "Guest";
-  const displayUsername = userProfile?.username || authUser?.username || "";
-  const profilePicture = userProfile?.profile_picture_url || authUser?.profile_picture || null;
-  const bio = (userProfile as any)?.bio || null; // Bio field (may not exist in backend yet)
-  const avgRating = typeof userProfile?.avg_rating === 'string' 
-    ? parseFloat(userProfile.avg_rating) 
-    : (userProfile?.avg_rating ?? 0);
-  const reviewCount = userProfile?.review_count ?? 0;
-  const contact = userProfile?.contact || authUser?.contact || "";
-  const createdAt = userProfile?.created_at || authUser?.created_at || "";
+  const isViewingOwnProfile = !username || authUser?.username === username;
+  const mergedPreview = previewProfile ?? {};
+  const baseProfile = userProfile ?? (isViewingOwnProfile ? authUser ?? null : null);
+
+  const displayName = mergedPreview.display_name
+    ?? baseProfile?.display_name
+    ?? baseProfile?.username
+    ?? username
+    ?? "Guest";
+
+  const displayUsername = mergedPreview.username
+    ?? baseProfile?.username
+    ?? "";
+
+  const profilePicture = mergedPreview.profile_picture_preview
+    ?? mergedPreview.profile_picture_url
+    ?? baseProfile?.profile_picture_url
+    ?? (baseProfile as any)?.profile_picture
+    ?? null;
+
+  const bio = mergedPreview.bio
+    ?? (baseProfile as any)?.bio
+    ?? null;
+
+  const rawAvgRating = mergedPreview.avg_rating
+    ?? baseProfile?.avg_rating
+    ?? 0;
+  const avgRating = typeof rawAvgRating === 'string'
+    ? parseFloat(rawAvgRating)
+    : (rawAvgRating ?? 0);
+
+  const reviewCount = mergedPreview.review_count
+    ?? baseProfile?.review_count
+    ?? 0;
+
+  const contact = mergedPreview.contact
+    ?? baseProfile?.contact
+    ?? "";
+
+  const createdAt = mergedPreview.created_at
+    ?? baseProfile?.created_at
+    ?? "";
+
+  const normalizeUrl = (value?: string | null) => {
+    if (!value) return null;
+    const trimmed = value.trim();
+    if (!trimmed) return null;
+    try {
+      const withProtocol = /^https?:\/\//i.test(trimmed) ? trimmed : `https://${trimmed}`;
+      return new URL(withProtocol).href;
+    } catch {
+      return null;
+    }
+  };
+
+  const resolvedSocialLinks = (() => {
+    const sources = [
+      mergedPreview.social_links,
+      (baseProfile as any)?.social_links,
+    ];
+    for (const source of sources) {
+      if (Array.isArray(source) && source.length > 0) {
+        return source as string[];
+      }
+    }
+    const fallbackWebsite = mergedPreview.website
+      ?? userProfile?.website
+      ?? authUser?.website
+      ?? null;
+    return fallbackWebsite ? [fallbackWebsite] : [];
+  })();
+
+  const socialLinkItems = resolvedSocialLinks
+    .map((link) => normalizeUrl(link))
+    .filter(Boolean)
+    .map((url) => {
+      if (!url) return null;
+      try {
+        const parsed = new URL(url);
+        const hostname = parsed.hostname.replace(/^www\./i, "");
+        const segments = parsed.pathname.split("/").filter(Boolean);
+        const label = segments.length > 0 ? segments[segments.length - 1] : hostname;
+        return {
+          url: parsed.href,
+          hostname,
+          label,
+          faviconUrl: `https://www.google.com/s2/favicons?domain=${encodeURIComponent(hostname)}&sz=64`,
+        };
+      } catch {
+        return null;
+      }
+    })
+    .filter(Boolean) as Array<{ url: string; hostname: string; label: string; faviconUrl: string }>;
 
   // Get initials: first character of display_name, or first character of username if no display_name
   const getInitials = (): string => {
@@ -75,10 +164,13 @@ export default function ThreeDCardDemo({ username, onEditProfile }: ThreeDCardDe
   };
 
   const canEditProfile = !username || authUser?.username === username;
+  const shouldShowEditButton = showEditButton && canEditProfile;
+
+  const resolvedContainerClass = containerClassName ?? "py-8";
 
   if (loading) {
     return (
-      <CardContainer className="inter-var" containerClassName="py-8">
+      <CardContainer className="inter-var" containerClassName={resolvedContainerClass}>
         <CardBody className="bg-gray-50 relative group/card shadow-lg shadow-black/10 dark:shadow-[0_12px_45px_rgba(255,255,255,0.2)] hover:shadow-[0_30px_95px_rgba(0,0,0,0.35)] dark:hover:shadow-[0_55px_160px_rgba(255,255,255,0.95)] dark:bg-black dark:border-white/[0.25] border-black/[0.08] w-auto sm:w-[24rem] h-auto rounded-xl p-4 border transition-shadow duration-300">
           <div className="animate-pulse space-y-4">
             <div className="h-6 bg-gray-300 dark:bg-gray-700 rounded w-3/4"></div>
@@ -91,13 +183,17 @@ export default function ThreeDCardDemo({ username, onEditProfile }: ThreeDCardDe
   }
 
   return (
-    <CardContainer className="inter-var" containerClassName="py-8">
+    <CardContainer className="inter-var" containerClassName={resolvedContainerClass}>
       <CardBody className="bg-gray-50 relative group/card shadow-lg shadow-black/10 dark:shadow-[0_12px_45px_rgba(255,255,255,0.2)] hover:shadow-[0_30px_95px_rgba(0,0,0,0.35)] dark:hover:shadow-[0_55px_160px_rgba(255,255,255,0.95)] dark:bg-black dark:border-white/[0.25] border-black/[0.08] w-auto sm:w-[24rem] h-auto rounded-xl p-6 border transition-shadow duration-300">
-        {canEditProfile && (
-          <UserProfileEditButton
+        {shouldShowEditButton && (
+          <CardItem
+            translateZ="80"
             className="absolute top-4 right-4"
-            onClick={() => onEditProfile?.(userProfile)}
-          />
+          >
+            <UserProfileEditButton
+              onClick={() => onEditProfile?.(userProfile)}
+            />
+          </CardItem>
         )}
         <CardItem translateZ="150" className="w-full mt-4 flex justify-center">
           <div className="relative h-52 w-52 rounded-full overflow-hidden border-4 border-white/80 dark:border-white/40 shadow-lg transition-transform duration-500 ease-out group-hover/card:scale-115">
@@ -124,6 +220,38 @@ export default function ThreeDCardDemo({ username, onEditProfile }: ThreeDCardDe
               className="text-sm text-neutral-500 dark:text-neutral-400 text-center"
             >
               @{displayUsername}
+            </CardItem>
+          )}
+
+          {socialLinkItems.length > 0 && (
+            <CardItem
+              translateZ="65"
+              className="flex flex-wrap items-center justify-center gap-2"
+            >
+              {socialLinkItems.map((item) => (
+                <a
+                  key={item.url}
+                  href={item.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-2 rounded-full border border-neutral-200 bg-white/80 px-3 py-1 text-sm text-neutral-700 shadow-sm transition hover:border-primary/40 hover:text-primary dark:border-neutral-700 dark:bg-neutral-900/40 dark:text-neutral-200"
+                >
+                  <span className="relative h-4 w-4">
+                    <Globe className="h-4 w-4 text-neutral-400" />
+                    {item.faviconUrl && (
+                      <img
+                        src={item.faviconUrl}
+                        alt={item.hostname}
+                        onError={(event) => {
+                          event.currentTarget.style.display = "none";
+                        }}
+                        className="absolute inset-0 h-4 w-4"
+                      />
+                    )}
+                  </span>
+                  <span className="truncate max-w-[140px]">{item.label}</span>
+                </a>
+              ))}
             </CardItem>
           )}
 
