@@ -5,6 +5,7 @@ export interface ChatThreadSummary {
   plan_id: number
   plan_title: string
   plan_event_time: string | null
+  plan_cover_image?: string | null
   is_owner: boolean
   last_message?: string | null
   last_message_timestamp?: string | null
@@ -18,4 +19,3 @@ const chatService = {
 }
 
 export default chatService
-

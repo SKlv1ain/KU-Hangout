@@ -99,6 +99,7 @@ export interface NavbarNotificationItem {
   created_at: string;
   is_read: boolean;
   topic?: string | null;
+  notification_type?: string | null;
   notification_type_display?: string | null;
   topic_display?: string | null;
   plan_title?: string | null;
@@ -151,6 +152,35 @@ const getPrimaryLabel = (item?: NavbarNotificationItem) => {
   return getActorName(item);
 };
 
+const getNotificationTypeBadge = (item?: NavbarNotificationItem) => {
+  if (!item?.notification_type) return null;
+
+  const type = item.notification_type;
+  const badgeConfig: Record<string, { label: string; className: string }> = {
+    'PLAN_DELETED': {
+      label: 'Deleted',
+      className: 'bg-red-500 text-white hover:bg-red-500/90'
+    },
+    'PLAN_JOINED': {
+      label: 'Joined',
+      className: 'bg-blue-500 text-white hover:bg-blue-500/90'
+    },
+    'PLAN_LEFT': {
+      label: 'Left',
+      className: 'bg-orange-500 text-white hover:bg-orange-500/90'
+    }
+  };
+
+  const config = badgeConfig[type];
+  if (!config) return null;
+
+  return (
+    <Badge className={cn("text-[9px] px-1.5 py-0.5 uppercase", config.className)}>
+      {config.label}
+    </Badge>
+  );
+};
+
 // Notification Menu Component
 const NotificationMenu = ({ 
   notificationCount = 0, 
@@ -194,9 +224,17 @@ const NotificationMenu = ({
           preview.map((notification) => (
             <DropdownMenuItem
               key={notification.id}
-              className="flex items-start gap-3 py-2"
+              className={cn(
+                "group relative flex items-start gap-3 rounded-md py-2 pl-6 pr-3 transition",
+                notification.is_read
+                  ? "hover:bg-muted/70"
+                  : "bg-emerald-200/80 ring-1 ring-emerald-300/70 hover:bg-emerald-100 dark:bg-emerald-500/5 dark:ring-emerald-400/40 dark:hover:bg-emerald-500/10"
+              )}
               onClick={() => onItemClick?.(notification)}
             >
+              {!notification.is_read && (
+                <span className="absolute inset-y-2 left-2 w-1 rounded-full bg-emerald-500 transition-colors group-hover:bg-emerald-400 dark:bg-emerald-400 dark:group-hover:bg-emerald-300" />
+              )}
               <Avatar className="h-8 w-8">
                 {getNotificationAvatarSrc(notification) && (
                   <AvatarImage src={getNotificationAvatarSrc(notification) || undefined} alt={getActorName(notification)} />
@@ -210,8 +248,9 @@ const NotificationMenu = ({
               <div className="flex-1 space-y-1">
                 <div className="flex items-start justify-between gap-2">
                   <div className="flex flex-col">
-                    <p className="text-sm font-semibold leading-tight">
-                      {getPrimaryLabel(notification)}
+                    <p className="text-sm font-semibold leading-tight flex items-center gap-2">
+                      <span>{getPrimaryLabel(notification)}</span>
+                      {notification.topic !== 'CHAT' && getNotificationTypeBadge(notification)}
                     </p>
                     <p className="text-xs text-muted-foreground line-clamp-2">
                       {notification.message || 'Tap to view details'}
@@ -220,14 +259,6 @@ const NotificationMenu = ({
                   <span className="text-[11px] text-muted-foreground whitespace-nowrap">
                     {formatRelativeTime(notification.created_at) || ''}
                   </span>
-                </div>
-                <div className="flex flex-wrap items-center gap-2 text-[11px] text-muted-foreground">
-                  <span className="font-medium uppercase">
-                    {notification.notification_type_display || notification.topic_display || notification.topic}
-                  </span>
-                  {!notification.is_read && (
-                    <span className="text-emerald-500 font-medium uppercase">Unread</span>
-                  )}
                 </div>
               </div>
             </DropdownMenuItem>
@@ -311,9 +342,17 @@ const MessageMenu = ({
           preview.map((message) => (
             <DropdownMenuItem
               key={message.id}
-              className="flex items-start gap-3 py-2"
+              className={cn(
+                "group relative flex items-start gap-3 rounded-md py-2 pl-6 pr-3 transition",
+                message.is_read
+                  ? "hover:bg-muted/70"
+                  : "bg-emerald-200/80 ring-1 ring-emerald-300/70 hover:bg-emerald-100 dark:bg-emerald-500/5 dark:ring-emerald-400/40 dark:hover:bg-emerald-500/10"
+              )}
               onClick={() => onItemClick?.(message)}
             >
+              {!message.is_read && (
+                <span className="absolute inset-y-2 left-2 w-1 rounded-full bg-emerald-500 transition-colors group-hover:bg-emerald-400 dark:bg-emerald-400 dark:group-hover:bg-emerald-300" />
+              )}
               <Avatar className="h-8 w-8">
                 {getNotificationAvatarSrc(message) && (
                   <AvatarImage src={getNotificationAvatarSrc(message) || undefined} alt={getActorName(message)} />
@@ -337,11 +376,6 @@ const MessageMenu = ({
                   <span className="text-[11px] text-muted-foreground whitespace-nowrap">
                     {formatRelativeTime(message.created_at) || ''}
                   </span>
-                </div>
-                <div className="flex flex-wrap items-center gap-2 text-[11px] text-muted-foreground">
-                  {!message.is_read && (
-                    <span className="text-emerald-500 font-medium uppercase">Unread</span>
-                  )}
                 </div>
               </div>
             </DropdownMenuItem>

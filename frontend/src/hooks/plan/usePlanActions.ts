@@ -1,5 +1,6 @@
 import { useCallback } from "react"
 import { useNavigate } from "react-router-dom"
+import { toast } from "sonner"
 import plansService from "@/services/plansService"
 import savedPlansService from "@/services/savedPlansService"
 import type { PlanDetailData } from "@/components/home/plan-detail-panel"
@@ -132,8 +133,10 @@ export function usePlanActions(
       }
     } catch (error) {
       console.error('Error joining/leaving plan:', error)
-      const errorMessage = error instanceof Error ? error.message : 'Failed to join/leave plan. Please try again.'
-      alert(errorMessage)
+      const responseData = (error as any)?.response?.data
+      const backendMessage = responseData?.reason || responseData?.message || responseData?.detail
+      const errorMessage = backendMessage || (error instanceof Error ? error.message : 'Failed to join/leave plan. Please try again.')
+      toast.error(errorMessage)
     }
   }, [user, plansState, updatePlanState, setPlans, selectedPlan, setSelectedPlan, reloadPlans])
 

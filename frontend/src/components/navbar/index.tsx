@@ -21,8 +21,10 @@ export default function Navbar() {
   const [notificationDrawerOpen, setNotificationDrawerOpen] = useState(false)
   const [chatDrawerOpen, setChatDrawerOpen] = useState(false)
   const {
-    notifications,
-    unreadCount,
+    systemNotifications,
+    chatNotifications,
+    systemUnreadCount,
+    chatUnreadCount,
     loading: notificationsLoading,
     error: notificationsError,
     socketStatus,
@@ -30,6 +32,7 @@ export default function Navbar() {
     markNotificationAsRead,
     markAllAsRead,
     refresh,
+    clearNotifications,
   } = useNotifications()
 
   const navigationLinks: Navbar09NavItem[] = [
@@ -89,14 +92,32 @@ export default function Navbar() {
   }, [handleNotificationAction])
 
 
-  const handleNotificationsMarkAll = useCallback(async () => {
+  const handleNotificationsMarkAll = useCallback(async (topic?: NotificationItem['topic']) => {
     try {
-      await markAllAsRead()
+      await markAllAsRead(topic)
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Unable to mark all notifications as read.'
       toast.error(message)
     }
   }, [markAllAsRead])
+
+  const handleClearAllNotifications = useCallback(async () => {
+    try {
+      await clearNotifications('PLAN')
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Unable to clear notifications.'
+      toast.error(message)
+    }
+  }, [clearNotifications])
+
+  const handleClearAllChatNotifications = useCallback(async () => {
+    try {
+      await clearNotifications('CHAT')
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Unable to clear chat notifications.'
+      toast.error(message)
+    }
+  }, [clearNotifications])
 
   const handleNotificationsRefresh = useCallback(async () => {
     try {
@@ -108,28 +129,21 @@ export default function Navbar() {
   }, [refresh])
 
   const notificationPreviewItems = useMemo<NavbarNotificationItem[]>(() => (
-    notifications.slice(0, 5).map((notification) => ({
+    systemNotifications.slice(0, 5).map((notification) => ({
       id: notification.id,
       title: notification.title || notification.notification_type_display || 'Notification',
       message: notification.message,
       created_at: notification.created_at,
       is_read: notification.is_read,
       topic: notification.topic,
+      notification_type: notification.notification_type,
       notification_type_display: notification.notification_type_display,
       topic_display: notification.topic_display,
       plan_title: notification.plan_title,
+      plan_cover_image: notification.plan_cover_image,
       actor: notification.actor,
     }))
-  ), [notifications])
-
-  const chatNotifications = useMemo(
-    () => notifications.filter((notification) => notification.topic === 'CHAT'),
-    [notifications]
-  )
-  const chatUnreadCount = useMemo(
-    () => chatNotifications.filter((notification) => !notification.is_read).length,
-    [chatNotifications]
-  )
+  ), [systemNotifications])
   const chatPreviewItems = useMemo<NavbarNotificationItem[]>(() => (
     chatNotifications.slice(0, 5).map((notification) => ({
       id: notification.id,
@@ -141,18 +155,19 @@ export default function Navbar() {
       notification_type_display: notification.notification_type_display,
       topic_display: notification.topic_display,
       plan_title: notification.plan_title,
+      plan_cover_image: notification.plan_cover_image,
       actor: notification.actor,
     }))
   ), [chatNotifications])
 
   const handleNotificationMenuClick = useCallback((item: NavbarNotificationItem) => {
-    const target = notifications.find((notification) => notification.id === item.id)
+    const target = systemNotifications.find((notification) => notification.id === item.id)
     if (target) {
       handleNotificationSelect(target)
     } else {
       setNotificationDrawerOpen(true)
     }
-  }, [notifications, handleNotificationSelect])
+  }, [systemNotifications, handleNotificationSelect])
 
   const handleChatMenuClick = useCallback((item: NavbarNotificationItem) => {
     const target = chatNotifications.find((notification) => notification.id === item.id)
@@ -168,14 +183,11 @@ export default function Navbar() {
       case 'profile':
         navigate('/profile')
         break
-      case 'settings':
-        // TODO: Navigate to settings page
-        console.log('Navigate to settings')
-        break
-      case 'billing':
-        // TODO: Navigate to billing page
-        console.log('Navigate to billing')
-        break
+      // case 'settings':
+      //   // TODO: Navigate to settings page
+      //   console.log('Navigate to settings')
+      //   break
+    
       case 'logout':
         await logout()
         navigate('/login')
@@ -202,7 +214,7 @@ export default function Navbar() {
         userName={user?.username || 'User'}
         userEmail={user?.username || 'user@example.com'}
         userAvatar={user?.profile_picture}
-        notificationCount={unreadCount}
+        notificationCount={systemUnreadCount}
         messageCount={chatUnreadCount}
         notifications={notificationPreviewItems}
         notificationsLoading={notificationsLoading}
@@ -226,23 +238,24 @@ export default function Navbar() {
         onNotificationItemClick={handleNotificationMenuClick}
         onMessageItemClick={handleChatMenuClick}
         onViewAllNotifications={() => setNotificationDrawerOpen(true)}
-        onMarkAllNotificationsRead={handleNotificationsMarkAll}
+        onMarkAllNotificationsRead={() => handleNotificationsMarkAll('PLAN')}
         onViewAllMessages={() => setChatDrawerOpen(true)}
-        onMarkAllMessagesRead={handleNotificationsMarkAll}
+        onMarkAllMessagesRead={() => handleNotificationsMarkAll('CHAT')}
         onUserItemClick={handleUserItemClick}
       />
       <CommandSearch open={commandOpen} onOpenChange={setCommandOpen} />
       <NotificationDrawer
         open={notificationDrawerOpen}
         onOpenChange={setNotificationDrawerOpen}
-        notifications={notifications}
-        unreadCount={unreadCount}
+        notifications={systemNotifications}
+        unreadCount={systemUnreadCount}
         loading={notificationsLoading}
         error={notificationsError}
         socketStatus={socketStatus}
         markAllLoading={markAllLoading}
         onNotificationClick={handleNotificationSelect}
-        onMarkAllRead={handleNotificationsMarkAll}
+        onMarkAllRead={() => handleNotificationsMarkAll('PLAN')}
+        onClearAll={handleClearAllNotifications}
         onRefresh={handleNotificationsRefresh}
       />
       <NotificationDrawer
@@ -255,7 +268,8 @@ export default function Navbar() {
         socketStatus={socketStatus}
         markAllLoading={markAllLoading}
         onNotificationClick={handleChatNotificationSelect}
-        onMarkAllRead={handleNotificationsMarkAll}
+        onMarkAllRead={() => handleNotificationsMarkAll('CHAT')}
+        onClearAll={handleClearAllChatNotifications}
         onRefresh={handleNotificationsRefresh}
         title="Chat Notifications"
         subtitle={chatUnreadCount > 0 ? `${chatUnreadCount} unread chats` : 'All caught up'}
