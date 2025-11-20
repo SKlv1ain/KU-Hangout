@@ -3,7 +3,7 @@ import { useGoogleMaps } from "./useGoogleMaps"
 import { formatLocationText, extractCoordinates } from "@/lib/maps/locationUtils"
 
 interface UseGooglePlacesAutocompleteOptions {
-  inputRef: React.RefObject<HTMLInputElement>
+  inputRef: React.RefObject<HTMLInputElement | null>
   value: string
   onChange: (value: string) => void
   onPlaceSelect?: (place: google.maps.places.PlaceResult) => void

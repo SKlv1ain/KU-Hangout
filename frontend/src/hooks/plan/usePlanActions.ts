@@ -13,8 +13,15 @@ type PlanState = {
 
 type PlansState = Record<string | number, PlanState>
 
+type AuthUser = {
+  id: number
+  username?: string
+  display_name?: string | null
+  profile_picture?: string | null
+}
+
 export function usePlanActions(
-  user: { id: number; username?: string; profile_picture?: string | null } | null,
+  user: AuthUser | null,
   setPlans: React.Dispatch<React.SetStateAction<PlanDetailData[]>>,
   selectedPlan: PlanDetailData | null,
   setSelectedPlan: React.Dispatch<React.SetStateAction<PlanDetailData | null>>,

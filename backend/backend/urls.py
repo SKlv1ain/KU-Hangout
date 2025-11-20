@@ -33,6 +33,10 @@ urlpatterns = [
     path('plans/', include('plans.urls.saved_plan_urls')),   # save/unsave plans
     path('plans/', include('plans.urls.pinned_plan_urls')),   # pin/unpin plans
     path('homepage/', include('plans.urls.homepage')),      # homepage plans
+
+    path('plans/', include('plans.urls.plan_history')),     # history of plan that user have join
+    # Notifications
+    path("notifications/", include("notifications.urls")),
   
     # Chat
     path('chat/', include('chat.urls')),

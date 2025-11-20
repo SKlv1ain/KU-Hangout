@@ -35,7 +35,7 @@ export function PlanCardActions({
   onLike,
   onChat,
   className = ""
-}: PlanCardSimpleActionsProps) {
+}: PlanCardActionsProps) {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
   const [leaveDialogOpen, setLeaveDialogOpen] = useState(false)
 

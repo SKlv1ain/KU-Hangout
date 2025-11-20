@@ -21,7 +21,7 @@ function normalizeTags(tagsInput: TagInput): Array<{ label: string }> {
 
   const cleanLabel = (value: unknown): string => {
     if (typeof value === "string") {
-      return value.replace(/[\[\]"']/g, "").trim()
+      return value.replace(/[["'\]]/g, "").trim()
     }
     if (value && typeof value === "object" && "label" in value) {
       return cleanLabel((value as { label?: string }).label ?? "")

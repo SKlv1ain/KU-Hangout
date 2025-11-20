@@ -4,6 +4,7 @@ from django.contrib.auth.models import AbstractUser
 from django.utils import timezone
 from users.models import Users
 from tags.models import Tags
+from django.core.files.storage import default_storage
 
 # Model for plans
 class Plans(models.Model):

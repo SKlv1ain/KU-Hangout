@@ -120,7 +120,9 @@ export function ImageUploadGrid({
               ) : (
                 <label className="flex h-full w-full cursor-pointer flex-col items-center justify-center gap-1 p-2">
                   <input
-                    ref={(el) => (fileInputRefs.current[index] = el)}
+                    ref={(el) => {
+                      fileInputRefs.current[index] = el
+                    }}
                     type="file"
                     accept="image/*"
                     className="hidden"

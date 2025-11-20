@@ -27,7 +27,7 @@ export async function fetchMe() {
 // ออกจากระบบ + ลบ token ฝั่ง client
 export async function logoutUser() {
   try { 
-    await api.post("/api/auth/logout");
+    await api.post("/api/auth/logout", {});
   } catch (error) {
     // Don't throw error, let AuthContext handle token removal
     // Token removal is handled by AuthContext regardless of API call success

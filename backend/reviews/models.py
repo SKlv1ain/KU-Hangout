@@ -1,8 +1,9 @@
 from django.db import models
-from users.models import Users
-from plans.models import Plans
 
-# Model reviews
+from plans.models import Plans
+from users.models import Users
+
+
 class reviews(models.Model):
     reviewer_id = models.ForeignKey(Users, on_delete=models.CASCADE, related_name="review_made")
     leader_id = models.ForeignKey(Users, on_delete=models.CASCADE, related_name="review_recived")
@@ -12,4 +13,4 @@ class reviews(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
-        unique_together = ('reviewer_id', 'leader_id')
+        unique_together = ("reviewer_id", "leader_id")

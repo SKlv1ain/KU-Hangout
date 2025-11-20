@@ -4,7 +4,7 @@ import type { ParticipantData } from "@/components/plan-card/plan-card-participa
 import { SAMPLE_IMAGES } from "./constants"
 
 const cleanTagLabel = (label: string): string =>
-  label.replace(/[\[\]"']/g, "").trim()
+  label.replace(/[["'\]]/g, "").trim()
 
 const expandTagString = (value: string): string[] => {
   const trimmed = value.trim()
