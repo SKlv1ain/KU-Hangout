@@ -16,8 +16,10 @@ class Users(AbstractUser):
     created_at = models.DateTimeField(auto_now_add=True)
     profile_picture = models.URLField(max_length=500, blank=True, null=True) # Profile picture URL (stored in Cloudinary)
     display_name = models.CharField(max_length=50, blank=True, null=True) #filed for display name
+    bio = models.TextField(blank=True, null=True)
+    website = models.URLField(max_length=255, blank=True, null=True)
+    social_links = models.JSONField(default=list, blank=True)
 
     def __str__(self):
         # Use display name if available, else fallback to username
         return self.display_name or self.username
-

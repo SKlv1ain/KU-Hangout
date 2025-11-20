@@ -1,7 +1,8 @@
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
-from rest_framework.permissions import AllowAny
+from rest_framework.permissions import AllowAny, IsAuthenticated
+from rest_framework.parsers import JSONParser, MultiPartParser, FormParser
 from django.db.models import Q
 from datetime import datetime
 from collections import defaultdict
@@ -84,7 +85,13 @@ class UserProfileByUsernameView(APIView):
     GET user profile by username
     """
     permission_classes = [AllowAny]
-    
+    parser_classes = [MultiPartParser, FormParser, JSONParser]
+
+    def get_permissions(self):
+        if self.request.method.upper() == "GET":
+            return [AllowAny()]
+        return [IsAuthenticated()]
+
     def get(self, request, username):
         try:
             user = Users.objects.get(username=username)
@@ -93,6 +100,22 @@ class UserProfileByUsernameView(APIView):
         
         serializer = UserSerializer(user)
         return Response(serializer.data)
+
+    def patch(self, request, username):
+        try:
+            user = Users.objects.get(username=username)
+        except Users.DoesNotExist:
+            return Response({"error": "User not found"}, status=status.HTTP_404_NOT_FOUND)
+
+        requester = request.user
+        if (not requester.is_authenticated or (requester.username != username and not requester.is_staff)):
+            return Response({"error": "You do not have permission to edit this profile."}, status=status.HTTP_403_FORBIDDEN)
+
+        serializer = UserSerializer(user, data=request.data, partial=True)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data, status=status.HTTP_200_OK)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
 # Get user plans (created and joined)
@@ -113,7 +136,7 @@ class UserPlansView(APIView):
         created_serializer = PlansSerializer(created_plans, many=True, context={'request': request})
         
         # Get plans user joined (as participant, not leader)
-        joined_participations = Participants.objects.filter(user=user).select_related('plan')
+        joined_participations = Participants.objects.filter(user=user).exclude(plan__leader_id=user).select_related('plan')
         joined_plans = [p.plan for p in joined_participations]
         joined_serializer = PlansSerializer(joined_plans, many=True, context={'request': request})
         
@@ -161,7 +184,7 @@ class UserContributionsView(APIView):
             })
         
         # Get plans user joined
-        joined_participations = Participants.objects.filter(user=user).select_related('plan').only('plan__id', 'plan__title', 'joined_at')
+        joined_participations = Participants.objects.filter(user=user).exclude(plan__leader_id=user).select_related('plan').only('plan__id', 'plan__title', 'joined_at')
         for participation in joined_participations:
             contributions.append({
                 'date': participation.joined_at.date().isoformat(),
