@@ -83,9 +83,10 @@ export function usePlanActions(
         // Create participant data for current user (optimistic update)
         const newParticipant: ParticipantData = {
           id: user.id,
-          name: user.username || 'Unknown',
+          name: user.display_name || user.username || 'Unknown',
           image: user.profile_picture || null,
-          role: 'MEMBER'
+          role: 'MEMBER',
+          username: user.username,
         }
 
         // Update plan: add current user to participants and update count
@@ -210,4 +211,3 @@ export function usePlanActions(
     handleChat
   }
 }
-

@@ -132,7 +132,8 @@ export const convertPlanToDetailData = (
     name: member.display_name || member.username || 'Unknown',
     image: member.profile_picture,
     designation: member.role === 'LEADER' ? 'Leader' : undefined,
-    role: member.role
+    role: member.role,
+    username: member.username,
   }))
 
   // Find leader in members to get their username
@@ -264,4 +265,3 @@ export const savePlansToLocalStorage = (plans: PlanDetailData[]): void => {
     }
   }
 }
-
