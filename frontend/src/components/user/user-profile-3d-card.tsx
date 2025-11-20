@@ -4,8 +4,9 @@ import { CardBody, CardContainer, CardItem } from "@/components/ui/shadcn-io/3d-
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { useAuth } from "@/context/AuthContext";
 import userService, { type UserProfile } from "@/services/userService";
-import { Star, Mail, Calendar, Globe } from "lucide-react";
+import { Star, Mail, Calendar, Globe, Medal, TrendingUp, Users } from "lucide-react";
 import UserProfileEditButton from "@/components/user/user-profile-edit-button";
+import { Link } from "react-router-dom";
 
 type PreviewProfile = Partial<UserProfile> & { profile_picture_preview?: string | null }
 
@@ -22,6 +23,8 @@ export default function ThreeDCardDemo({ username, onEditProfile, containerClass
   const { user: authUser } = useAuth();
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
+  const [planStats, setPlanStats] = useState<{ created: number; joined: number } | null>(null);
+  const [planStatsLoading, setPlanStatsLoading] = useState(false);
 
   useEffect(() => {
     const loadUserProfile = async () => {
@@ -47,6 +50,35 @@ export default function ThreeDCardDemo({ username, onEditProfile, containerClass
 
     loadUserProfile();
   }, [username, authUser?.id, refreshKey]);
+
+  const targetUsername = username || userProfile?.username || authUser?.username || null;
+
+  useEffect(() => {
+    if (!targetUsername) return;
+    let active = true;
+
+    const loadPlanStats = async () => {
+      try {
+        setPlanStatsLoading(true);
+        const data = await userService.getUserPlans(targetUsername);
+        if (!active) return;
+        const createdCount = Array.isArray(data.created_plans) ? data.created_plans.length : 0;
+        const joinedCount = Array.isArray(data.joined_plans) ? data.joined_plans.length : 0;
+        setPlanStats({ created: createdCount, joined: joinedCount });
+      } catch (error) {
+        console.error("[UserProfile3DCard] Error loading plan stats:", error);
+        if (active) setPlanStats(null);
+      } finally {
+        if (active) setPlanStatsLoading(false);
+      }
+    };
+
+    loadPlanStats();
+
+    return () => {
+      active = false;
+    };
+  }, [targetUsername]);
 
   const isViewingOwnProfile = !username || authUser?.username === username;
   const mergedPreview = previewProfile ?? {};
@@ -90,6 +122,7 @@ export default function ThreeDCardDemo({ username, onEditProfile, containerClass
   const createdAt = mergedPreview.created_at
     ?? baseProfile?.created_at
     ?? "";
+  const profileUrl = displayUsername ? `/profile/${displayUsername}` : null;
 
   const normalizeUrl = (value?: string | null) => {
     if (!value) return null;
@@ -196,13 +229,64 @@ export default function ThreeDCardDemo({ username, onEditProfile, containerClass
           </CardItem>
         )}
         <CardItem translateZ="150" className="w-full mt-4 flex justify-center">
-          <div className="relative h-52 w-52 rounded-full overflow-hidden border-4 border-white/80 dark:border-white/40 shadow-lg transition-transform duration-500 ease-out group-hover/card:scale-115">
-            <Avatar className="h-full w-full">
-              <AvatarImage src={profilePicture || undefined} alt={displayName} />
-              <AvatarFallback className="text-6xl font-semibold bg-gradient-to-br from-blue-500 to-purple-600 text-white">
-                {getInitials()}
-              </AvatarFallback>
-            </Avatar>
+          {profileUrl ? (
+            <Link
+              to={profileUrl}
+              className="rounded-full outline-none focus-visible:ring-2 focus-visible:ring-primary/60 focus-visible:ring-offset-2 focus-visible:ring-offset-background transition-shadow"
+            >
+              <div className="relative h-52 w-52 rounded-full overflow-hidden border-4 border-white/80 dark:border-white/40 shadow-lg transition-transform duration-500 ease-out group-hover/card:scale-115">
+                <Avatar className="h-full w-full">
+                  <AvatarImage src={profilePicture || undefined} alt={displayName} />
+                  <AvatarFallback className="text-6xl font-semibold bg-gradient-to-br from-blue-500 to-purple-600 text-white">
+                    {getInitials()}
+                  </AvatarFallback>
+                </Avatar>
+              </div>
+            </Link>
+          ) : (
+            <div className="relative h-52 w-52 rounded-full overflow-hidden border-4 border-white/80 dark:border-white/40 shadow-lg transition-transform duration-500 ease-out group-hover/card:scale-115">
+              <Avatar className="h-full w-full">
+                <AvatarImage src={profilePicture || undefined} alt={displayName} />
+                <AvatarFallback className="text-6xl font-semibold bg-gradient-to-br from-blue-500 to-purple-600 text-white">
+                  {getInitials()}
+                </AvatarFallback>
+              </Avatar>
+            </div>
+          )}
+        </CardItem>
+
+        <CardItem translateZ="60" className="w-full mt-6">
+          <div className="grid grid-cols-3 gap-3 text-center">
+            <div className="rounded-2xl border border-neutral-200/80 dark:border-neutral-800/60 bg-white/80 dark:bg-neutral-900/40 px-3 py-3 shadow-sm">
+              <div className="flex items-center justify-center gap-1 text-[11px] uppercase tracking-wide text-neutral-500 dark:text-neutral-400">
+                <Users className="h-3.5 w-3.5" />
+                Created
+              </div>
+              <p className="mt-1.5 text-xl font-semibold text-neutral-800 dark:text-white">
+                {planStatsLoading ? "…" : planStats?.created ?? "—"}
+              </p>
+            </div>
+            <div className="rounded-2xl border border-neutral-200/80 dark:border-neutral-800/60 bg-white/80 dark:bg-neutral-900/40 px-3 py-3 shadow-sm">
+              <div className="flex items-center justify-center gap-1 text-[11px] uppercase tracking-wide text-neutral-500 dark:text-neutral-400">
+                <TrendingUp className="h-3.5 w-3.5" />
+                Joined
+              </div>
+              <p className="mt-1.5 text-xl font-semibold text-neutral-800 dark:text-white">
+                {planStatsLoading ? "…" : planStats?.joined ?? "—"}
+              </p>
+            </div>
+            <div className="rounded-2xl border border-neutral-200/80 dark:border-neutral-800/60 bg-white/80 dark:bg-neutral-900/40 px-3 py-3 shadow-sm">
+              <div className="flex items-center justify-center gap-1 text-[11px] uppercase tracking-wide text-neutral-500 dark:text-neutral-400">
+                <Medal className="h-3.5 w-3.5" />
+                Rating
+              </div>
+              <p className="mt-1.5 text-xl font-semibold text-neutral-800 dark:text-white">
+                {avgRating > 0 ? avgRating.toFixed(1) : "—"}
+              </p>
+              <p className="text-[11px] text-neutral-500 dark:text-neutral-400">
+                {reviewCount} review{reviewCount === 1 ? "" : "s"}
+              </p>
+            </div>
           </div>
         </CardItem>
 

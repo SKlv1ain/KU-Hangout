@@ -6,11 +6,16 @@ import { SidebarLayout } from "@/components/home/side-bar"
 import ThreeDCardDemo from "@/components/user/user-profile-3d-card"
 import UserProfilePinnedPlans from "@/components/user/user-profile-pinned-plans"
 import UserProfileContributionGraph from "@/components/user/user-profile-contribution-graph"
+import UserProfileEditDialog from "@/components/user/user-profile-edit-dialog"
+import type { UserProfile } from "@/services/userService"
 
 export default function UserProfilePage() {
   const { username } = useParams<{ username?: string }>()
   const { user: authUser } = useAuth()
   const [isEditMode, setIsEditMode] = useState(false)
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false)
+  const [editingProfile, setEditingProfile] = useState<UserProfile | null>(null)
+  const [profileRefreshKey, setProfileRefreshKey] = useState(0)
 
   // If no username in URL, redirect to current user's profile
   if (!username && authUser?.username) {
@@ -29,8 +34,33 @@ export default function UserProfilePage() {
     return null;
   }
 
-  const handleEditProfile = () => {
+  const handleEditProfile = (profile?: UserProfile | null) => {
     console.log("[UserProfilePage] Edit profile clicked", targetUsername)
+
+    const fallbackProfile = profile ?? (authUser
+      ? {
+          id: authUser.id,
+          username: authUser.username,
+          display_name: authUser.display_name || authUser.username,
+          role: authUser.role,
+          avg_rating: authUser.avg_rating,
+          review_count: authUser.review_count,
+          contact: authUser.contact,
+          profile_picture_url: authUser.profile_picture_url || authUser.profile_picture,
+          created_at: authUser.created_at,
+          bio: authUser.bio || null,
+          website: authUser.website || null,
+          social_links: authUser.social_links || [],
+        }
+      : null)
+
+    setEditingProfile(fallbackProfile)
+    setIsEditDialogOpen(true)
+  }
+
+  const handleProfileUpdated = (updatedProfile: UserProfile) => {
+    setEditingProfile(updatedProfile)
+    setProfileRefreshKey((key) => key + 1)
   }
 
   return (
@@ -49,7 +79,11 @@ export default function UserProfilePage() {
             <div className="flex flex-col lg:flex-row gap-6 items-start">
               {/* Left: 3D Card */}
               <div className="flex-shrink-0 w-full lg:w-auto">
-                <ThreeDCardDemo username={targetUsername} onEditProfile={handleEditProfile} />
+                <ThreeDCardDemo
+                  username={targetUsername}
+                  onEditProfile={handleEditProfile}
+                  refreshKey={profileRefreshKey}
+                />
               </div>
 
               {/* Right: Pin Section & Contribution Graph */}
@@ -87,6 +121,13 @@ export default function UserProfilePage() {
             </div>
           </section>
         </main>
+        <UserProfileEditDialog
+          open={isEditDialogOpen}
+          onOpenChange={setIsEditDialogOpen}
+          profile={editingProfile}
+          previewUsername={targetUsername}
+          onProfileUpdated={handleProfileUpdated}
+        />
       </div>
     </SidebarLayout>
   )

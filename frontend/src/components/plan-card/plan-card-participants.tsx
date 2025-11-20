@@ -9,6 +9,7 @@ export interface ParticipantData {
   image: string | null
   designation?: string
   role?: 'LEADER' | 'MEMBER'
+  username?: string
 }
 
 interface PlanCardParticipantsProps {
@@ -33,7 +34,8 @@ export function PlanCardParticipants({
     id: p.id,
     name: p.name,
     image: p.image,
-    role: p.role
+    role: p.role,
+    username: p.username
   }))
 
   return (
@@ -52,4 +54,3 @@ export function PlanCardParticipants({
     </div>
   )
 }
-

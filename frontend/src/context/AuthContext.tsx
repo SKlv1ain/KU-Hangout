@@ -10,6 +10,11 @@ export interface User {
   review_count?: number;
   contact?: string;
   profile_picture?: string;
+  profile_picture_url?: string | null;
+  display_name?: string | null;
+  bio?: string | null;
+  website?: string | null;
+  social_links?: string[] | null;
   created_at?: string;
 }
 
@@ -125,4 +130,3 @@ export function useAuth() {
   if (!ctx) throw new Error("useAuth must be used inside <AuthProvider>");
   return ctx;
 }
-

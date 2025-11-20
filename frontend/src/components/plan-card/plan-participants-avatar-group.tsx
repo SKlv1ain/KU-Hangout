@@ -1,14 +1,17 @@
 "use client"
 
+import { Fragment } from "react"
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar"
 import { AvatarGroup, AvatarGroupTooltip } from "@/components/ui/shadcn-io/avatar-group"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
+import { Link } from "react-router-dom"
 
 export interface ParticipantAvatarData {
   id: string | number
   name: string
   image: string | null
   role?: 'LEADER' | 'MEMBER'
+  username?: string
 }
 
 interface PlanParticipantsAvatarGroupProps {
@@ -54,6 +57,22 @@ export function PlanParticipantsAvatarGroup({
   const remainingParticipants = remainingCount > 0 ? participants.slice(maxVisible) : []
 
   // Create array of Avatar elements
+  const wrapWithProfileLink = (content: React.ReactNode, participant: ParticipantAvatarData) => {
+    if (!participant.username) {
+      return <Fragment key={participant.id}>{content}</Fragment>
+    }
+    return (
+      <Link
+        key={participant.id}
+        to={`/profile/${participant.username}`}
+        onClick={(event) => event.stopPropagation()}
+        className="block rounded-full outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-primary/60"
+      >
+        {content}
+      </Link>
+    )
+  }
+
   const avatarElements = visibleParticipants.map((participant) => {
     const isLeader = participant.role === 'LEADER'
     
@@ -62,8 +81,8 @@ export function PlanParticipantsAvatarGroup({
       ? "size-6 border-[2px] border-amber-500"
       : "size-6 border-[1.5px] border-gray-600 dark:border-gray-300"
     
-    return (
-      <Avatar key={participant.id} className={avatarClassName}>
+    const avatarContent = (
+      <Avatar className={avatarClassName}>
         <AvatarImage src={participant.image || undefined} alt={participant.name} />
         <AvatarFallback className={isLeader ? "font-semibold" : ""}>
           {getInitials(participant.name)}
@@ -80,6 +99,8 @@ export function PlanParticipantsAvatarGroup({
         </AvatarGroupTooltip>
       </Avatar>
     )
+
+    return wrapWithProfileLink(avatarContent, participant)
   })
 
   // Add remaining count avatar if needed
@@ -115,14 +136,17 @@ export function PlanParticipantsAvatarGroup({
             return (
               <Tooltip key={participant.id}>
                 <TooltipTrigger asChild>
-                  <div className="relative">
-                    <Avatar className={avatarClassName}>
-                      <AvatarImage src={participant.image || undefined} alt={participant.name} />
-                      <AvatarFallback className={isLeader ? "font-semibold" : ""}>
-                        {getInitials(participant.name)}
-                      </AvatarFallback>
-                    </Avatar>
-                  </div>
+                  {wrapWithProfileLink(
+                    <div className="relative">
+                      <Avatar className={avatarClassName}>
+                        <AvatarImage src={participant.image || undefined} alt={participant.name} />
+                        <AvatarFallback className={isLeader ? "font-semibold" : ""}>
+                          {getInitials(participant.name)}
+                        </AvatarFallback>
+                      </Avatar>
+                    </div>,
+                    participant
+                  )}
                 </TooltipTrigger>
                 <TooltipContent className="z-50 bg-popover border border-border shadow-lg px-3 py-2 rounded-md">
                   <div className="flex items-center gap-2">
@@ -171,4 +195,3 @@ export function PlanParticipantsAvatarGroup({
     </AvatarGroup>
   )
 }
-

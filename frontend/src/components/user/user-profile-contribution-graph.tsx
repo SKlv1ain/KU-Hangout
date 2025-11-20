@@ -2,6 +2,7 @@
 import { useEffect, useState, useMemo } from "react";
 import userService, { type Contribution } from "@/services/userService";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { LogIn, PlusCircle } from "lucide-react";
 
 interface UserProfileContributionGraphProps {
   username: string;
@@ -148,6 +149,32 @@ export default function UserProfileContributionGraph({ username }: UserProfileCo
     return labels;
   }, [weeks]);
 
+  const timelineItems = useMemo(() => {
+    if (!contributions.length) return [];
+    return [...contributions]
+      .sort((a, b) => {
+        const dateA = new Date(`${a.date}T00:00:00`);
+        const dateB = new Date(`${b.date}T00:00:00`);
+        return dateB.getTime() - dateA.getTime();
+      })
+      .slice(0, 6);
+  }, [contributions]);
+
+  const formatThaiDate = (value: string) => {
+    try {
+      const date = new Date(`${value}T00:00:00`);
+      return date.toLocaleDateString("th-TH", {
+        timeZone: "Asia/Bangkok",
+        weekday: "short",
+        year: "numeric",
+        month: "short",
+        day: "numeric",
+      });
+    } catch {
+      return value;
+    }
+  };
+
   if (loading) {
     return (
       <div className="space-y-4">
@@ -262,26 +289,58 @@ export default function UserProfileContributionGraph({ username }: UserProfileCo
       </div>
 
       {/* Legend */}
-      <div className="flex items-center gap-4 text-xs text-neutral-500 dark:text-neutral-400">
-        <span>Less</span>
-        <div className="flex gap-1">
-          <div className="w-3 h-3 rounded-sm bg-neutral-200 dark:bg-neutral-800"></div>
-          <div className="w-3 h-3 rounded-sm bg-green-200 dark:bg-green-900"></div>
-          <div className="w-3 h-3 rounded-sm bg-green-400 dark:bg-green-700"></div>
-          <div className="w-3 h-3 rounded-sm bg-green-500 dark:bg-green-600"></div>
-          <div className="w-3 h-3 rounded-sm bg-green-600 dark:bg-green-500"></div>
+      <div className="flex flex-col gap-4 text-xs text-neutral-500 dark:text-neutral-400">
+        <div className="flex items-center gap-4">
+          <span>Less</span>
+          <div className="flex gap-1">
+            <div className="w-3 h-3 rounded-sm bg-neutral-200 dark:bg-neutral-800"></div>
+            <div className="w-3 h-3 rounded-sm bg-green-200 dark:bg-green-900"></div>
+            <div className="w-3 h-3 rounded-sm bg-green-400 dark:bg-green-700"></div>
+            <div className="w-3 h-3 rounded-sm bg-green-500 dark:bg-green-600"></div>
+            <div className="w-3 h-3 rounded-sm bg-green-600 dark:bg-green-500"></div>
+          </div>
+          <span>More</span>
+          <div className="ml-4 flex items-center gap-2">
+            <div className="w-3 h-3 rounded-sm bg-green-600 dark:bg-green-500"></div>
+            <span>Created plans</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <div className="w-3 h-3 rounded-sm bg-emerald-500 dark:bg-emerald-600"></div>
+            <span>Joined plans</span>
+          </div>
         </div>
-        <span>More</span>
-        <div className="ml-4 flex items-center gap-2">
-          <div className="w-3 h-3 rounded-sm bg-green-600 dark:bg-green-500"></div>
-          <span>Created plans</span>
-        </div>
-        <div className="flex items-center gap-2">
-          <div className="w-3 h-3 rounded-sm bg-emerald-500 dark:bg-emerald-600"></div>
-          <span>Joined plans</span>
-        </div>
+
+        {timelineItems.length > 0 && (
+          <div className="mt-2">
+            <h4 className="text-sm font-semibold text-neutral-700 dark:text-neutral-200 mb-3">Recent activity</h4>
+            <div className="space-y-2">
+              {timelineItems.map((item, index) => (
+                <div
+                  key={`${item.plan_id}-${index}`}
+                  className="flex items-start gap-3 rounded-xl border border-neutral-200/80 dark:border-neutral-800/60 bg-white/80 dark:bg-neutral-900/40 px-3.5 py-2.5 text-sm"
+                >
+                  <div className={`mt-0.5 rounded-full p-1 ${item.type === "created" ? "bg-green-100 text-green-600 dark:bg-green-900/40 dark:text-green-300" : "bg-emerald-100 text-emerald-600 dark:bg-emerald-900/40 dark:text-emerald-300"}`}>
+                    {item.type === "created" ? (
+                      <PlusCircle className="h-4 w-4" />
+                    ) : (
+                      <LogIn className="h-4 w-4" />
+                    )}
+                  </div>
+                  <div className="flex-1 space-y-0.5">
+                    <p className="font-medium text-neutral-800 dark:text-neutral-50">
+                      {item.type === "created" ? "Created a plan" : "Joined a plan"}
+                    </p>
+                    <p className="text-neutral-600 dark:text-neutral-300">{item.plan_title}</p>
+                    <p className="text-xs text-neutral-500 dark:text-neutral-400">
+                      {formatThaiDate(item.date)}
+                    </p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
 }
-
