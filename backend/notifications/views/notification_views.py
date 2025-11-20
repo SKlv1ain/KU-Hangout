@@ -1,7 +1,8 @@
-from rest_framework.permissions import IsAuthenticated
-from rest_framework.views import APIView
-from rest_framework.response import Response
+from django.utils import timezone
 from rest_framework import status
+from rest_framework.permissions import IsAuthenticated
+from rest_framework.response import Response
+from rest_framework.views import APIView
 
 from notifications.models import Notification
 from notifications.serializers import NotificationSerializer
@@ -41,9 +42,11 @@ class NotificationMarkAllReadView(APIView):
         """
         Mark all notifications as read for the current user.
         """
-        updated = Notification.objects.filter(
-            user=request.user, is_read=False
-        ).update(is_read=True)
+        now = timezone.now()
+        updated = (
+            Notification.objects.filter(user=request.user, is_read=False)
+            .update(is_read=True, read_at=now)
+        )
 
         return Response(
             {
@@ -73,8 +76,7 @@ class NotificationMarkReadView(APIView):
                 status=status.HTTP_404_NOT_FOUND,
             )
 
-        notif.is_read = True
-        notif.save(update_fields=["is_read"])
+        notif.mark_as_read()
 
         serializer = NotificationSerializer(notif)
         return Response(

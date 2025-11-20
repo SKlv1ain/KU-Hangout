@@ -1,7 +1,7 @@
 "use client"
 
 import * as React from "react"
-import { Home, MessageSquare } from "lucide-react"
+import { Home, MessageSquare, UserRound } from "lucide-react"
 import { useAuth } from "@/context/AuthContext"
 
 import { NavMain } from "@/components/nav-main"
@@ -25,6 +25,12 @@ const navMain = [
     title: "Messages",
     url: "/messages",
     icon: MessageSquare,
+    isActive: false,
+    },
+    {
+    title: "Profile",
+    url: "/profile",
+    icon: UserRound,
     isActive: false,
     },
 ]

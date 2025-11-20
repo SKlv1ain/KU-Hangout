@@ -9,6 +9,7 @@ https://docs.djangoproject.com/en/5.1/topics/settings/
 For the full list of settings and their values, see
 https://docs.djangoproject.com/en/5.1/ref/settings/
 """
+import logging
 import os
 import sys
 from datetime import timedelta
@@ -22,16 +23,18 @@ PROJECT_ROOT = BASE_DIR.parent  # KU-HANGOUT
 # Load .env from project root
 load_dotenv(PROJECT_ROOT / '.env')
 
+logger = logging.getLogger(__name__)
+
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/5.1/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = os.getenv('SECRET_KEY', 'django-insecure-5wdu6h9okg@+*c4hh^!ddbj%cn6bi#yj6#h2xl=*p(0@fx-xtt')
+SECRET_KEY = 'django-insecure-5wdu6h9okg@+*c4hh^!ddbj%cn6bi#yj6#h2xl=*p(0@fx-xtt'
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = os.getenv('DEBUG', 'True') == 'True'
+DEBUG = True
 
-ALLOWED_HOSTS = os.getenv('ALLOWED_HOSTS', '').split(',') if os.getenv('ALLOWED_HOSTS') else []
+ALLOWED_HOSTS = []
 
 AUTH_USER_MODEL = 'users.Users'  # App name + Model name
 
@@ -51,9 +54,8 @@ INSTALLED_APPS = [
     'rest_framework',
     'rest_framework_simplejwt',
     'corsheaders',
-    'cloudinary_storage',  # Must be before django.contrib.staticfiles
-    'cloudinary',  # Add Cloudinary support
-    
+    'cloudinary',
+    'cloudinary_storage',
     # Local apps
     'accounts',
     "users",
@@ -62,8 +64,8 @@ INSTALLED_APPS = [
     'participants',
     'chat',
     'notifications.apps.NotificationsConfig',
-    
-    # Channels for chat
+    'reviews',
+    #chanel for chat
     "channels",
 ]
 
@@ -102,6 +104,8 @@ ASGI_APPLICATION = 'backend.asgi.application'
 # Database
 # https://docs.djangoproject.com/en/5.1/ref/settings/#databases
 
+load_dotenv(os.path.join(BASE_DIR.parent, ".env"))
+
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.postgresql',
@@ -115,7 +119,7 @@ DATABASES = {
         ),
         'PORT': (
             os.getenv('POSTGRES_PORT')
-            or '5432'
+            or '5433'
         ),
     }
 }
@@ -144,8 +148,11 @@ AUTH_PASSWORD_VALIDATORS = [
 # https://docs.djangoproject.com/en/5.1/topics/i18n/
 
 LANGUAGE_CODE = 'en-us'
+
 TIME_ZONE = 'Asia/Bangkok'
+
 USE_I18N = True
+
 USE_TZ = True
 
 
@@ -153,12 +160,13 @@ USE_TZ = True
 # https://docs.djangoproject.com/en/5.1/howto/static-files/
 
 STATIC_URL = 'static/'
-STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.1/ref/settings/#default-auto-field
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+
+AUTH_USER_MODEL = "users.Users"  # app_name.model_name
 
 # REST Framework configuration
 REST_FRAMEWORK = {
@@ -219,7 +227,9 @@ CORS_ALLOW_METHODS = [
     'PUT',
 ]
 
-# ==================== FILE STORAGE CONFIGURATION ====================
+#add path for user profiles picture
+MEDIA_URL = '/media/'
+MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 
 USE_CLOUDINARY = os.getenv('USE_CLOUDINARY', 'False') == 'True'
 
@@ -239,7 +249,8 @@ if USE_CLOUDINARY:
     MEDIA_URL = '/media/'
     STATIC_URL = '/static/'
     
-    print("=== Cloudinary Storage ENABLED ===")  # Debug line
+    if DEBUG:
+        logger.debug("Cloudinary storage enabled")
 else:
     # Local storage
     MEDIA_URL = '/media/'
@@ -248,7 +259,8 @@ else:
     STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
     
     DEFAULT_FILE_STORAGE = 'django.core.files.storage.FileSystemStorage'
-    print("=== Local File Storage ENABLED ===")  # Debug line
+    if DEBUG:
+        logger.debug("Local file storage enabled")
 
 # ==================== END FILE STORAGE CONFIGURATION ====================
 
@@ -258,16 +270,12 @@ CHANNEL_LAYERS = {
     "default": {
         "BACKEND": "channels_redis.core.RedisChannelLayer",
         "CONFIG": {
-            "hosts": [(os.getenv('REDIS_HOST', '127.0.0.1'), int(os.getenv('REDIS_PORT', 6379)))],
+            "hosts": [("127.0.0.1", 6379)],
         },
     },
 }
 
 # ==================== FORCE CLOUDINARY STORAGE MONKEY PATCH ====================
-
-print("=== FINAL STORAGE CONFIGURATION ===")
-print(f"USE_CLOUDINARY: {USE_CLOUDINARY}")
-print(f"DEFAULT_FILE_STORAGE: {DEFAULT_FILE_STORAGE}")
 
 if USE_CLOUDINARY:
     # Import required modules
@@ -285,13 +293,10 @@ if USE_CLOUDINARY:
         storage_module = sys.modules['django.core.files.storage']
         storage_module.default_storage = cloudinary_storage
     
-    print("✓ CLOUDINARY STORAGE MONKEY PATCHED")
-    print(f"MONKEY PATCHED STORAGE: {django.core.files.storage.default_storage}")
-    print(f"MONKEY PATCHED STORAGE CLASS: {django.core.files.storage.default_storage.__class__}")
-
-# Test the storage immediately
-from django.core.files.storage import default_storage as final_storage
-print(f"FINAL VERIFIED STORAGE: {final_storage}")
-print(f"FINAL VERIFIED STORAGE CLASS: {final_storage.__class__}")
+    if DEBUG:
+        logger.debug(
+            "Cloudinary storage monkey patched to %s",
+            django.core.files.storage.default_storage.__class__.__name__,
+        )
 
 # ==================== END FORCE CLOUDINARY STORAGE MONKEY PATCH ====================

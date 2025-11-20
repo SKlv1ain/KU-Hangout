@@ -11,7 +11,7 @@ class Migration(migrations.Migration):
 
     dependencies = [
         ("chat", "0001_initial"),
-        ("plans", "0007_plans_tags"),
+        ("plans", "0006_pinnedplan"),
         migrations.swappable_dependency(settings.AUTH_USER_MODEL),
     ]
 

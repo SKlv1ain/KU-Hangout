@@ -1,9 +1,16 @@
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
-from rest_framework.permissions import AllowAny
+from rest_framework.permissions import AllowAny, IsAuthenticated
+from rest_framework.parsers import JSONParser, MultiPartParser, FormParser
+from django.db.models import Q
+from datetime import datetime
+from collections import defaultdict
 from users.models import Users
 from users.serializers.UserSerializer import UserSerializer
+from plans.models import Plans, PinnedPlan
+from plans.serializers.plans_serializers import PlansSerializer
+from participants.models import Participants
 
 # List all users
 class UsersListView(APIView):
@@ -70,3 +77,123 @@ class UserDetailView(APIView):
             return Response({"error": "User not found"}, status=status.HTTP_404_NOT_FOUND)
         user.delete()
         return Response({"message": "User deleted successfully"}, status=status.HTTP_204_NO_CONTENT)
+
+
+# Get user profile by username
+class UserProfileByUsernameView(APIView):
+    """
+    GET user profile by username
+    """
+    permission_classes = [AllowAny]
+    parser_classes = [MultiPartParser, FormParser, JSONParser]
+
+    def get_permissions(self):
+        if self.request.method.upper() == "GET":
+            return [AllowAny()]
+        return [IsAuthenticated()]
+
+    def get(self, request, username):
+        try:
+            user = Users.objects.get(username=username)
+        except Users.DoesNotExist:
+            return Response({"error": "User not found"}, status=status.HTTP_404_NOT_FOUND)
+        
+        serializer = UserSerializer(user)
+        return Response(serializer.data)
+
+    def patch(self, request, username):
+        try:
+            user = Users.objects.get(username=username)
+        except Users.DoesNotExist:
+            return Response({"error": "User not found"}, status=status.HTTP_404_NOT_FOUND)
+
+        requester = request.user
+        if (not requester.is_authenticated or (requester.username != username and not requester.is_staff)):
+            return Response({"error": "You do not have permission to edit this profile."}, status=status.HTTP_403_FORBIDDEN)
+
+        serializer = UserSerializer(user, data=request.data, partial=True)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data, status=status.HTTP_200_OK)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+# Get user plans (created and joined)
+class UserPlansView(APIView):
+    """
+    GET plans created by user and plans user joined
+    """
+    permission_classes = [AllowAny]
+    
+    def get(self, request, username):
+        try:
+            user = Users.objects.get(username=username)
+        except Users.DoesNotExist:
+            return Response({"error": "User not found"}, status=status.HTTP_404_NOT_FOUND)
+        
+        # Get plans created by user
+        created_plans = Plans.objects.filter(leader_id=user).order_by('-create_at')
+        created_serializer = PlansSerializer(created_plans, many=True, context={'request': request})
+        
+        # Get plans user joined (as participant, not leader)
+        joined_participations = Participants.objects.filter(user=user).exclude(plan__leader_id=user).select_related('plan')
+        joined_plans = [p.plan for p in joined_participations]
+        joined_serializer = PlansSerializer(joined_plans, many=True, context={'request': request})
+        
+        # Get pinned plan IDs for this user
+        try:
+            pinned_plan_ids = set(
+                PinnedPlan.objects.filter(user=user).values_list('plan_id', flat=True)  # pylint: disable=no-member
+            )
+        except Exception as e:
+            # Fallback if PinnedPlan table doesn't exist yet (migration not run)
+            print(f"[UserPlansView] Warning: Could not fetch pinned plans: {e}")
+            pinned_plan_ids = set()
+        
+        return Response({
+            'created_plans': created_serializer.data,
+            'joined_plans': joined_serializer.data,
+            'pinned_plan_ids': list(pinned_plan_ids)
+        }, status=status.HTTP_200_OK)
+
+
+# Get user contributions (activity timeline)
+class UserContributionsView(APIView):
+    """
+    GET contribution data for activity graph
+    Returns: { date: "YYYY-MM-DD", type: "created" | "joined", plan_id: number, plan_title: string }[]
+    """
+    permission_classes = [AllowAny]
+    
+    def get(self, request, username):
+        try:
+            user = Users.objects.get(username=username)
+        except Users.DoesNotExist:
+            return Response({"error": "User not found"}, status=status.HTTP_404_NOT_FOUND)
+        
+        contributions = []
+        
+        # Get plans created by user
+        created_plans = Plans.objects.filter(leader_id=user).only('id', 'title', 'create_at')
+        for plan in created_plans:
+            contributions.append({
+                'date': plan.create_at.date().isoformat(),
+                'type': 'created',
+                'plan_id': plan.id,
+                'plan_title': plan.title
+            })
+        
+        # Get plans user joined
+        joined_participations = Participants.objects.filter(user=user).exclude(plan__leader_id=user).select_related('plan').only('plan__id', 'plan__title', 'joined_at')
+        for participation in joined_participations:
+            contributions.append({
+                'date': participation.joined_at.date().isoformat(),
+                'type': 'joined',
+                'plan_id': participation.plan.id,
+                'plan_title': participation.plan.title
+            })
+        
+        # Sort by date
+        contributions.sort(key=lambda x: x['date'])
+        
+        return Response(contributions, status=status.HTTP_200_OK)

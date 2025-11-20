@@ -11,6 +11,28 @@ import { PlanCardParticipants } from "@/components/plan-card/plan-card-participa
 import { PlanCardActions } from "@/components/plan-card/plan-card-actions"
 import type { AnimatedTooltipItem } from "@/components/ui/shadcn-io/animated-tooltip"
 
+type ConfettiOptions = {
+  particleCount: number
+  spread: number
+  origin: { y: number }
+}
+
+const triggerConfetti = () => {
+  if (typeof window === "undefined") {
+    return
+  }
+
+  const confettiWindow = window as typeof window & {
+    confetti?: (options: ConfettiOptions) => void
+  }
+
+  confettiWindow.confetti?.({
+    particleCount: 100,
+    spread: 70,
+    origin: { y: 0.6 },
+  })
+}
+
 const people: AnimatedTooltipItem[] = [
   {
     id: 1,
@@ -68,12 +90,7 @@ export function PlanCardExample() {
   // Trigger confetti when script is ready and user has joined
   useEffect(() => {
     if (shouldTriggerConfetti && confettiStatus === 'ready' && typeof window !== 'undefined' && 'confetti' in window) {
-      // @ts-ignore - confetti is loaded dynamically
-      window.confetti({
-        particleCount: 100,
-        spread: 70,
-        origin: { y: 0.6 }
-      })
+      triggerConfetti()
       setShouldTriggerConfetti(false)
       toast.success("🎉 Joined successfully!", {
         description: "Welcome to the study session!",
@@ -87,12 +104,7 @@ export function PlanCardExample() {
     
     // If script is already ready, trigger immediately
     if (confettiStatus === 'ready' && typeof window !== 'undefined' && 'confetti' in window) {
-      // @ts-ignore - confetti is loaded dynamically
-      window.confetti({
-        particleCount: 100,
-        spread: 70,
-        origin: { y: 0.6 }
-      })
+      triggerConfetti()
       setShouldTriggerConfetti(false)
       toast.success("🎉 Joined successfully!", {
         description: "Welcome to the study session!",

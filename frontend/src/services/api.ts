@@ -33,6 +33,12 @@ const api = {
         credentials: 'include',
       });
 
+      // Handle 404 first - return null silently without parsing JSON
+      // This prevents console errors for expected 404s (e.g., when rating doesn't exist)
+      if (response.status === 404) {
+        return null;
+      }
+
       // Handle token expiration (401 Unauthorized) - check before parsing JSON
       if (response.status === 401 || response.status === 403) {
         // Try to get error message, but don't fail if response is not JSON
@@ -241,9 +247,10 @@ const api = {
       const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(data?.detail || `DELETE ${endpoint} failed with status ${response.status}`);
+        throw new Error(data?.detail || data?.message || `DELETE ${endpoint} failed with status ${response.status}`);
       }
 
+      // Return data even if it contains a message (for idempotent operations)
       return data;
     } catch (err) {
       if (err instanceof Error) throw err;
