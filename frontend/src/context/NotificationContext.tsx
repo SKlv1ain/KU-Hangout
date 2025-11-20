@@ -31,6 +31,7 @@ interface NotificationContextValue {
   markNotificationAsRead: (notificationId: number) => Promise<void>
   markAllAsRead: (topic?: NotificationTopic) => Promise<void>
   deleteNotification: (notificationId: number) => Promise<void>
+  clearNotifications: (topic?: NotificationTopic) => Promise<void>
 }
 
 const NotificationContext = createContext<NotificationContextValue | null>(null)
@@ -213,6 +214,47 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
     [user, setNotificationsWithRef, applyServerUnreadCounts]
   )
 
+  const clearNotifications = useCallback(
+    async (topic?: NotificationTopic) => {
+      if (!user) {
+        return
+      }
+
+      try {
+        const response = await notificationsService.clearNotifications({ topic })
+
+        setNotificationsWithRef((prev) => {
+          if (!topic) {
+            return []
+          }
+          return prev.filter((item) => item.topic !== topic)
+        })
+
+        if (response && typeof response === 'object') {
+          applyServerUnreadCounts(response.unread_count, response.unread_counts_by_topic)
+        } else {
+          // Fallback adjustment if server did not include updated counts
+          setUnreadCount((prev) => (topic ? prev - (topicUnreadCounts?.[topic] ?? 0) : 0))
+          if (topic) {
+            setTopicUnreadCounts((prev) => {
+              const next = { ...prev }
+              next[topic] = 0
+              return next
+            })
+          } else {
+            setTopicUnreadCounts({})
+          }
+        }
+        setError(null)
+      } catch (err) {
+        const message = err instanceof Error ? err.message : 'Unable to clear notifications.'
+        setError(message)
+        throw err
+      }
+    },
+    [user, setNotificationsWithRef, applyServerUnreadCounts, topicUnreadCounts]
+  )
+
   const handleRealtimeNotification = useCallback(
     (incoming: NotificationItem) => {
       if (!incoming) {
@@ -292,6 +334,7 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
       markNotificationAsRead,
       markAllAsRead,
       deleteNotification,
+      clearNotifications,
     }),
     [
       notifications,
@@ -308,6 +351,7 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
       markNotificationAsRead,
       markAllAsRead,
       deleteNotification,
+      clearNotifications,
     ]
   )
 

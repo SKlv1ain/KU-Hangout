@@ -18,6 +18,7 @@ export interface NotificationItem {
   plan: number | null
   plan_id?: number | null
   plan_title?: string | null
+  plan_cover_image?: string | null
   chat_thread: number | null
   chat_thread_id?: number | null
   chat_message: number | null
@@ -32,6 +33,10 @@ export interface NotificationItem {
   is_deleted: boolean
 }
 
+export interface UnreadCountsByTopic {
+  [topic: string]: number
+}
+
 export interface NotificationListResponse {
   message: string
   status_code: number
@@ -40,6 +45,7 @@ export interface NotificationListResponse {
   page_size: number
   has_next: boolean
   unread_count: number
+  unread_counts_by_topic?: UnreadCountsByTopic
   notifications: NotificationItem[]
 }
 
@@ -81,12 +87,24 @@ const notificationsService = {
     return api.patch(`/notifications/${notificationId}/read/`, {})
   },
 
-  async markAllRead() {
-    return api.post('/notifications/mark-all-read/', {})
+  async markAllRead(params: { topic?: string } = {}) {
+    const payload: Record<string, string> = {}
+    if (params.topic) {
+      payload.topic = params.topic
+    }
+    return api.post('/notifications/mark-all-read/', payload)
   },
 
   async deleteNotification(notificationId: number) {
     return api.delete(`/notifications/${notificationId}/`)
+  },
+
+  async clearNotifications(params: { topic?: string } = {}) {
+    const payload: Record<string, string> = {}
+    if (params.topic) {
+      payload.topic = params.topic
+    }
+    return api.post('/notifications/clear/', payload)
   },
 }
 
