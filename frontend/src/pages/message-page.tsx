@@ -11,6 +11,7 @@ import { cn } from "@/lib/utils"
 import { useWebSocket } from "@/hooks/useWebSocket"
 import { useAuth } from "@/context/AuthContext"
 import chatService from "@/services/chatService"
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 
 interface Message {
   id: string | number
@@ -24,11 +25,18 @@ interface ChatRoom {
   planId: string | number
   threadId: number
   title: string
+  coverImage?: string | null
   lastMessage?: string | null
   lastMessageSender?: string | null
   lastMessageTime?: Date
   unreadCount?: number
   isOwner?: boolean
+}
+
+const getPlanInitials = (title?: string | null) => {
+  if (!title) return "PL"
+  const parts = title.trim().split(/\s+/)
+  return parts.slice(0, 2).map((part) => part.charAt(0)).join("").toUpperCase() || "PL"
 }
 
 export default function MessagePage() {
@@ -49,6 +57,7 @@ export default function MessagePage() {
         planId: thread.plan_id,
         threadId: thread.thread_id,
         title: thread.plan_title || `Plan ${thread.plan_id}`,
+        coverImage: thread.plan_cover_image ?? null,
         lastMessage: thread.last_message ?? null,
         lastMessageSender: thread.last_message_sender ?? null,
         lastMessageTime: thread.last_message_timestamp ? new Date(thread.last_message_timestamp) : undefined,
@@ -69,6 +78,7 @@ export default function MessagePage() {
         localStorage.setItem('ku-hangout-chat-threads', JSON.stringify(rooms.map(room => ({
           planId: room.planId,
           title: room.title,
+          coverImage: room.coverImage ?? null,
         }))))
       } catch (storageError) {
         console.error('Failed to persist chat threads for fallback:', storageError)
@@ -85,6 +95,7 @@ export default function MessagePage() {
             planId: item.planId,
             threadId: -1,
             title: item.title,
+            coverImage: item.coverImage ?? null,
             unreadCount: 0,
           }))
           setChatRooms(fallbackRooms)
@@ -315,27 +326,37 @@ export default function MessagePage() {
                         selectedPlanId === room.planId.toString() && "bg-accent border-l-2 border-primary"
                       )}
                     >
-                      <div className="flex items-start justify-between gap-2">
+                      <div className="flex items-center gap-3">
+                        <Avatar className="h-12 w-12">
+                          {room.coverImage && (
+                            <AvatarImage src={room.coverImage} alt={room.title} />
+                          )}
+                          <AvatarFallback>{getPlanInitials(room.title)}</AvatarFallback>
+                        </Avatar>
                         <div className="flex-1 min-w-0">
-                          <h3 className="font-semibold text-sm truncate">{room.title}</h3>
-                          <p className="text-xs text-muted-foreground truncate mt-1">
-                            {room.lastMessage
-                              ? room.lastMessageSender
-                                ? `${room.lastMessageSender}: ${room.lastMessage}`
-                                : room.lastMessage
-                              : "No messages yet"}
-                          </p>
-                          <p className="text-xs text-muted-foreground mt-1">
-                            {room.lastMessageTime
-                              ? room.lastMessageTime.toLocaleString()
-                              : ""}
-                          </p>
+                          <div className="flex items-start justify-between gap-2">
+                            <div className="flex-1 min-w-0">
+                              <h3 className="font-semibold text-sm truncate">{room.title}</h3>
+                              <p className="text-xs text-muted-foreground truncate mt-1">
+                                {room.lastMessage
+                                  ? room.lastMessageSender
+                                    ? `${room.lastMessageSender}: ${room.lastMessage}`
+                                    : room.lastMessage
+                                  : "No messages yet"}
+                              </p>
+                              <p className="text-xs text-muted-foreground mt-1">
+                                {room.lastMessageTime
+                                  ? room.lastMessageTime.toLocaleString()
+                                  : ""}
+                              </p>
+                            </div>
+                            {room.unreadCount && room.unreadCount > 0 && (
+                              <span className="bg-primary text-primary-foreground text-xs rounded-full px-2 py-1 flex-shrink-0">
+                                {room.unreadCount}
+                              </span>
+                            )}
+                          </div>
                         </div>
-                        {room.unreadCount && room.unreadCount > 0 && (
-                          <span className="bg-primary text-primary-foreground text-xs rounded-full px-2 py-1 flex-shrink-0">
-                            {room.unreadCount}
-                          </span>
-                        )}
                       </div>
                     </button>
                   ))}
@@ -350,21 +371,29 @@ export default function MessagePage() {
               <>
                 {/* Chat Header */}
                 <div className="flex items-center justify-between p-4 border-b border-border flex-shrink-0">
-                  <div className="flex-1">
-                    <div className="flex items-center gap-2">
-                      <h1 className="text-xl font-semibold">{selectedRoom.title}</h1>
-                      {isConnected ? (
-                        <Wifi className="h-4 w-4 text-green-500" />
-                      ) : (
-                        <WifiOff className="h-4 w-4 text-muted-foreground" />
+                  <div className="flex items-center gap-3 flex-1">
+                    <Avatar className="h-12 w-12">
+                      {selectedRoom.coverImage && (
+                        <AvatarImage src={selectedRoom.coverImage} alt={selectedRoom.title} />
+                      )}
+                      <AvatarFallback>{getPlanInitials(selectedRoom.title)}</AvatarFallback>
+                    </Avatar>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2">
+                        <h1 className="text-xl font-semibold truncate">{selectedRoom.title}</h1>
+                        {isConnected ? (
+                          <Wifi className="h-4 w-4 text-green-500" />
+                        ) : (
+                          <WifiOff className="h-4 w-4 text-muted-foreground" />
+                        )}
+                      </div>
+                      <p className="text-sm text-muted-foreground">
+                        {isConnected ? 'Connected' : connectionStatus === 'connecting' ? 'Connecting...' : 'Disconnected'}
+                      </p>
+                      {connectionError && (
+                        <p className="text-xs text-destructive mt-1">{connectionError}</p>
                       )}
                     </div>
-                    <p className="text-sm text-muted-foreground">
-                      {isConnected ? 'Connected' : connectionStatus === 'connecting' ? 'Connecting...' : 'Disconnected'}
-                    </p>
-                    {connectionError && (
-                      <p className="text-xs text-destructive mt-1">{connectionError}</p>
-                    )}
                   </div>
                 </div>
 
@@ -438,4 +467,3 @@ export default function MessagePage() {
     </SidebarLayout>
   )
 }
-

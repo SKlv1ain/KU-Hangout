@@ -265,12 +265,23 @@ else:
 # ==================== END FILE STORAGE CONFIGURATION ====================
 
 
-# Redis backend for Channels
+# Redis backend for Channels (configurable via env for Docker/local usage)
+REDIS_HOST = os.getenv("REDIS_HOST", "127.0.0.1")
+REDIS_PORT = int(os.getenv("REDIS_PORT", "6379"))
+REDIS_PASSWORD = os.getenv("REDIS_PASSWORD")
+REDIS_USE_SSL = os.getenv("REDIS_USE_SSL", "false").lower() == "true"
+
+_redis_scheme = "rediss" if REDIS_USE_SSL else "redis"
+if REDIS_PASSWORD:
+    _redis_host = f"{_redis_scheme}://:{REDIS_PASSWORD}@{REDIS_HOST}:{REDIS_PORT}/0"
+else:
+    _redis_host = f"{_redis_scheme}://{REDIS_HOST}:{REDIS_PORT}/0"
+
 CHANNEL_LAYERS = {
     "default": {
         "BACKEND": "channels_redis.core.RedisChannelLayer",
         "CONFIG": {
-            "hosts": [("127.0.0.1", 6379)],
+            "hosts": [_redis_host],
         },
     },
 }
