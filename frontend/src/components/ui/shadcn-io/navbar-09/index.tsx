@@ -34,7 +34,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
-import { cn } from '@/lib/utils';
+import { cn, formatRelativeTime } from '@/lib/utils';
 
 // Simple logo component for the navbar
 const Logo = (props: React.SVGAttributes<SVGElement>) => {
@@ -92,59 +92,275 @@ const HamburgerIcon = ({ className, ...props }: React.SVGAttributes<SVGElement>)
   </svg>
 );
 
+export interface NavbarNotificationItem {
+  id: number;
+  title?: string | null;
+  message?: string | null;
+  created_at: string;
+  is_read: boolean;
+  topic?: string | null;
+  notification_type_display?: string | null;
+  topic_display?: string | null;
+  plan_title?: string | null;
+  plan_cover_image?: string | null;
+  actor?: {
+    id: number;
+    username: string;
+    display_name?: string | null;
+    profile_picture?: string | null;
+  } | null;
+}
+
+interface NotificationMenuProps {
+  notificationCount?: number;
+  notifications?: NavbarNotificationItem[];
+  notificationsLoading?: boolean;
+  onItemClick?: (item: NavbarNotificationItem) => void;
+  onViewAll?: () => void;
+  onMarkAllNotificationsRead?: () => void;
+}
+
+const getActorName = (item?: NavbarNotificationItem) =>
+  item?.actor?.display_name || item?.actor?.username || 'System';
+
+const getActorInitials = (item?: NavbarNotificationItem) => {
+  const name = getActorName(item);
+  const parts = name.trim().split(/\s+/);
+  return parts.slice(0, 2).map((part) => part.charAt(0)).join('').toUpperCase() || 'U';
+};
+
+const getPlanInitials = (item?: NavbarNotificationItem) => {
+  const title = item?.plan_title || item?.title || 'Plan';
+  const parts = title.trim().split(/\s+/);
+  return parts.slice(0, 2).map((part) => part.charAt(0)).join('').toUpperCase() || 'PL';
+};
+
+const getNotificationAvatarSrc = (item?: NavbarNotificationItem | null) => {
+  if (!item) return null;
+  if (item.topic === 'CHAT') {
+    return item.plan_cover_image || null;
+  }
+  return item.actor?.profile_picture || item.plan_cover_image || null;
+};
+
+const getPrimaryLabel = (item?: NavbarNotificationItem) => {
+  if (!item) return '';
+  if (item.topic === 'CHAT') {
+    return item.plan_title || item.title || 'Group chat';
+  }
+  return getActorName(item);
+};
+
 // Notification Menu Component
 const NotificationMenu = ({ 
-  notificationCount = 3, 
-  onItemClick 
-}: { 
-  notificationCount?: number;
-  onItemClick?: (item: string) => void;
-}) => (
-  <DropdownMenu>
-    <DropdownMenuTrigger asChild>
-      <Button 
-        variant="ghost" 
-        size="icon" 
-        className="h-8 w-8 relative rounded-full transition-all hover:bg-emerald-600/10 dark:hover:bg-emerald-400/20 hover:shadow-sm focus:outline-none focus-visible:outline-none focus-visible:ring-0"
-        style={{ backgroundColor: 'transparent', border: 'none', color: 'hsl(var(--foreground))' }}
-      >
-        <BellIcon size={16} style={{ color: 'hsl(var(--foreground))' }} />
-        {notificationCount > 0 && (
-          <Badge className="absolute -top-1 -right-1 h-5 w-5 flex items-center justify-center p-0 text-xs">
-            {notificationCount > 9 ? '9+' : notificationCount}
-          </Badge>
+  notificationCount = 0, 
+  notifications = [],
+  notificationsLoading = false,
+  onItemClick,
+  onViewAll,
+  onMarkAllNotificationsRead,
+}: NotificationMenuProps) => {
+  const preview = notifications.slice(0, 5)
+
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button 
+          variant="ghost" 
+          size="icon" 
+          className="h-8 w-8 relative rounded-full transition-all hover:bg-emerald-600/10 dark:hover:bg-emerald-400/20 hover:shadow-sm focus:outline-none focus-visible:outline-none focus-visible:ring-0"
+          style={{ backgroundColor: 'transparent', border: 'none', color: 'hsl(var(--foreground))' }}
+        >
+          <BellIcon size={16} style={{ color: 'hsl(var(--foreground))' }} />
+          {notificationCount > 0 && (
+            <Badge className="absolute -top-1 -right-1 h-5 w-5 flex items-center justify-center p-0 text-xs">
+              {notificationCount > 9 ? '9+' : notificationCount}
+            </Badge>
+          )}
+          <span className="sr-only">Notifications</span>
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end" className="w-80">
+        <DropdownMenuLabel className="flex items-center justify-between">
+          <span>Notifications</span>
+          <span className="text-xs text-muted-foreground">{notificationCount} unread</span>
+        </DropdownMenuLabel>
+        <DropdownMenuSeparator />
+        {notificationsLoading ? (
+          <div className="px-3 py-4 text-sm text-muted-foreground">Loading notifications...</div>
+        ) : preview.length === 0 ? (
+          <div className="px-3 py-4 text-sm text-muted-foreground">You're all caught up</div>
+        ) : (
+          preview.map((notification) => (
+            <DropdownMenuItem
+              key={notification.id}
+              className="flex items-start gap-3 py-2"
+              onClick={() => onItemClick?.(notification)}
+            >
+              <Avatar className="h-8 w-8">
+                {getNotificationAvatarSrc(notification) && (
+                  <AvatarImage src={getNotificationAvatarSrc(notification) || undefined} alt={getActorName(notification)} />
+                )}
+                <AvatarFallback className="text-xs">
+                  {notification.topic === 'CHAT'
+                    ? getPlanInitials(notification)
+                    : getActorInitials(notification)}
+                </AvatarFallback>
+              </Avatar>
+              <div className="flex-1 space-y-1">
+                <div className="flex items-start justify-between gap-2">
+                  <div className="flex flex-col">
+                    <p className="text-sm font-semibold leading-tight">
+                      {getPrimaryLabel(notification)}
+                    </p>
+                    <p className="text-xs text-muted-foreground line-clamp-2">
+                      {notification.message || 'Tap to view details'}
+                    </p>
+                  </div>
+                  <span className="text-[11px] text-muted-foreground whitespace-nowrap">
+                    {formatRelativeTime(notification.created_at) || ''}
+                  </span>
+                </div>
+                <div className="flex flex-wrap items-center gap-2 text-[11px] text-muted-foreground">
+                  <span className="font-medium uppercase">
+                    {notification.notification_type_display || notification.topic_display || notification.topic}
+                  </span>
+                  {!notification.is_read && (
+                    <span className="text-emerald-500 font-medium uppercase">Unread</span>
+                  )}
+                </div>
+              </div>
+            </DropdownMenuItem>
+          ))
         )}
-        <span className="sr-only">Notifications</span>
-      </Button>
-    </DropdownMenuTrigger>
-    <DropdownMenuContent align="end" className="w-80">
-      <DropdownMenuLabel>Notifications</DropdownMenuLabel>
-      <DropdownMenuSeparator />
-      <DropdownMenuItem onClick={() => onItemClick?.('notification1')}>
-        <div className="flex flex-col gap-1">
-          <p className="text-sm font-medium">New message received</p>
-          <p className="text-xs text-muted-foreground">2 minutes ago</p>
-        </div>
-      </DropdownMenuItem>
-      <DropdownMenuItem onClick={() => onItemClick?.('notification2')}>
-        <div className="flex flex-col gap-1">
-          <p className="text-sm font-medium">System update available</p>
-          <p className="text-xs text-muted-foreground">1 hour ago</p>
-        </div>
-      </DropdownMenuItem>
-      <DropdownMenuItem onClick={() => onItemClick?.('notification3')}>
-        <div className="flex flex-col gap-1">
-          <p className="text-sm font-medium">Weekly report ready</p>
-          <p className="text-xs text-muted-foreground">3 hours ago</p>
-        </div>
-      </DropdownMenuItem>
-      <DropdownMenuSeparator />
-      <DropdownMenuItem onClick={() => onItemClick?.('view-all')}>
-        View all notifications
-      </DropdownMenuItem>
-    </DropdownMenuContent>
-  </DropdownMenu>
-);
+        <DropdownMenuSeparator />
+        <DropdownMenuItem
+          disabled={notificationCount === 0}
+          onClick={() => onMarkAllNotificationsRead?.()}
+        >
+          Mark all as read
+        </DropdownMenuItem>
+        <DropdownMenuItem onClick={() => onViewAll?.()}>
+          View all notifications
+        </DropdownMenuItem>
+      </DropdownMenuContent>
+    </DropdownMenu>
+  )
+}
+
+export type NavbarMessageItem = NavbarNotificationItem
+
+interface MessageMenuProps {
+  messageCount?: number;
+  messages?: NavbarMessageItem[];
+  messagesLoading?: boolean;
+  hasUnreadIndicator?: boolean;
+  onItemClick?: (item: NavbarMessageItem) => void;
+  onViewAll?: () => void;
+  onMarkAllMessagesRead?: () => void;
+  fallbackClick?: () => void;
+}
+
+const MessageMenu = ({
+  messageCount = 0,
+  messages = [],
+  messagesLoading = false,
+  hasUnreadIndicator = false,
+  onItemClick,
+  onViewAll,
+  onMarkAllMessagesRead,
+  fallbackClick,
+}: MessageMenuProps) => {
+  const preview = messages.slice(0, 5)
+
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button
+          className="relative size-8 rounded-full shadow-none transition-all hover:bg-emerald-600/10 dark:hover:bg-emerald-400/20 hover:shadow-sm focus:outline-none focus-visible:outline-none focus-visible:ring-0"
+          variant="ghost"
+          size="icon"
+          style={{ backgroundColor: 'transparent', border: 'none', color: 'hsl(var(--foreground))' }}
+        >
+          <MailIcon size={16} aria-hidden={true} style={{ color: 'hsl(var(--foreground))' }} />
+          {(hasUnreadIndicator || messageCount > 0) && (
+            <Badge className="absolute -top-1 -right-1 h-5 w-5 flex items-center justify-center p-0 text-xs">
+              {messageCount > 9 ? '9+' : messageCount || ''}
+            </Badge>
+          )}
+          {hasUnreadIndicator && messageCount === 0 && (
+            <div
+              aria-hidden={true}
+              className="bg-primary absolute top-0.5 right-0.5 size-1 rounded-full"
+            />
+          )}
+          <span className="sr-only">Messages</span>
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end" className="w-80">
+        <DropdownMenuLabel className="flex items-center justify-between">
+          <span>Messages</span>
+          <span className="text-xs text-muted-foreground">{messageCount} unread</span>
+        </DropdownMenuLabel>
+        <DropdownMenuSeparator />
+        {messagesLoading ? (
+          <div className="px-3 py-4 text-sm text-muted-foreground">Loading messages...</div>
+        ) : preview.length === 0 ? (
+          <div className="px-3 py-4 text-sm text-muted-foreground">No recent chat updates</div>
+        ) : (
+          preview.map((message) => (
+            <DropdownMenuItem
+              key={message.id}
+              className="flex items-start gap-3 py-2"
+              onClick={() => onItemClick?.(message)}
+            >
+              <Avatar className="h-8 w-8">
+                {getNotificationAvatarSrc(message) && (
+                  <AvatarImage src={getNotificationAvatarSrc(message) || undefined} alt={getActorName(message)} />
+                )}
+                <AvatarFallback className="text-xs">
+                  {message.topic === 'CHAT'
+                    ? getPlanInitials(message)
+                    : getActorInitials(message)}
+                </AvatarFallback>
+              </Avatar>
+              <div className="flex-1 space-y-1">
+                <div className="flex items-start justify-between gap-2">
+                  <div className="flex flex-col">
+                    <p className="text-sm font-semibold leading-tight">
+                      {getPrimaryLabel(message)}
+                    </p>
+                    <p className="text-xs text-muted-foreground line-clamp-2">
+                      {message.message || 'Tap to open chat'}
+                    </p>
+                  </div>
+                  <span className="text-[11px] text-muted-foreground whitespace-nowrap">
+                    {formatRelativeTime(message.created_at) || ''}
+                  </span>
+                </div>
+                <div className="flex flex-wrap items-center gap-2 text-[11px] text-muted-foreground">
+                  {!message.is_read && (
+                    <span className="text-emerald-500 font-medium uppercase">Unread</span>
+                  )}
+                </div>
+              </div>
+            </DropdownMenuItem>
+          ))
+        )}
+        <DropdownMenuSeparator />
+        <DropdownMenuItem
+          disabled={messageCount === 0}
+          onClick={() => onMarkAllMessagesRead?.()}
+        >
+          Mark all as read
+        </DropdownMenuItem>
+        <DropdownMenuItem onClick={() => (onViewAll ?? fallbackClick)?.()}>
+          View all messages
+        </DropdownMenuItem>
+      </DropdownMenuContent>
+    </DropdownMenu>
+  )
+}
 
 // User Menu Component
 const UserMenu = ({
@@ -220,6 +436,11 @@ export interface Navbar09Props extends React.HTMLAttributes<HTMLElement> {
   userEmail?: string;
   userAvatar?: string;
   notificationCount?: number;
+  messageCount?: number;
+  notifications?: NavbarNotificationItem[];
+  notificationsLoading?: boolean;
+  messageNotifications?: NavbarMessageItem[];
+  messageNotificationsLoading?: boolean;
   messageIndicator?: boolean;
   themeToggle?: React.ReactNode;
   leftContent?: React.ReactNode;
@@ -227,7 +448,12 @@ export interface Navbar09Props extends React.HTMLAttributes<HTMLElement> {
   onSearchSubmit?: (query: string) => void;
   onSearchClick?: () => void;
   onMessageClick?: () => void;
-  onNotificationItemClick?: (item: string) => void;
+  onNotificationItemClick?: (item: NavbarNotificationItem) => void;
+  onMessageItemClick?: (item: NavbarMessageItem) => void;
+  onViewAllNotifications?: () => void;
+  onMarkAllNotificationsRead?: () => void;
+  onViewAllMessages?: () => void;
+  onMarkAllMessagesRead?: () => void;
   onUserItemClick?: (item: string) => void;
 }
 
@@ -250,7 +476,12 @@ export const Navbar09 = React.forwardRef<HTMLElement, Navbar09Props>(
       userName = 'John Doe',
       userEmail = 'john@example.com',
       userAvatar,
-      notificationCount = 3,
+      notificationCount = 0,
+      messageCount = 0,
+      notifications = [],
+      notificationsLoading = false,
+      messageNotifications,
+      messageNotificationsLoading = false,
       messageIndicator = true,
       themeToggle,
       leftContent,
@@ -259,6 +490,11 @@ export const Navbar09 = React.forwardRef<HTMLElement, Navbar09Props>(
       onSearchClick,
       onMessageClick,
       onNotificationItemClick,
+      onMessageItemClick,
+      onViewAllNotifications,
+      onMarkAllNotificationsRead,
+      onViewAllMessages,
+      onMarkAllMessagesRead,
       onUserItemClick,
       ...props
     },
@@ -442,29 +678,46 @@ export const Navbar09 = React.forwardRef<HTMLElement, Navbar09Props>(
           <div className="flex flex-1 items-center justify-end gap-4">
             <div className="flex items-center gap-2">
               {/* Messages */}
-              <Button
-                size="icon"
-                variant="ghost"
-                className="relative size-8 rounded-full shadow-none transition-all hover:bg-emerald-600/10 dark:hover:bg-emerald-400/20 hover:shadow-sm focus:outline-none focus-visible:outline-none focus-visible:ring-0"
-                style={{ backgroundColor: 'transparent', border: 'none', color: 'hsl(var(--foreground))' }}
-                aria-label="Open messages"
-                onClick={(e) => {
-                  e.preventDefault();
-                  if (onMessageClick) onMessageClick();
-                }}
-              >
-                <MailIcon size={16} aria-hidden={true} style={{ color: 'hsl(var(--foreground))' }} />
-                {messageIndicator && (
-                  <div
-                    aria-hidden={true}
-                    className="bg-primary absolute top-0.5 right-0.5 size-1 rounded-full"
-                  />
-                )}
-              </Button>
+              {messageNotifications ? (
+                <MessageMenu
+                  messageCount={messageCount}
+                  messages={messageNotifications}
+                  messagesLoading={messageNotificationsLoading}
+                  hasUnreadIndicator={messageIndicator}
+                  onItemClick={onMessageItemClick}
+                  onViewAll={onViewAllMessages}
+                  onMarkAllMessagesRead={onMarkAllMessagesRead}
+                  fallbackClick={onMessageClick}
+                />
+              ) : (
+                <Button
+                  size="icon"
+                  variant="ghost"
+                  className="relative size-8 rounded-full shadow-none transition-all hover:bg-emerald-600/10 dark:hover:bg-emerald-400/20 hover:shadow-sm focus:outline-none focus-visible:outline-none focus-visible:ring-0"
+                  style={{ backgroundColor: 'transparent', border: 'none', color: 'hsl(var(--foreground))' }}
+                  aria-label="Open messages"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    if (onMessageClick) onMessageClick();
+                  }}
+                >
+                  <MailIcon size={16} aria-hidden={true} style={{ color: 'hsl(var(--foreground))' }} />
+                  {messageIndicator && (
+                    <div
+                      aria-hidden={true}
+                      className="bg-primary absolute top-0.5 right-0.5 size-1 rounded-full"
+                    />
+                  )}
+                </Button>
+              )}
               {/* Notification menu */}
               <NotificationMenu 
                 notificationCount={notificationCount}
+                notifications={notifications}
+                notificationsLoading={notificationsLoading}
                 onItemClick={onNotificationItemClick}
+                onViewAll={onViewAllNotifications}
+                onMarkAllNotificationsRead={onMarkAllNotificationsRead}
               />
               {/* Theme toggle */}
               {themeToggle && (

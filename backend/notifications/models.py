@@ -13,6 +13,20 @@ class Notification(models.Model):
     รองรับ Plan + Chat, มี soft delete, metadata และ timestamps
     """
 
+    DEFAULT_TITLES = {
+        "PLAN_JOIN_REQUEST": "Plan Join Request",
+        "PLAN_JOINED": "Plan Joined",
+        "PLAN_CANCELLED": "Plan Cancelled",
+        "PLAN_UPDATED": "Plan Updated",
+        "PLAN_REMINDER": "Plan Reminder",
+        "PLAN_CREATED": "Plan Created",
+        "PLAN_LEFT": "Plan Left",
+        "PLAN_DELETED": "Plan Deleted",
+        "NEW_MESSAGE": "New Message",
+        "MENTIONED": "You Were Mentioned",
+        "THREAD_CREATED": "New Chat Thread",
+    }
+
     # ========== Notification Types ==========
     NOTIFICATION_TYPES = (
         # Plan-related Notifications
@@ -217,6 +231,15 @@ class Notification(models.Model):
             self.is_deleted = True
             self.deleted_at = timezone.now()
             self.save(update_fields=['is_deleted', 'deleted_at'])
+
+    def save(self, *args, **kwargs):
+        if not self.title:
+            title = self.DEFAULT_TITLES.get(self.notification_type)
+            if not title:
+                display = self.get_notification_type_display()
+                title = display or (self.notification_type or "").replace('_', ' ').title()
+            self.title = title
+        super().save(*args, **kwargs)
 
     def __str__(self):
         return f"{self.notification_type} - {self.user.username} ({'read' if self.is_read else 'unread'})"
