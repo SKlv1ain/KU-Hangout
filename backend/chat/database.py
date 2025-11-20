@@ -87,14 +87,17 @@ class ChatDatabase:
     def save_message(thread_id, user, message_body):
         """Save a new message to the database with Bangkok timestamp."""
         from chat.models import chat_messages, chat_threads
+        from django.db import transaction
         
         try:
             thread = chat_threads.objects.get(id=thread_id)
-            message = chat_messages.objects.create(
-                thread=thread,
-                sender=user,
-                body=message_body
-            )
+            with transaction.atomic():
+                message = chat_messages.objects.create(
+                    thread=thread,
+                    sender=user,
+                    body=message_body
+                )
+                ChatDatabase._create_chat_notifications(thread, message)
 
             bangkok_time = timezone.localtime(message.create_at, BANGKOK_TZ)
             formatted_time = bangkok_time.strftime("%Y-%m-%d %H:%M:%S")
@@ -106,6 +109,62 @@ class ChatDatabase:
         except Exception as e:
             print(f"Error saving message: {e}")
             return None
+
+    @staticmethod
+    def _create_chat_notifications(thread, chat_message):
+        """Create notification records for new chat messages."""
+        try:
+            from chat.models import chat_member
+            from notifications.models import Notification
+            from participants.models import Participants
+
+            recipients_qs = chat_member.objects.filter(thread=thread).select_related("user")
+            recipient_users = {member.user_id: member.user for member in recipients_qs}
+
+            plan = getattr(thread, "plan", None)
+            if plan:
+                participant_qs = Participants.objects.filter(plan=plan).select_related("user")
+                for participant in participant_qs:
+                    recipient_users.setdefault(participant.user_id, participant.user)
+
+                leader = getattr(plan, "leader_id", None)
+                if leader:
+                    recipient_users.setdefault(leader.id, leader)
+
+            sender = chat_message.sender
+            sender_name = getattr(sender, "display_name", None) or getattr(sender, "username", "") or "Someone"
+            preview = chat_message.body.strip()
+            if len(preview) > 140:
+                preview = preview[:137].rstrip() + "..."
+
+            action_url = None
+            if plan:
+                action_url = f"/messages?planId={plan.id}"
+
+            for user_id, recipient in recipient_users.items():
+                if user_id == sender.id:
+                    continue
+
+                Notification.objects.create(
+                    user=recipient,
+                    actor=sender,
+                    notification_type="NEW_MESSAGE",
+                    topic="CHAT",
+                    plan=plan,
+                    chat_thread=thread,
+                    chat_message=chat_message,
+                    message=f"{sender_name}: {preview}",
+                    action_url=action_url,
+                    metadata={
+                        "thread_id": thread.id,
+                        "plan_id": plan.id if plan else None,
+                        "plan_title": plan.title if plan else None,
+                        "sender_id": sender.id,
+                        "message_id": chat_message.id,
+                    },
+                )
+        except Exception as exc:  # pragma: no cover - notification failures shouldn't block chat
+            print(f"[ChatDatabase] Failed to create chat notifications: {exc}")
 
     @staticmethod
     @database_sync_to_async

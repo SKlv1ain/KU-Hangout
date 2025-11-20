@@ -1,11 +1,13 @@
 from datetime import datetime
 
+from django.db.models import Prefetch
 from django.utils import timezone
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from chat.models import chat_threads, chat_messages
+from plans.models import PlanImage
 
 import pytz
 
@@ -21,10 +23,15 @@ class UserChatThreadsView(APIView):
     def get(self, request):
         user = request.user
 
+        plan_images_prefetch = Prefetch(
+            "plan__images",
+            queryset=PlanImage.objects.order_by("uploaded_at"),
+        )
+
         threads_qs = (
             chat_threads.objects.filter(member__user=user)
             .select_related("plan", "plan__leader_id")
-            .prefetch_related("member")
+            .prefetch_related("member", plan_images_prefetch)
             .distinct()
         )
 
@@ -46,6 +53,11 @@ class UserChatThreadsView(APIView):
         for thread in threads:
             plan = thread.plan
             last_message = latest_message_map.get(thread.id)
+            cover_image = None
+            if plan and hasattr(plan, "images"):
+                images_qs = plan.images.all()
+                first_image = images_qs[0] if images_qs else None
+                cover_image = getattr(first_image, "image_url", None)
 
             if last_message:
                 timestamp = timezone.localtime(last_message.create_at, BANGKOK_TZ).isoformat()
@@ -68,6 +80,7 @@ class UserChatThreadsView(APIView):
                         "plan_id": plan.id if plan else None,
                         "plan_title": plan.title if plan else None,
                         "plan_event_time": plan.event_time if plan else None,
+                        "plan_cover_image": cover_image,
                         "is_owner": plan.leader_id_id == user.id if plan else False,
                         "last_message": last_message.body if last_message else None,
                         "last_message_timestamp": timestamp,
@@ -82,4 +95,3 @@ class UserChatThreadsView(APIView):
         )
 
         return Response([item[1] for item in payloads])
-
