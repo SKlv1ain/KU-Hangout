@@ -2,6 +2,7 @@ import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom"
 import { ThemeProvider } from "@/components/theme-provider"
 import { AuthProvider } from "@/context/AuthContext"
 import { NotificationProvider } from "@/context/NotificationContext"
+import { ChatProvider } from "@/context/ChatContext"
 import { Toaster } from "@/components/ui/sonner"
 import LoginPage from "@/pages/login-page"
 import HomePage from "@/pages/home-page"
@@ -14,8 +15,9 @@ function App() {
     <ThemeProvider defaultTheme="dark" storageKey="vite-ui-theme">
       <AuthProvider>
         <NotificationProvider>
-          <BrowserRouter>
-            <Routes>
+          <ChatProvider>
+            <BrowserRouter>
+              <Routes>
               <Route path="/" element={<Navigate to="/home" replace />} />
               <Route path="/login" element={<LoginPage />} />
               <Route
@@ -50,10 +52,11 @@ function App() {
                   </ProtectedRoute>
                 }
               />
-              <Route path="*" element={<Navigate to="/login" replace />} />
-            </Routes>
-            <Toaster />
-          </BrowserRouter>
+                <Route path="*" element={<Navigate to="/login" replace />} />
+              </Routes>
+              <Toaster />
+            </BrowserRouter>
+          </ChatProvider>
         </NotificationProvider>
       </AuthProvider>
     </ThemeProvider>
