@@ -119,7 +119,7 @@ DATABASES = {
         ),
         'PORT': (
             os.getenv('POSTGRES_PORT')
-            or '5433'
+            or '5432'
         ),
     }
 }
