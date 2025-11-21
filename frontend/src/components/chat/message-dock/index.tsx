@@ -18,7 +18,10 @@ const AVATAR_ACCENTS: AvatarAccent[] = [
 
 const MAX_ROOMS = 3
 const EXPANDED_WIDTH = 448
-const COLLAPSED_FALLBACK_WIDTH = 266
+const PADDING_X = 32
+const ITEM_GAP = 8
+const AVATAR_SIZE = 48
+const ICON_SIZE = 48
 
 export function MessageDock() {
   const { theme } = useTheme()
@@ -32,8 +35,6 @@ export function MessageDock() {
   } = useChatContext()
   const shouldReduceMotion = useReducedMotion()
   const dockRef = useRef<HTMLDivElement>(null)
-  const [collapsedWidth, setCollapsedWidth] = useState(COLLAPSED_FALLBACK_WIDTH)
-  const [hasMeasuredWidth, setHasMeasuredWidth] = useState(false)
   const [isExpanded, setIsExpanded] = useState(false)
   const [messageInput, setMessageInput] = useState("")
 
@@ -57,20 +58,6 @@ export function MessageDock() {
     ? chatRooms.find((room) => room.planId === selectedRoomId)
     : undefined
   const activeMessages = selectedRoomId ? messagesByRoomId[selectedRoomId] ?? [] : []
-
-  useEffect(() => {
-    if (dockRef.current && !hasMeasuredWidth) {
-      const width = dockRef.current.offsetWidth
-      if (width > 0) {
-        setCollapsedWidth(width)
-        setHasMeasuredWidth(true)
-      }
-    }
-  }, [hasMeasuredWidth])
-
-  useEffect(() => {
-    setHasMeasuredWidth(false)
-  }, [prioritizedRooms.length])
 
   useEffect(() => {
     if (!isExpanded) return
@@ -141,15 +128,17 @@ export function MessageDock() {
     }
   }
 
-  if (prioritizedRooms.length === 0) {
-    return null
-  }
+  const avatarCount = Math.min(prioritizedRooms.length, MAX_ROOMS)
+  const collapsedItems = 2 + avatarCount // sparkle + avatars + menu
+  const totalGap = Math.max(collapsedItems - 1, 0) * ITEM_GAP
+  const collapsedWidth =
+    PADDING_X + ICON_SIZE /* sparkle */ + avatarCount * AVATAR_SIZE + ICON_SIZE /* menu */ + totalGap
 
   return (
     <motion.div
       ref={dockRef}
       className="fixed bottom-6 right-6 z-50"
-      initial={"hidden"}
+      initial={false}
       animate="visible"
       variants={containerVariants}
     >
@@ -166,6 +155,7 @@ export function MessageDock() {
               ? "rgba(16, 185, 129, 0.05)"
               : "rgba(16, 185, 129, 0.1)",
         }}
+        initial={false}
         animate={{
           width: isExpanded ? EXPANDED_WIDTH : collapsedWidth,
           borderRadius: isExpanded ? 28 : 9999,

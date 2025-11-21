@@ -12,7 +12,7 @@ export function ChatRoomAvatar({ name, avatarUrl, accentClass, accentHex }: Chat
   return (
     <div
       className={cn(
-        "relative flex h-12 w-12 items-center justify-center rounded-full overflow-hidden text-sm font-semibold text-emerald-950",
+        "relative flex h-12 w-12 items-center justify-center rounded-full overflow-hidden shrink-0 text-sm font-semibold text-emerald-950",
         accentClass
       )}
       style={{ backgroundColor: accentHex }}
