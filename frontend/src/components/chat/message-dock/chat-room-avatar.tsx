@@ -6,16 +6,17 @@ interface ChatRoomAvatarProps {
   avatarUrl?: string | null
   accentClass?: string
   accentHex?: string
+  size?: number
 }
 
-export function ChatRoomAvatar({ name, avatarUrl, accentClass, accentHex }: ChatRoomAvatarProps) {
+export function ChatRoomAvatar({ name, avatarUrl, accentClass, accentHex, size = 48 }: ChatRoomAvatarProps) {
   return (
     <div
       className={cn(
-        "relative flex h-12 w-12 items-center justify-center rounded-full overflow-hidden shrink-0 text-sm font-semibold text-emerald-950",
+        "relative flex items-center justify-center rounded-full overflow-hidden shrink-0 text-sm font-semibold text-emerald-950",
         accentClass
       )}
-      style={{ backgroundColor: accentHex }}
+      style={{ backgroundColor: accentHex, width: size, height: size }}
     >
       {avatarUrl ? (
         <img src={avatarUrl} alt={name} className="h-full w-full object-cover" />

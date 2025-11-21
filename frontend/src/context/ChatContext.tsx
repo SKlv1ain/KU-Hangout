@@ -2,6 +2,7 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useRef, use
 import chatService from "@/services/chatService"
 import { useWebSocket } from "@/hooks/useWebSocket"
 import { useAuth } from "@/context/AuthContext"
+import { useChatUnreadCounts } from "@/hooks/useChatUnreadCounts"
 
 export interface ChatMessage {
   id: string | number
@@ -88,12 +89,28 @@ const normalizeMessage = (roomId: string, raw: any): ChatMessage => {
 
 export function ChatProvider({ children }: { children: React.ReactNode }) {
   const { user } = useAuth()
+  const { chatUnreadByPlanId, getUnreadCount, acknowledgePlan } = useChatUnreadCounts()
   const [chatRooms, setChatRooms] = useState<ChatRoom[]>([])
   const [messagesByRoomId, setMessagesByRoomId] = useState<MessagesByRoomId>({})
   const [selectedRoomId, setSelectedRoomId] = useState<string | null>(null)
   const [isLoadingRooms, setIsLoadingRooms] = useState(false)
   const [connectionError, setConnectionError] = useState<string | null>(null)
   const lastErrorTimeout = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  useEffect(() => {
+    setChatRooms((prev) =>
+      prev.map((room) => {
+        const nextUnread = chatUnreadByPlanId[room.planId] ?? 0
+        if (room.unreadCount === nextUnread) {
+          return room
+        }
+        return {
+          ...room,
+          unreadCount: nextUnread,
+        }
+      })
+    )
+  }, [chatUnreadByPlanId])
 
   const refreshRooms = useCallback(async () => {
     if (!user) {
@@ -106,17 +123,20 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
     setIsLoadingRooms(true)
     try {
       const threads = await chatService.getThreads()
-      const rooms: ChatRoom[] = threads.map((thread) => ({
-        planId: normalizeRoomId(thread.plan_id),
-        threadId: thread.thread_id,
-        title: thread.plan_title || `Plan ${thread.plan_id}`,
-        coverImage: thread.plan_cover_image ?? null,
-        lastMessage: thread.last_message ?? undefined,
-        lastMessageSender: thread.last_message_sender ?? undefined,
-        lastMessageTime: parseServerTimestamp(thread.last_message_timestamp),
-        unreadCount: 0,
-        isOwner: thread.is_owner,
-      }))
+      const rooms: ChatRoom[] = threads.map((thread) => {
+        const planId = normalizeRoomId(thread.plan_id)
+        return {
+          planId,
+          threadId: thread.thread_id,
+          title: thread.plan_title || `Plan ${thread.plan_id}`,
+          coverImage: thread.plan_cover_image ?? null,
+          lastMessage: thread.last_message ?? undefined,
+          lastMessageSender: thread.last_message_sender ?? undefined,
+          lastMessageTime: parseServerTimestamp(thread.last_message_timestamp),
+          unreadCount: getUnreadCount(planId),
+          isOwner: thread.is_owner,
+        }
+      })
 
       rooms.sort((a, b) => {
         const timeA = a.lastMessageTime ? a.lastMessageTime.getTime() : 0
@@ -146,13 +166,16 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
         const cached = localStorage.getItem(CHAT_ROOMS_CACHE_KEY)
         if (cached) {
           const parsed = JSON.parse(cached)
-          const fallbackRooms: ChatRoom[] = parsed.map((item: any) => ({
-            planId: normalizeRoomId(item.planId),
-            threadId: -1,
-            title: item.title,
-            coverImage: item.coverImage ?? null,
-            unreadCount: 0,
-          }))
+          const fallbackRooms: ChatRoom[] = parsed.map((item: any) => {
+            const planId = normalizeRoomId(item.planId)
+            return {
+              planId,
+              threadId: -1,
+              title: item.title,
+              coverImage: item.coverImage ?? null,
+              unreadCount: getUnreadCount(planId),
+            }
+          })
           setChatRooms(fallbackRooms)
         }
       } catch (cacheError) {
@@ -161,7 +184,7 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
     } finally {
       setIsLoadingRooms(false)
     }
-  }, [user])
+  }, [user, getUnreadCount])
 
   useEffect(() => {
     refreshRooms()
@@ -191,7 +214,8 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
           : room
       )
     )
-  }, [])
+    void acknowledgePlan(roomId)
+  }, [acknowledgePlan])
 
   const selectRoom = useCallback(
     (roomId: string | number | null) => {

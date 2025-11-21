@@ -12,6 +12,8 @@ import { getPlanInitials } from "@/lib/chatUtils"
 import { useAuth } from "@/context/AuthContext"
 import { useChatContext } from "@/context/ChatContext"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+import { BadgeAvatar } from "@/components/chat/BadgeAvatar"
+import { useChatUnreadCounts } from "@/hooks/useChatUnreadCounts"
 
 export default function MessagePage() {
   const navigate = useNavigate()
@@ -29,6 +31,7 @@ export default function MessagePage() {
     connectionStatus,
     connectionError,
   } = useChatContext()
+  const { getUnreadCount, acknowledgePlan } = useChatUnreadCounts()
 
   const messages = selectedRoomId ? messagesByRoomId[selectedRoomId] ?? [] : []
   const selectedRoom = selectedRoomId
@@ -67,6 +70,7 @@ export default function MessagePage() {
     const normalizedRoomId = roomPlanId.toString()
     if (normalizedRoomId !== selectedRoomId) {
       selectRoom(normalizedRoomId)
+      void acknowledgePlan(normalizedRoomId)
     }
     navigate(`/messages?planId=${normalizedRoomId}`)
   }
@@ -114,8 +118,10 @@ export default function MessagePage() {
                 </div>
               ) : (
                 <div className="divide-y divide-border">
-                  {chatRooms.map((room) => (
-                    <button
+                  {chatRooms.map((room) => {
+                    const roomUnread = getUnreadCount(room.planId.toString())
+                    return (
+                      <button
                       key={room.planId}
                       onClick={() => handleSelectRoom(room.planId)}
                       className={cn(
@@ -124,10 +130,7 @@ export default function MessagePage() {
                       )}
                     >
                       <div className="flex items-center gap-3">
-                        <Avatar className="h-12 w-12">
-                          {room.coverImage && <AvatarImage src={room.coverImage} alt={room.title} />}
-                          <AvatarFallback>{getPlanInitials(room.title)}</AvatarFallback>
-                        </Avatar>
+                        <BadgeAvatar roomName={room.title} avatarUrl={room.coverImage ?? undefined} unread={roomUnread} size={48} />
                         <div className="flex-1 min-w-0">
                           <div className="flex items-start justify-between gap-2">
                             <div className="flex-1 min-w-0">
@@ -143,16 +146,17 @@ export default function MessagePage() {
                                 {room.lastMessageTime ? room.lastMessageTime.toLocaleString() : ""}
                               </p>
                             </div>
-                            {room.unreadCount && room.unreadCount > 0 && (
+                            {roomUnread > 0 && (
                               <span className="bg-primary text-primary-foreground text-xs rounded-full px-2 py-1 flex-shrink-0">
-                                {room.unreadCount}
+                                {roomUnread > 99 ? "99+" : roomUnread}
                               </span>
                             )}
                           </div>
                         </div>
                       </div>
-                    </button>
-                  ))}
+                      </button>
+                    )
+                  })}
                 </div>
               )}
             </div>

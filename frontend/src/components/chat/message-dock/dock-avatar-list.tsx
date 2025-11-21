@@ -57,6 +57,9 @@ export function DockAvatarList({
             isSelected={selectedRoomId === room.planId}
             onClick={() => onAvatarClick(room.planId)}
             hoverAnimation={hoverAnimation}
+            showBadge
+            unreadCount={room.unreadCount ?? 0}
+            size={44}
           />
         </AvatarWithTooltip>
       ))}

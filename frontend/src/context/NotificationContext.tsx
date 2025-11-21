@@ -23,6 +23,7 @@ interface NotificationContextValue {
   unreadCount: number
   systemUnreadCount: number
   chatUnreadCount: number
+  chatUnreadByPlanId: Record<string, number>
   loading: boolean
   error: string | null
   socketStatus: NotificationSocketStatus
@@ -32,9 +33,55 @@ interface NotificationContextValue {
   markAllAsRead: (topic?: NotificationTopic) => Promise<void>
   deleteNotification: (notificationId: number) => Promise<void>
   clearNotifications: (topic?: NotificationTopic) => Promise<void>
+  incrementChatUnread: (planId: string, amount?: number) => void
+  clearChatUnread: (planId: string) => void
 }
 
 const NotificationContext = createContext<NotificationContextValue | null>(null)
+
+const resolveIdValue = (value: unknown): string | null => {
+  if (typeof value === 'number' && Number.isFinite(value)) {
+    return String(value)
+  }
+  if (typeof value === 'string' && value.trim().length > 0) {
+    return value
+  }
+  return null
+}
+
+export const getChatNotificationPlanKey = (notification: NotificationItem): string | null => {
+  const metadata = notification.metadata ?? {}
+  const candidates: unknown[] = [
+    notification.plan_id,
+    notification.plan,
+    (metadata as Record<string, unknown>)['plan_id'],
+    (metadata as Record<string, unknown>)['planId'],
+    notification.chat_thread_id,
+    notification.chat_thread,
+  ]
+
+  for (const candidate of candidates) {
+    const resolved = resolveIdValue(candidate)
+    if (resolved) {
+      return resolved
+    }
+  }
+  return null
+}
+
+const buildChatUnreadMap = (items: NotificationItem[]) => {
+  return items.reduce<Record<string, number>>((acc, item) => {
+    if (item.topic !== 'CHAT' || item.is_read) {
+      return acc
+    }
+    const planKey = getChatNotificationPlanKey(item)
+    if (!planKey) {
+      return acc
+    }
+    acc[planKey] = (acc[planKey] ?? 0) + 1
+    return acc
+  }, {})
+}
 
 const MAX_NOTIFICATIONS = 25
 
@@ -44,6 +91,7 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
   const notificationsRef = useRef<NotificationItem[]>([])
   const [unreadCount, setUnreadCount] = useState(0)
   const [topicUnreadCounts, setTopicUnreadCounts] = useState<UnreadCountsByTopic>({})
+  const [chatUnreadByPlanId, setChatUnreadByPlanId] = useState<Record<string, number>>({})
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [markAllLoading, setMarkAllLoading] = useState(false)
@@ -52,6 +100,7 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
     setNotifications((prev) => {
       const next = typeof value === 'function' ? (value as (items: NotificationItem[]) => NotificationItem[])(prev) : value
       notificationsRef.current = next
+      setChatUnreadByPlanId(buildChatUnreadMap(next))
       return next
     })
   }, [])
@@ -63,6 +112,26 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
     if (perTopic && typeof perTopic === 'object') {
       setTopicUnreadCounts(perTopic)
     }
+  }, [])
+
+  const incrementChatUnread = useCallback((planId: string, amount = 1) => {
+    if (!planId || amount <= 0) return
+    setChatUnreadByPlanId((prev) => ({
+      ...prev,
+      [planId]: (prev[planId] ?? 0) + amount,
+    }))
+  }, [])
+
+  const clearChatUnread = useCallback((planId: string) => {
+    if (!planId) return
+    setChatUnreadByPlanId((prev) => {
+      if (!(planId in prev)) {
+        return prev
+      }
+      const next = { ...prev }
+      delete next[planId]
+      return next
+    })
   }, [])
 
   const refresh = useCallback(async () => {
@@ -326,6 +395,7 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
       unreadCount,
       systemUnreadCount,
       chatUnreadCount,
+      chatUnreadByPlanId,
       loading,
       error,
       socketStatus,
@@ -335,6 +405,8 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
       markAllAsRead,
       deleteNotification,
       clearNotifications,
+      incrementChatUnread,
+      clearChatUnread,
     }),
     [
       notifications,
@@ -343,6 +415,7 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
       unreadCount,
       systemUnreadCount,
       chatUnreadCount,
+      chatUnreadByPlanId,
       loading,
       error,
       socketStatus,
@@ -352,6 +425,8 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
       markAllAsRead,
       deleteNotification,
       clearNotifications,
+      incrementChatUnread,
+      clearChatUnread,
     ]
   )
 
