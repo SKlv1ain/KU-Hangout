@@ -144,7 +144,8 @@ export function MessageDock() {
     >
       <motion.div
         className={cn(
-          "overflow-hidden shadow-2xl backdrop-blur-md border border-emerald-400/20 dark:border-emerald-400/10",
+          "shadow-2xl backdrop-blur-md border border-emerald-400/20 dark:border-emerald-400/10",
+          isExpanded ? "overflow-hidden" : "overflow-visible",
           isExpanded && "border-emerald-400/30 dark:border-emerald-400/20"
         )}
         style={{
@@ -170,7 +171,7 @@ export function MessageDock() {
           background: { duration: 0.2, ease: "easeInOut" },
         }}
       >
-        <div className={cn("relative flex w-full flex-col items-stretch gap-2")}>
+        <div className={cn("relative flex w-full flex-col items-stretch gap-2", !isExpanded && "overflow-visible")}>
           <DockAvatarList
             rooms={prioritizedRooms}
             accents={AVATAR_ACCENTS}

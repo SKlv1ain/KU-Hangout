@@ -3,6 +3,7 @@ import { cn } from "@/lib/utils"
 import type { ChatRoom } from "@/context/ChatContext"
 import { DockAvatar, type AvatarAccent } from "./dock-avatar"
 import { MenuIconButton } from "./menu-icon-button"
+import { AvatarWithTooltip } from "./avatar-with-tooltip"
 
 interface DockAvatarListProps {
   rooms: ChatRoom[]
@@ -28,7 +29,7 @@ export function DockAvatarList({
   const visibleRooms = rooms.slice(0, 3)
 
   return (
-    <div className={cn("flex w-full items-center gap-2")}>
+    <div className={cn("flex w-full items-center gap-2 overflow-visible")}>
       <motion.button
         className="flex h-12 w-12 items-center justify-center"
         style={{ backgroundColor: "transparent", border: "none" }}
@@ -48,15 +49,16 @@ export function DockAvatarList({
       </motion.button>
 
       {visibleRooms.map((room, index) => (
-        <DockAvatar
-          key={room.planId}
-          room={room}
-          accent={accents[index % accents.length]}
-          isExpanded={false}
-          isSelected={selectedRoomId === room.planId}
-          onClick={() => onAvatarClick(room.planId)}
-          hoverAnimation={hoverAnimation}
-        />
+        <AvatarWithTooltip key={room.planId} roomName={room.title}>
+          <DockAvatar
+            room={room}
+            accent={accents[index % accents.length]}
+            isExpanded={false}
+            isSelected={selectedRoomId === room.planId}
+            onClick={() => onAvatarClick(room.planId)}
+            hoverAnimation={hoverAnimation}
+          />
+        </AvatarWithTooltip>
       ))}
 
       <MenuIconButton />
