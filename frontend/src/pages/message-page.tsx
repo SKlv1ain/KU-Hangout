@@ -146,11 +146,6 @@ export default function MessagePage() {
                                 {room.lastMessageTime ? room.lastMessageTime.toLocaleString() : ""}
                               </p>
                             </div>
-                            {roomUnread > 0 && (
-                              <span className="bg-primary text-primary-foreground text-xs rounded-full px-2 py-1 flex-shrink-0">
-                                {roomUnread > 99 ? "99+" : roomUnread}
-                              </span>
-                            )}
                           </div>
                         </div>
                       </div>
