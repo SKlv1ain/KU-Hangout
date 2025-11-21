@@ -1,7 +1,7 @@
 import { motion, type TargetAndTransition } from "framer-motion"
 import { cn } from "@/lib/utils"
-import { getPlanInitials } from "@/lib/chatUtils"
 import type { ChatRoom } from "@/context/ChatContext"
+import { ChatRoomAvatar } from "./chat-room-avatar"
 
 export interface AvatarAccent {
   backgroundClass: string
@@ -21,24 +21,24 @@ export function DockAvatar({ room, accent, isExpanded, isSelected, onClick, hove
   return (
     <motion.button
       className={cn(
-        "relative flex h-10 w-10 items-center justify-center rounded-full text-sm font-semibold text-emerald-950",
-        accent.backgroundClass,
-        isSelected && isExpanded && "bg-white/90"
+        "relative flex h-12 w-12 items-center justify-center rounded-full p-0",
+        isSelected && isExpanded && "ring-2 ring-white/80"
       )}
       style={{
         border: "none",
-        backgroundColor: isSelected && isExpanded ? "rgba(255, 255, 255, 0.9)" : accent.accentHex,
+        backgroundColor: "transparent",
       }}
       onClick={onClick}
       whileHover={!isExpanded ? hoverAnimation : { scale: 1.05 }}
       whileTap={{ scale: 0.95 }}
       aria-label={`Message ${room.title}`}
     >
-      {room.coverImage ? (
-        <img src={room.coverImage} alt={room.title} className="h-10 w-10 rounded-full object-cover" />
-      ) : (
-        <span className="text-base">{getPlanInitials(room.title)}</span>
-      )}
+      <ChatRoomAvatar
+        name={room.title}
+        avatarUrl={room.coverImage}
+        accentClass={accent.backgroundClass}
+        accentHex={accent.accentHex}
+      />
       {room.unreadCount > 0 && (
         <motion.div
           className="absolute bottom-0 right-0 h-3 w-3 rounded-full border-2 border-white bg-amber-500"

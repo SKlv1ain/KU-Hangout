@@ -3,7 +3,7 @@ import { motion } from "framer-motion"
 import { cn } from "@/lib/utils"
 import type { ChatRoom, ChatMessage } from "@/context/ChatContext"
 import { useAuth } from "@/context/AuthContext"
-import { MessageDockChatHeader } from "./chat-header"
+import { DockChatHeader } from "./DockChatHeader"
 
 interface DockChatPanelProps {
   room?: ChatRoom
@@ -48,7 +48,26 @@ export function DockChatPanel({
       }}
       exit={{ opacity: 0, y: 12, transition: { duration: 0.15, ease: "easeInOut" } }}
     >
-      <MessageDockChatHeader room={room} isConnected={isConnected} onClose={onClose} />
+      {room ? (
+        <DockChatHeader
+          roomId={room.planId}
+          roomName={room.title}
+          avatarUrl={room.coverImage}
+          onClose={onClose}
+        />
+      ) : (
+        <div className="flex items-center justify-between gap-3">
+          <p className="text-sm font-semibold text-emerald-700 dark:text-emerald-200">Quick chat</p>
+          <button
+            type="button"
+            onClick={onClose}
+            className="flex h-8 w-8 items-center justify-center rounded-full text-lg leading-none text-muted-foreground hover:text-foreground"
+            aria-label="Close quick chat"
+          >
+            &times;
+          </button>
+        </div>
+      )}
 
       <div ref={scrollRef} className="flex-1 min-h-[180px] max-h-72 space-y-2 overflow-y-auto pr-1">
         {messages.length === 0 ? (
