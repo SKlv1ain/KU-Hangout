@@ -2,7 +2,6 @@
 
 import { useEffect, useMemo, useRef, useState } from "react"
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion"
-import { useNavigate } from "react-router-dom"
 import { cn } from "@/lib/utils"
 import { useTheme } from "@/components/theme-provider"
 import { useChatContext } from "@/context/ChatContext"
@@ -22,7 +21,6 @@ const EXPANDED_WIDTH = 448
 const COLLAPSED_FALLBACK_WIDTH = 266
 
 export function MessageDock() {
-  const navigate = useNavigate()
   const { theme } = useTheme()
   const {
     chatRooms,
@@ -143,12 +141,6 @@ export function MessageDock() {
     }
   }
 
-  const handleOpenFullChat = () => {
-    if (selectedRoomId) {
-      navigate(`/messages?planId=${selectedRoomId}`)
-    }
-  }
-
   if (prioritizedRooms.length === 0) {
     return null
   }
@@ -188,7 +180,7 @@ export function MessageDock() {
           background: { duration: 0.2, ease: "easeInOut" },
         }}
       >
-        <div className={cn("relative flex w-full items-center gap-2", isExpanded && "flex-col items-stretch gap-2")}>
+        <div className={cn("relative flex w-full flex-col items-stretch gap-2")}>
           <DockAvatarList
             rooms={prioritizedRooms}
             accents={AVATAR_ACCENTS}
@@ -196,7 +188,6 @@ export function MessageDock() {
             selectedRoomId={selectedRoomId}
             onAvatarClick={handleAvatarClick}
             hoverAnimation={hoverAnimation}
-            onOpenFullChat={handleOpenFullChat}
           />
 
           <AnimatePresence>
@@ -208,7 +199,6 @@ export function MessageDock() {
                 onMessageInputChange={setMessageInput}
                 onSend={handleSendMessage}
                 onClose={handleDockClose}
-                onNavigateToRoom={handleOpenFullChat}
                 isConnected={isConnected}
               />
             )}

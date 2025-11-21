@@ -3,6 +3,7 @@ import { motion } from "framer-motion"
 import { cn } from "@/lib/utils"
 import type { ChatRoom, ChatMessage } from "@/context/ChatContext"
 import { useAuth } from "@/context/AuthContext"
+import { MessageDockChatHeader } from "./chat-header"
 
 interface DockChatPanelProps {
   room?: ChatRoom
@@ -11,7 +12,6 @@ interface DockChatPanelProps {
   onMessageInputChange: (value: string) => void
   onSend: () => void
   onClose: () => void
-  onNavigateToRoom: () => void
   isConnected: boolean
 }
 
@@ -22,7 +22,6 @@ export function DockChatPanel({
   onMessageInputChange,
   onSend,
   onClose,
-  onNavigateToRoom,
   isConnected,
 }: DockChatPanelProps) {
   const scrollRef = useRef<HTMLDivElement>(null)
@@ -49,34 +48,7 @@ export function DockChatPanel({
       }}
       exit={{ opacity: 0, y: 12, transition: { duration: 0.15, ease: "easeInOut" } }}
     >
-      <div className="flex items-center justify-between gap-2">
-        <div>
-          <p className="text-sm font-semibold text-emerald-700 dark:text-emerald-200">
-            {room ? room.title : "Quick chat"}
-          </p>
-          <p className="text-xs text-muted-foreground">
-            {room && room.lastMessageTime ? room.lastMessageTime.toLocaleString() : "Pick a room to start chatting"}
-          </p>
-        </div>
-        <div className="flex items-center gap-2">
-          <button
-            type="button"
-            onClick={onNavigateToRoom}
-            disabled={!room}
-            className="rounded-full border border-emerald-300/60 px-3 py-1 text-xs font-semibold text-emerald-700 dark:text-emerald-200 disabled:opacity-40"
-          >
-            Open
-          </button>
-          <button
-            type="button"
-            onClick={onClose}
-            className="rounded-full border border-transparent px-2 py-1 text-xs text-muted-foreground hover:text-foreground"
-            aria-label="Close quick chat"
-          >
-            &times;
-          </button>
-        </div>
-      </div>
+      <MessageDockChatHeader room={room} isConnected={isConnected} onClose={onClose} />
 
       <div ref={scrollRef} className="flex-1 min-h-[180px] max-h-72 space-y-2 overflow-y-auto pr-1">
         {messages.length === 0 ? (
