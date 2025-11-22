@@ -69,13 +69,16 @@ class ChatDatabase:
         
         messages = chat_messages.objects.filter(
             thread=thread
-        ).select_related('sender').order_by('create_at')
+        ).select_related('sender').prefetch_related('read_receipts__user').order_by('create_at')
         
         return [
             {
                 'id': msg.id,
                 'user': ChatDatabase._get_display_name(msg.sender),
                 'user_id': msg.sender.id,
+                'username': getattr(msg.sender, "username", None),
+                'profile_picture': getattr(msg.sender, "profile_picture", None) or None,
+                'read_receipts': ChatDatabase._serialize_read_receipts(msg),
                 'message': msg.body,
                 'timestamp': timezone.localtime(msg.create_at, BANGKOK_TZ).strftime("%Y-%m-%d %H:%M:%S")
             }
@@ -197,6 +200,59 @@ class ChatDatabase:
                 'success': False,
                 'error': 'Failed to delete message.'
             }
+
+    @staticmethod
+    @database_sync_to_async
+    def mark_messages_read(thread, user, message_ids):
+        """Mark messages as read by the given user."""
+        from chat.models import chat_messages, chat_message_reads
+
+        if not message_ids:
+            return []
+
+        normalized_ids = []
+        for mid in message_ids:
+            try:
+                normalized_ids.append(int(mid))
+            except (TypeError, ValueError):
+                continue
+
+        if not normalized_ids:
+            return []
+
+        messages = chat_messages.objects.filter(thread=thread, id__in=normalized_ids).select_related(
+            "sender"
+        ).prefetch_related("read_receipts__user")
+
+        results = []
+        for message in messages:
+            # Skip creating receipt for own messages but still return current receipts
+            if message.sender_id != user.id:
+                chat_message_reads.objects.get_or_create(message=message, user=user)
+
+            receipts = ChatDatabase._serialize_read_receipts(message)
+            results.append({
+                "message_id": message.id,
+                "receipts": receipts,
+            })
+
+        return results
+
+    @staticmethod
+    def _serialize_read_receipts(message):
+        """Serialize read receipts for a message, ordered by latest read time."""
+        from chat.models import chat_message_reads
+
+        receipts_qs = chat_message_reads.objects.filter(message=message).select_related("user").order_by("-read_at")
+        return [
+            {
+                "username": getattr(receipt.user, "username", None),
+                "display_name": ChatDatabase._get_display_name(receipt.user),
+                "profile_picture": getattr(receipt.user, "profile_picture", None) or None,
+                "read_at": timezone.localtime(receipt.read_at, BANGKOK_TZ).isoformat(),
+            }
+            for receipt in receipts_qs
+        ]
     
     @staticmethod
     @database_sync_to_async
