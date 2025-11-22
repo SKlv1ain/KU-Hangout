@@ -5,7 +5,7 @@ import { useAuth } from "@/context/AuthContext"
 import { useMessageGrouping } from "@/hooks/useMessageGrouping"
 import { useChatScroll } from "@/hooks/useChatScroll"
 import { MessageItem } from "./MessageItem"
-import { useReadReceipts } from "@/hooks/useReadReceipts"
+import { useLastReadMessage } from "@/hooks/useLastReadMessage"
 
 interface MessageListProps {
   messages: ChatMessage[]
@@ -22,7 +22,7 @@ export function MessageList({
 }: MessageListProps) {
   const { user } = useAuth()
   const grouped = useMessageGrouping(messages, user?.id)
-  const { lastReadMessageId, readers, shouldShow } = useReadReceipts(grouped)
+  const { lastReadMessageId, readers } = useLastReadMessage(grouped, user?.username)
   const { containerRef } = useChatScroll<HTMLDivElement>({ dependencies: [grouped.length] })
 
   useEffect(() => {
@@ -61,7 +61,7 @@ export function MessageList({
           <MessageItem
             message={message}
             currentUserName={user?.username}
-            showReadReceipts={shouldShow(message.id)}
+            showReadReceipts={lastReadMessageId === message.id?.toString()}
             readReceipts={readers}
           />
         </div>

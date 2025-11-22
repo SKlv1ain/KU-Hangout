@@ -1,8 +1,9 @@
 import { cn } from "@/lib/utils"
 import type { GroupedMessage } from "@/hooks/useMessageGrouping"
-import { useTimestampFormat } from "@/hooks/useTimestampFormat"
 import { ChatAvatar } from "./ChatAvatar"
-import { ReadReceipts } from "./ReadReceipts"
+import { ReadReceiptsLeft } from "./ReadReceiptsLeft"
+import { ReadReceiptsRight } from "./ReadReceiptsRight"
+import { useTimestampFormat } from "@/hooks/useTimestampFormat"
 import type { ChatReadReceipt } from "@/context/ChatContext"
 
 interface MessageItemProps {
@@ -24,7 +25,9 @@ export function MessageItem({
     (message.isOwn ? currentUserName ?? "You" : "Unknown user")
   const initials = (message.sender ?? message.senderUsername ?? "??").slice(0, 2).toUpperCase()
   const timestamp = useTimestampFormat(message.timestamp)
-  const receiptsToShow = showReadReceipts ? readReceipts ?? [] : []
+  const receiptsToShow = showReadReceipts
+    ? (readReceipts ?? []).filter((r) => r.username && r.username !== currentUserName)
+    : []
 
   if (message.isOwn) {
     return (
@@ -49,10 +52,10 @@ export function MessageItem({
                 {message.text}
               </div>
             </div>
+            {receiptsToShow.length > 0 ? (
+              <ReadReceiptsRight receipts={receiptsToShow} />
+            ) : null}
           </div>
-          {receiptsToShow.length > 0 ? (
-            <ReadReceipts receipts={receiptsToShow} side="right" className="ml-1" />
-          ) : null}
         </div>
       </div>
     )
@@ -88,7 +91,7 @@ export function MessageItem({
           </div>
         </div>
         {receiptsToShow.length > 0 ? (
-          <ReadReceipts receipts={receiptsToShow} side="left" className="ml-auto" />
+          <ReadReceiptsLeft receipts={receiptsToShow} className="ml-auto" />
         ) : null}
       </div>
     </div>
