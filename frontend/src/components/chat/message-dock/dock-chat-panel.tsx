@@ -12,6 +12,7 @@ interface DockChatPanelProps {
   onSend: () => void
   onClose: () => void
   isConnected: boolean
+  onMessagesRead?: (messageIds: string[]) => void
 }
 
 export function DockChatPanel({
@@ -22,6 +23,7 @@ export function DockChatPanel({
   onSend,
   onClose,
   isConnected,
+  onMessagesRead,
 }: DockChatPanelProps) {
   const placeholder = room ? `Message ${room.title}` : "Select a chat to start typing"
   const disableInput = !room || !isConnected
@@ -61,6 +63,7 @@ export function DockChatPanel({
 
       <MessageList
         messages={messages}
+        onMessagesRead={onMessagesRead}
         className="flex-1 min-h-[180px] max-h-72 pr-1"
         emptyState={room ? `Start the conversation with ${room.title}.` : "No chat selected."}
       />

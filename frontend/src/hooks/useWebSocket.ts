@@ -271,6 +271,22 @@ export function useWebSocket({
     }
   }, [])
 
+  const sendAction = useCallback((payload: Record<string, unknown>) => {
+    if (!wsRef.current || wsRef.current.readyState !== WebSocket.OPEN) {
+      callbacksRef.current.onError?.('WebSocket is not connected')
+      return false
+    }
+
+    try {
+      wsRef.current.send(JSON.stringify(payload))
+      return true
+    } catch (error) {
+      console.error('Error sending action:', error)
+      callbacksRef.current.onError?.('Failed to send action')
+      return false
+    }
+  }, [])
+
   // Connect when planId changes
   useEffect(() => {
     if (!planId) {
@@ -309,6 +325,6 @@ export function useWebSocket({
     sendMessage,
     connect,
     disconnect,
+    sendAction,
   }
 }
-

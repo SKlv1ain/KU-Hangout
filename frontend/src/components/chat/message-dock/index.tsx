@@ -32,6 +32,7 @@ export function MessageDock() {
     messagesByRoomId,
     sendMessage,
     isConnected,
+    markMessagesRead,
   } = useChatContext()
   const shouldReduceMotion = useReducedMotion()
   const dockRef = useRef<HTMLDivElement>(null)
@@ -191,6 +192,7 @@ export function MessageDock() {
                 onSend={handleSendMessage}
                 onClose={handleDockClose}
                 isConnected={isConnected}
+                onMessagesRead={markMessagesRead}
               />
             )}
           </AnimatePresence>

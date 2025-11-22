@@ -54,6 +54,7 @@ class ChatConsumer(AsyncWebsocketConsumer):
             
             print(f"[WebSocket] Thread found/created: {thread.id}")
             self.thread_id = thread.id
+            self.thread = thread
             self.message_handler = MessageHandler(self)
 
             # Add user as chat member
@@ -118,6 +119,8 @@ class ChatConsumer(AsyncWebsocketConsumer):
                 await self.message_handler.handle_delete_message(text_data_json, user)
             elif action == 'edit_message':
                 await self.message_handler.handle_edit_message(text_data_json, user)
+            elif action == 'mark_read':
+                await self.message_handler.handle_mark_read(text_data_json, user)
             else:  # Default to send_message
                 await self.message_handler.handle_send_message(text_data_json, user)
 
@@ -137,11 +140,25 @@ class ChatConsumer(AsyncWebsocketConsumer):
                 'username': event.get('username'),
                 'profile_picture': event.get('profile_picture'),
                 'message': event['message'],
+                'read_receipts': event.get('read_receipts', []),
                 'timestamp': event.get('timestamp')
             }))
         except Exception as e:
             await self.send(json.dumps({
                 'error': f'Display message error: {str(e)}'
+            }))
+
+    async def read_receipt(self, event):
+        """Handle read receipt broadcast."""
+        try:
+            await self.send(json.dumps({
+                'type': 'read_receipt',
+                'message_id': event.get('message_id'),
+                'receipts': event.get('receipts', []),
+            }))
+        except Exception as e:
+            await self.send(json.dumps({
+                'error': f'Read receipt error: {str(e)}'
             }))
 
     async def message_deleted(self, event):

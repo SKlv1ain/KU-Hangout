@@ -39,9 +39,30 @@ class MessageHandler:
                 'user_id': user.id,
                 'username': getattr(user, "username", None),
                 'profile_picture': getattr(user, "profile_picture", None) or None,
+                'read_receipts': [],
                 'timestamp': saved_message['timestamp'],
             }
         )
+
+    async def handle_mark_read(self, text_data_json, user):
+        """Handle marking messages as read."""
+        message_ids = text_data_json.get('message_ids') or text_data_json.get('messages')
+
+        if not message_ids:
+            await self.consumer.send(json.dumps({'error': 'Message IDs are required.'}))
+            return
+
+        receipts = await self.db.mark_messages_read(self.consumer.thread, user, message_ids)
+
+        for entry in receipts:
+            await self.consumer.channel_layer.group_send(
+                self.consumer.room_group_name,
+                {
+                    'type': 'read_receipt',
+                    'message_id': entry.get('message_id'),
+                    'receipts': entry.get('receipts', []),
+                }
+            )
     
     async def handle_delete_message(self, text_data_json, user):
         """Handle deleting a message."""

@@ -13,6 +13,14 @@ export interface ChatMessage {
   senderId?: number
   text: string
   timestamp: Date
+  readReceipts: ChatReadReceipt[]
+}
+
+export interface ChatReadReceipt {
+  username: string
+  displayName?: string | null
+  avatar?: string | null
+  readAt: string
 }
 
 export interface ChatRoom {
@@ -39,8 +47,10 @@ interface ChatContextValue {
   connectionError: string | null
   selectRoom: (roomId: string | number | null) => void
   sendMessage: (roomId: string, text: string) => boolean
+  sendAction: (payload: Record<string, unknown>) => boolean
   addIncomingMessage: (roomId: string, message: ChatMessage) => void
   markRoomAsRead: (roomId: string) => void
+  markMessagesRead: (messageIds: Array<string | number>) => void
   refreshRooms: () => Promise<void>
 }
 
@@ -71,6 +81,24 @@ const generateMessageId = () => {
   return `${Date.now()}-${Math.random().toString(16).slice(2)}`
 }
 
+const mergeReadReceipts = (existing: ChatReadReceipt[], incoming: ChatReadReceipt[]) => {
+  const receiptMap = new Map<string, ChatReadReceipt>()
+  const all = [...existing, ...incoming]
+  all.forEach((receipt) => {
+    if (!receipt.username) return
+    const current = receiptMap.get(receipt.username)
+    if (!current) {
+      receiptMap.set(receipt.username, receipt)
+      return
+    }
+    if ((receipt.readAt ?? "") > (current.readAt ?? "")) {
+      receiptMap.set(receipt.username, receipt)
+    }
+  })
+
+  return Array.from(receiptMap.values()).sort((a, b) => (b.readAt ?? "").localeCompare(a.readAt ?? ""))
+}
+
 const normalizeMessage = (roomId: string, raw: any): ChatMessage => {
   let parsedTimestamp: Date
   if (raw.timestamp instanceof Date) {
@@ -94,6 +122,18 @@ const normalizeMessage = (roomId: string, raw: any): ChatMessage => {
     raw.avatar ??
     null
 
+  const rawReceipts = Array.isArray(raw.read_receipts) ? raw.read_receipts : raw.receipts
+  const readReceipts: ChatReadReceipt[] = Array.isArray(rawReceipts)
+    ? rawReceipts
+        .map((entry: any) => ({
+          username: entry.username,
+          displayName: entry.display_name ?? entry.displayName,
+          avatar: entry.profile_picture ?? entry.avatar ?? null,
+          readAt: entry.read_at ?? entry.readAt ?? "",
+        }))
+        .filter((entry) => Boolean(entry.username))
+    : []
+
   return {
     id: raw.id ?? raw.message_id ?? generateMessageId(),
     roomId,
@@ -103,6 +143,7 @@ const normalizeMessage = (roomId: string, raw: any): ChatMessage => {
     senderId: raw.user_id ?? raw.senderId,
     text: raw.message ?? raw.text ?? "",
     timestamp: parsedTimestamp,
+    readReceipts,
   }
 }
 
@@ -249,11 +290,32 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
 
   const addIncomingMessage = useCallback(
     (roomId: string, message: ChatMessage) => {
+      const ensureReceipts = () => {
+        const existing = message.readReceipts ?? []
+        if (user && message.senderId === user.id) {
+          const alreadyHasSelf = existing.some((receipt) => receipt.username === user.username)
+          if (!alreadyHasSelf) {
+            return [
+              ...existing,
+              {
+                username: user.username,
+                displayName: user.display_name ?? user.username,
+                avatar: user.profile_picture ?? null,
+                readAt: new Date().toISOString(),
+              } as ChatReadReceipt,
+            ]
+          }
+        }
+        return existing
+      }
+
+      const nextReceipts = ensureReceipts()
+
       setMessagesByRoomId((prev) => {
         const existing = prev[roomId] ?? []
         return {
           ...prev,
-          [roomId]: [...existing, message],
+          [roomId]: [...existing, { ...message, readReceipts: nextReceipts }],
         }
       })
 
@@ -274,7 +336,7 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
         )
       )
     },
-    [selectedRoomId]
+    [selectedRoomId, user]
   )
 
   const setIncomingHistory = useCallback((roomId: string, messages: ChatMessage[]) => {
@@ -307,6 +369,40 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
       if (data.type === "new_message") {
         const message = normalizeMessage(selectedRoomId, data)
         addIncomingMessage(selectedRoomId, message)
+        return
+      }
+
+      if (data.type === "read_receipt") {
+        const targetMessageId = data.message_id ?? data.messageId
+        if (!targetMessageId) return
+
+        setMessagesByRoomId((prev) => {
+          const existingMessages = prev[selectedRoomId] ?? []
+          const updated = existingMessages.map((msg) => {
+            if (String(msg.id) !== String(targetMessageId)) {
+              return msg
+            }
+
+            const incomingReceipts: ChatReadReceipt[] = Array.isArray(data.receipts)
+              ? data.receipts
+                  .map((entry: any) => ({
+                    username: entry.username,
+                    displayName: entry.display_name ?? entry.displayName,
+                    avatar: entry.profile_picture ?? entry.avatar ?? null,
+                    readAt: entry.read_at ?? entry.readAt ?? "",
+                  }))
+                  .filter((entry: ChatReadReceipt) => Boolean(entry.username))
+              : []
+
+            const merged = mergeReadReceipts(msg.readReceipts ?? [], incomingReceipts)
+            return { ...msg, readReceipts: merged }
+          })
+
+          return {
+            ...prev,
+            [selectedRoomId]: updated,
+          }
+        })
       }
     },
     [addIncomingMessage, selectedRoomId, setIncomingHistory]
@@ -331,6 +427,7 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
     isConnected,
     connectionStatus,
     sendMessage: sendMessageThroughSocket,
+    sendAction,
   } = useWebSocket({
     planId: selectedRoomId,
     onMessage: handleWebSocketMessage,
@@ -351,6 +448,39 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
     [selectedRoomId, sendMessageThroughSocket]
   )
 
+  const markMessagesRead = useCallback(
+    (messageIds: Array<string | number>) => {
+      if (!messageIds?.length || !selectedRoomId) return
+      const targetIds = new Set(messageIds.map(String))
+      if (user) {
+        setMessagesByRoomId((prev) => {
+          const roomMessages = prev[selectedRoomId] ?? []
+          const updated = roomMessages.map((msg) => {
+            if (!targetIds.has(String(msg.id))) return msg
+            const optimistic = mergeReadReceipts(msg.readReceipts ?? [], [
+              {
+                username: user.username,
+                displayName: user.display_name ?? user.username,
+                avatar: user.profile_picture ?? null,
+                readAt: new Date().toISOString(),
+              },
+            ])
+            return { ...msg, readReceipts: optimistic }
+          })
+          return {
+            ...prev,
+            [selectedRoomId]: updated,
+          }
+        })
+      }
+      sendAction({
+        action: "mark_read",
+        message_ids: messageIds,
+      })
+    },
+    [selectedRoomId, sendAction, user]
+  )
+
   const value = useMemo(
     () => ({
       chatRooms,
@@ -362,8 +492,10 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
       connectionError,
       selectRoom,
       sendMessage,
+      sendAction,
       addIncomingMessage,
       markRoomAsRead,
+      markMessagesRead,
       refreshRooms,
     }),
     [
@@ -376,8 +508,10 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
       connectionError,
       selectRoom,
       sendMessage,
+      sendAction,
       addIncomingMessage,
       markRoomAsRead,
+      markMessagesRead,
       refreshRooms,
     ]
   )

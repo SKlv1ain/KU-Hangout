@@ -7,7 +7,6 @@ import Navbar from "@/components/navbar"
 import { MessageSquare, Wifi, WifiOff } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { getPlanInitials } from "@/lib/chatUtils"
-import { useAuth } from "@/context/AuthContext"
 import { useChatContext } from "@/context/ChatContext"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { BadgeAvatar } from "@/components/chat/BadgeAvatar"
@@ -17,7 +16,6 @@ import { MessageComposer } from "@/components/chat/MessageComposer"
 
 export default function MessagePage() {
   const navigate = useNavigate()
-  const { user } = useAuth()
   const [searchParams] = useSearchParams()
   const planId = searchParams.get("planId")
   const [inputMessage, setInputMessage] = useState("")
@@ -30,6 +28,7 @@ export default function MessagePage() {
     isConnected,
     connectionStatus,
     connectionError,
+    markMessagesRead,
   } = useChatContext()
   const { getUnreadCount, acknowledgePlan } = useChatUnreadCounts()
 
@@ -184,6 +183,7 @@ export default function MessagePage() {
                   messages={messages}
                   className="flex-1 overflow-y-auto p-4 space-y-4 min-h-0"
                   emptyState="Start the conversation!"
+                  onMessagesRead={markMessagesRead}
                 />
 
                 <div className="p-4 border-t border-border flex-shrink-0">
