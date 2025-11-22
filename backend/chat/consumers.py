@@ -134,6 +134,8 @@ class ChatConsumer(AsyncWebsocketConsumer):
                 'message_id': event['message_id'],
                 'user': event['user'],
                 'user_id': event['user_id'],
+                'username': event.get('username'),
+                'profile_picture': event.get('profile_picture'),
                 'message': event['message'],
                 'timestamp': event.get('timestamp')
             }))

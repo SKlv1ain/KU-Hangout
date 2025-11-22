@@ -8,6 +8,8 @@ export interface ChatMessage {
   id: string | number
   roomId: string
   sender: string
+  senderUsername?: string
+  senderAvatar?: string | null
   senderId?: number
   text: string
   timestamp: Date
@@ -77,10 +79,27 @@ const normalizeMessage = (roomId: string, raw: any): ChatMessage => {
     parsedTimestamp = parseServerTimestamp(raw.timestamp) ?? new Date()
   }
 
+  const senderUsername =
+    raw.username ??
+    raw.user_username ??
+    raw.senderUsername ??
+    raw.sender_username ??
+    raw.user ??
+    raw.sender
+
+  const senderAvatar =
+    raw.profile_picture ??
+    raw.profilePicture ??
+    raw.senderAvatar ??
+    raw.avatar ??
+    null
+
   return {
     id: raw.id ?? raw.message_id ?? generateMessageId(),
     roomId,
-    sender: raw.user ?? raw.sender ?? "Unknown",
+    sender: raw.user ?? raw.sender ?? senderUsername ?? "Unknown",
+    senderUsername,
+    senderAvatar: senderAvatar || null,
     senderId: raw.user_id ?? raw.senderId,
     text: raw.message ?? raw.text ?? "",
     timestamp: parsedTimestamp,

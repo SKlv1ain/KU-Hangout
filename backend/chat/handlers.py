@@ -37,6 +37,8 @@ class MessageHandler:
                 'message': message,
                 'user': display_name,
                 'user_id': user.id,
+                'username': getattr(user, "username", None),
+                'profile_picture': getattr(user, "profile_picture", None) or None,
                 'timestamp': saved_message['timestamp'],
             }
         )

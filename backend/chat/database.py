@@ -76,6 +76,8 @@ class ChatDatabase:
                 'id': msg.id,
                 'user': ChatDatabase._get_display_name(msg.sender),
                 'user_id': msg.sender.id,
+                'username': getattr(msg.sender, "username", None),
+                'profile_picture': getattr(msg.sender, "profile_picture", None) or None,
                 'message': msg.body,
                 'timestamp': timezone.localtime(msg.create_at, BANGKOK_TZ).strftime("%Y-%m-%d %H:%M:%S")
             }

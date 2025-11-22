@@ -1,0 +1,63 @@
+import { cn } from "@/lib/utils"
+import type { GroupedMessage } from "@/hooks/useMessageGrouping"
+import { MessageSenderAvatar } from "./MessageSenderAvatar"
+
+interface MessageItemProps {
+  message: GroupedMessage
+  currentUserName?: string | null
+}
+
+export function MessageItem({ message, currentUserName }: MessageItemProps) {
+  const name =
+    message.sender ??
+    message.senderUsername ??
+    (message.isOwn ? currentUserName ?? "You" : "Unknown user")
+  const initials = (message.sender ?? message.senderUsername ?? "??").slice(0, 2).toUpperCase()
+
+  if (message.isOwn) {
+    return (
+      <div className="flex gap-2">
+        <div className="h-8 w-8" aria-hidden />
+        <div className="flex flex-1 justify-end">
+          <div className="flex max-w-[75%] flex-col items-end gap-1">
+            {message.showSenderLabel && (
+              <span className="text-xs font-medium text-muted-foreground">{name}</span>
+            )}
+            <div
+              className={cn(
+                "rounded-2xl px-3 py-2 text-sm text-white",
+                "bg-emerald-500 dark:bg-emerald-600"
+              )}
+            >
+              {message.text}
+            </div>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  return (
+    <div className="flex gap-2">
+      <MessageSenderAvatar
+        name={name}
+        username={message.senderUsername}
+        imageUrl={message.senderAvatar}
+        fallback={initials}
+        hidden={!message.showAvatar}
+      />
+      <div className="flex max-w-[75%] flex-col gap-1">
+        {message.showSenderLabel && (
+          <span className="text-xs font-medium text-muted-foreground">{name}</span>
+        )}
+        <div
+          className={cn(
+            "rounded-2xl border border-border/40 bg-muted px-3 py-2 text-sm dark:bg-muted/50"
+          )}
+        >
+          {message.text}
+        </div>
+      </div>
+    </div>
+  )
+}
