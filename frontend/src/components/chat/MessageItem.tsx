@@ -1,33 +1,40 @@
 import { cn } from "@/lib/utils"
 import type { GroupedMessage } from "@/hooks/useMessageGrouping"
-import { MessageSenderAvatar } from "./MessageSenderAvatar"
-import { ReadReceipts } from "./ReadReceipts"
 import { useTimestampFormat } from "@/hooks/useTimestampFormat"
+import { ChatAvatar } from "./ChatAvatar"
+import { ReadReceipts } from "./ReadReceipts"
+import type { ChatReadReceipt } from "@/context/ChatContext"
 
 interface MessageItemProps {
   message: GroupedMessage
   currentUserName?: string | null
+  showReadReceipts?: boolean
+  readReceipts?: ChatReadReceipt[]
 }
 
-export function MessageItem({ message, currentUserName }: MessageItemProps) {
+export function MessageItem({
+  message,
+  currentUserName,
+  showReadReceipts,
+  readReceipts,
+}: MessageItemProps) {
   const name =
     message.sender ??
     message.senderUsername ??
     (message.isOwn ? currentUserName ?? "You" : "Unknown user")
   const initials = (message.sender ?? message.senderUsername ?? "??").slice(0, 2).toUpperCase()
   const timestamp = useTimestampFormat(message.timestamp)
-  const showReceipts = message.isLastInGroup && (message.readReceipts?.length ?? 0) > 0
+  const receiptsToShow = showReadReceipts ? readReceipts ?? [] : []
 
   if (message.isOwn) {
     return (
       <div className="flex flex-col gap-1">
-        <div className="flex gap-2">
-          <div className="h-8 w-8" aria-hidden />
+        <div className="flex gap-2 items-end">
           <div className="flex flex-1 flex-col items-end gap-1">
             {message.showSenderLabel && (
               <span className="text-xs font-medium text-muted-foreground">{name}</span>
             )}
-            <div className="flex items-end justify-end gap-1">
+            <div className="flex items-center justify-end gap-1">
               {timestamp ? (
                 <span className="text-[10px] text-muted-foreground inline-flex items-center mr-1">
                   {timestamp}
@@ -42,15 +49,10 @@ export function MessageItem({ message, currentUserName }: MessageItemProps) {
                 {message.text}
               </div>
             </div>
-            {showReceipts && (
-              <ReadReceipts
-                receipts={message.readReceipts ?? []}
-                side="right"
-                currentUserUsername={currentUserName ?? undefined}
-                className="mt-0.5 pr-1"
-              />
-            )}
           </div>
+          {receiptsToShow.length > 0 ? (
+            <ReadReceipts receipts={receiptsToShow} side="right" className="ml-1" />
+          ) : null}
         </div>
       </div>
     )
@@ -58,7 +60,7 @@ export function MessageItem({ message, currentUserName }: MessageItemProps) {
 
   return (
     <div className="flex gap-2 items-end">
-      <MessageSenderAvatar
+      <ChatAvatar
         name={name}
         username={message.senderUsername}
         imageUrl={message.senderAvatar}
@@ -78,21 +80,16 @@ export function MessageItem({ message, currentUserName }: MessageItemProps) {
             >
               {message.text}
             </div>
-            {timestamp ? (
-              <span className="text-[10px] text-muted-foreground inline-flex items-center ml-1">
-                {timestamp}
-              </span>
-            ) : null}
+          {timestamp ? (
+            <span className="text-[10px] text-muted-foreground inline-flex items-center ml-1">
+              {timestamp}
+            </span>
+          ) : null}
           </div>
         </div>
-        {showReceipts && (
-          <ReadReceipts
-            receipts={message.readReceipts ?? []}
-            side="left"
-            currentUserUsername={currentUserName ?? undefined}
-            className="ml-auto pl-2"
-          />
-        )}
+        {receiptsToShow.length > 0 ? (
+          <ReadReceipts receipts={receiptsToShow} side="left" className="ml-auto" />
+        ) : null}
       </div>
     </div>
   )

@@ -5,49 +5,31 @@ import { MessageSenderAvatar } from "./MessageSenderAvatar"
 interface ReadReceiptsProps {
   receipts: ChatReadReceipt[]
   side: "left" | "right"
-  currentUserUsername?: string
   className?: string
 }
 
-export function ReadReceipts({ receipts, side, currentUserUsername, className }: ReadReceiptsProps) {
-  const filtered = receipts.filter(
-    (receipt) => receipt.username && receipt.username !== currentUserUsername
-  )
-
-  if (filtered.length === 0) return null
-
-  const uniqueByUser = Array.from(
-    filtered.reduce((map, receipt) => {
-      if (!receipt.username) return map
-      map.set(receipt.username, receipt)
-      return map
-    }, new Map<string, ChatReadReceipt>())
-  ).map(([, receipt]) => receipt)
+export function ReadReceipts({ receipts, side, className }: ReadReceiptsProps) {
+  if (!receipts || receipts.length === 0) return null
 
   const alignClass = side === "right" ? "justify-end" : "justify-end"
 
   return (
-    <div className={cn("flex gap-1", alignClass, className)}>
-      {uniqueByUser.map((receipt, index) => {
+    <div className={cn("flex items-center gap-1", alignClass, className)}>
+      {receipts.map((receipt, index) => {
         const fallback = receipt.displayName ?? receipt.username ?? "??"
         return (
-          <div
-            key={receipt.username}
+          <MessageSenderAvatar
+            key={`${receipt.username}-${index}`}
+            name={receipt.displayName ?? receipt.username ?? "Unknown user"}
+            username={receipt.username}
+            imageUrl={receipt.avatar}
+            fallback={fallback.slice(0, 2).toUpperCase()}
+            size={24}
             className={cn(
-              "rounded-full border border-white shadow-sm overflow-hidden",
-              index > 0 ? "-ml-1" : "",
-              "h-4 w-4"
+              "h-6 w-6 rounded-full border border-background shadow-sm",
+              index > 0 ? "-ml-1" : ""
             )}
-          >
-            <MessageSenderAvatar
-              name={fallback}
-              username={receipt.username}
-              imageUrl={receipt.avatar}
-              fallback={fallback.slice(0, 2).toUpperCase()}
-              size={16}
-              className="h-4 w-4"
-            />
-          </div>
+          />
         )
       })}
     </div>
