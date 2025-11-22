@@ -4,6 +4,7 @@ import type { ChatRoom } from "@/context/ChatContext"
 import { DockAvatar, type AvatarAccent } from "./dock-avatar"
 import { MenuIconButton } from "./menu-icon-button"
 import { AvatarWithTooltip } from "./avatar-with-tooltip"
+import { ToggleButton } from "./ToggleButton"
 
 interface DockAvatarListProps {
   rooms: ChatRoom[]
@@ -12,6 +13,8 @@ interface DockAvatarListProps {
   selectedRoomId: string | null
   onAvatarClick: (roomId: string) => void
   hoverAnimation: TargetAndTransition
+  onToggle: () => void
+  isOpen: boolean
 }
 
 export function DockAvatarList({
@@ -21,7 +24,17 @@ export function DockAvatarList({
   selectedRoomId,
   onAvatarClick,
   hoverAnimation,
+  onToggle,
+  isOpen,
 }: DockAvatarListProps) {
+  if (!isOpen) {
+    return (
+      <div className="flex w-full items-center justify-center">
+        <ToggleButton onToggle={onToggle} isOpen={isOpen} />
+      </div>
+    )
+  }
+
   if (isExpanded) {
     return null
   }
@@ -30,23 +43,7 @@ export function DockAvatarList({
 
   return (
     <div className={cn("flex w-full items-center gap-2 overflow-visible")}>
-      <motion.button
-        className="flex h-12 w-12 items-center justify-center"
-        style={{ backgroundColor: "transparent", border: "none" }}
-        whileHover={{
-          scale: 1.02,
-          y: -2,
-          transition: {
-            type: "spring",
-            stiffness: 400,
-            damping: 25,
-          },
-        }}
-        whileTap={{ scale: 0.95 }}
-        aria-label="Sparkle"
-      >
-        <span className="text-2xl">✨</span>
-      </motion.button>
+      <ToggleButton onToggle={onToggle} isOpen={isOpen} />
 
       {visibleRooms.map((room, index) => (
         <AvatarWithTooltip key={room.planId} roomName={room.title}>

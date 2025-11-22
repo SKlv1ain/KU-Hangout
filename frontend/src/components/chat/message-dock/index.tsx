@@ -6,6 +6,8 @@ import { cn } from "@/lib/utils"
 import { useTheme } from "@/components/theme-provider"
 import { useChatContext } from "@/context/ChatContext"
 import { selectRecentRooms } from "@/lib/chatUtils"
+import { useMessageDockStore } from "@/hooks/useMessageDockStore"
+import { useDockHotkey } from "@/hooks/useDockHotkey"
 import { DockAvatarList } from "./dock-avatar-list"
 import { DockChatPanel } from "./dock-chat-panel"
 import type { AvatarAccent } from "./dock-avatar"
@@ -25,6 +27,7 @@ const ICON_SIZE = 48
 
 export function MessageDock() {
   const { theme } = useTheme()
+  const { isDockOpen, toggleDock, openDock } = useMessageDockStore()
   const {
     chatRooms,
     selectedRoomId,
@@ -38,6 +41,8 @@ export function MessageDock() {
   const dockRef = useRef<HTMLDivElement>(null)
   const [isExpanded, setIsExpanded] = useState(false)
   const [messageInput, setMessageInput] = useState("")
+
+  useDockHotkey({ toggleDock })
 
   const prioritizedRooms = useMemo(() => {
     const sorted = selectRecentRooms(chatRooms)
@@ -73,27 +78,6 @@ export function MessageDock() {
     }
   }, [isExpanded])
 
-  const containerVariants = {
-    hidden: {
-      opacity: 0,
-      y: 100,
-      scale: 0.8,
-    },
-    visible: {
-      opacity: 1,
-      y: 0,
-      scale: 1,
-      transition: {
-        type: "spring" as const,
-        stiffness: 300,
-        damping: 30,
-        mass: 0.8,
-        staggerChildren: 0.1,
-        delayChildren: 0.2,
-      },
-    },
-  }
-
   const hoverAnimation = shouldReduceMotion
     ? { scale: 1.02 }
     : {
@@ -114,6 +98,7 @@ export function MessageDock() {
 
     selectRoom(roomId)
     setIsExpanded(true)
+    openDock()
   }
 
   const handleDockClose = () => {
@@ -130,19 +115,15 @@ export function MessageDock() {
   }
 
   const avatarCount = Math.min(prioritizedRooms.length, MAX_ROOMS)
-  const collapsedItems = 2 + avatarCount // sparkle + avatars + menu
+  const collapsedItems = 2 + avatarCount // toggle + avatars + menu
   const totalGap = Math.max(collapsedItems - 1, 0) * ITEM_GAP
   const collapsedWidth =
-    PADDING_X + ICON_SIZE /* sparkle */ + avatarCount * AVATAR_SIZE + ICON_SIZE /* menu */ + totalGap
+    (isDockOpen ? PADDING_X : 0) +
+    ICON_SIZE /* toggle */ +
+    (isDockOpen ? avatarCount * AVATAR_SIZE + ICON_SIZE /* menu */ + totalGap : 0)
 
   return (
-    <motion.div
-      ref={dockRef}
-      className="fixed bottom-6 right-6 z-50"
-      initial={false}
-      animate="visible"
-      variants={containerVariants}
-    >
+    <motion.div ref={dockRef} className="fixed bottom-6 right-6 z-50" initial={false}>
       <motion.div
         className={cn(
           "shadow-2xl backdrop-blur-md border border-emerald-400/20 dark:border-emerald-400/10",
@@ -159,10 +140,10 @@ export function MessageDock() {
         }}
         initial={false}
         animate={{
-          width: isExpanded ? EXPANDED_WIDTH : collapsedWidth,
-          borderRadius: isExpanded ? 28 : 9999,
-          paddingTop: isExpanded ? 12 : 8,
-          paddingBottom: isExpanded ? 12 : 8,
+          width: isExpanded && isDockOpen ? EXPANDED_WIDTH : Math.max(collapsedWidth, 56),
+          borderRadius: isExpanded && isDockOpen ? 28 : 9999,
+          paddingTop: isExpanded && isDockOpen ? 12 : 8,
+          paddingBottom: isExpanded && isDockOpen ? 12 : 8,
         }}
         transition={{
           type: "spring",
@@ -176,14 +157,16 @@ export function MessageDock() {
           <DockAvatarList
             rooms={prioritizedRooms}
             accents={AVATAR_ACCENTS}
-            isExpanded={isExpanded}
+            isExpanded={isExpanded && isDockOpen}
             selectedRoomId={selectedRoomId}
             onAvatarClick={handleAvatarClick}
             hoverAnimation={hoverAnimation}
+            onToggle={toggleDock}
+            isOpen={isDockOpen}
           />
 
           <AnimatePresence>
-            {isExpanded && (
+            {isExpanded && isDockOpen && (
               <DockChatPanel
                 room={activeRoom}
                 messages={activeMessages}
