@@ -151,6 +151,97 @@ KU-Hangout/
 
 ## Getting Started
 
+### Quick Start for Beginners
+
+If you're new to the project and want to get it running quickly, follow these simplified steps:
+
+#### Step 1: Install Prerequisites
+- Install Python 3.10+ from [python.org](https://www.python.org/downloads/)
+- Install Node.js 18+ from [nodejs.org](https://nodejs.org/)
+- Install PostgreSQL from [postgresql.org](https://www.postgresql.org/download/)
+- Install Redis from [redis.io](https://redis.io/download/)
+
+#### Step 2: Setup Database
+Create a PostgreSQL database:
+```bash
+# Log into PostgreSQL
+psql -U postgres
+
+# Create database
+CREATE DATABASE ku_hangout_db;
+
+# Exit PostgreSQL
+\q
+```
+
+#### Step 3: Clone and Setup Backend
+```bash
+# Clone repository
+git clone <repository-url>
+cd KU-Hangout/backend
+
+# Create virtual environment
+python -m venv venv
+
+# Activate virtual environment
+# On macOS/Linux:
+source venv/bin/activate
+# On Windows:
+venv\Scripts\activate
+
+# Install dependencies
+pip install -r requirements.txt
+```
+
+#### Step 4: Configure Environment
+Create a `.env` file in the project root (KU-Hangout/.env):
+```env
+POSTGRES_DB=ku_hangout_db
+POSTGRES_USER=postgres
+POSTGRES_PASSWORD=your_password
+POSTGRES_HOST=localhost
+POSTGRES_PORT=5432
+
+REDIS_HOST=127.0.0.1
+REDIS_PORT=6379
+
+USE_CLOUDINARY=False
+```
+
+#### Step 5: Setup Database Tables
+```bash
+# From the backend directory, with venv activated
+python manage.py makemigrations
+python manage.py migrate
+python manage.py createsuperuser  # Optional: create admin account
+```
+
+#### Step 6: Start Backend Server
+```bash
+# Make sure Redis is running first
+# Then start backend with Daphne (required for WebSocket)
+daphne -p 8000 backend.asgi:application
+```
+
+Backend will be available at `http://localhost:8000`
+
+#### Step 7: Setup and Start Frontend
+Open a new terminal:
+```bash
+cd KU-Hangout/frontend
+
+# Install dependencies
+npm install
+
+# Start development server
+npm run dev
+```
+
+Frontend will be available at `http://localhost:5173`
+
+#### Step 8: Access the Application
+Open your browser and go to `http://localhost:5173`
+
 ### Prerequisites
 
 Before you begin, ensure you have the following installed:
@@ -215,22 +306,43 @@ pip install -r requirements.txt
 
 4. Create a `.env` file in the project root with required variables (see Environment Variables section)
 
-5. Run database migrations:
+5. Ensure PostgreSQL and Redis are running:
+```bash
+# If using Docker for database services only:
+docker-compose up -d postgres redis
+
+# Or start them manually if installed locally
+```
+
+6. Create database migrations (if needed):
+```bash
+python manage.py makemigrations
+```
+
+7. Apply database migrations:
 ```bash
 python manage.py migrate
 ```
 
-6. Create a superuser (optional):
+8. Create a superuser (optional):
 ```bash
 python manage.py createsuperuser
 ```
 
-7. Start the Django development server:
+9. Start the backend server with Daphne (required for WebSocket support):
 ```bash
-python manage.py runserver
+# From the backend directory
+daphne -p 8000 backend.asgi:application
+```
+
+Alternatively, you can use the shorthand:
+```bash
+daphne -b 0.0.0.0 -p 8000 backend.asgi:application
 ```
 
 The backend API will be available at `http://localhost:8000`
+
+**Important**: You must use `daphne` instead of `python manage.py runserver` because the application uses Django Channels for WebSocket support (real-time chat and notifications). The standard Django development server does not support WebSocket connections.
 
 ##### Frontend Setup
 
@@ -568,6 +680,153 @@ cd frontend
 # Run linter
 npm run lint
 ```
+
+## Troubleshooting
+
+### Common Issues for Beginners
+
+#### 1. "ModuleNotFoundError: No module named 'daphne'"
+
+**Problem**: Daphne is not installed.
+
+**Solution**:
+```bash
+pip install daphne
+# Or reinstall all requirements
+pip install -r requirements.txt
+```
+
+#### 2. "django.db.utils.OperationalError: connection to server failed"
+
+**Problem**: PostgreSQL is not running or wrong credentials.
+
+**Solution**:
+- Check if PostgreSQL is running:
+  ```bash
+  # On macOS:
+  brew services list
+  
+  # On Linux:
+  sudo systemctl status postgresql
+  
+  # On Windows: Check Services app
+  ```
+- Verify database credentials in `.env` file match your PostgreSQL setup
+- Make sure the database exists:
+  ```bash
+  psql -U postgres -l
+  ```
+
+#### 3. "Error 111 connecting to localhost:6379. Connection refused"
+
+**Problem**: Redis is not running.
+
+**Solution**:
+```bash
+# On macOS:
+brew services start redis
+
+# On Linux:
+sudo systemctl start redis
+
+# On Windows: Start redis-server.exe
+
+# Or use Docker:
+docker run -d -p 6379:6379 redis:7
+```
+
+#### 4. "No migrations to apply" but tables don't exist
+
+**Problem**: Migrations files don't exist or weren't created.
+
+**Solution**:
+```bash
+# Create migration files
+python manage.py makemigrations
+
+# Apply them
+python manage.py migrate
+```
+
+#### 5. WebSocket connection fails / Chat doesn't work
+
+**Problem**: Using `runserver` instead of `daphne`.
+
+**Solution**:
+- Stop the server
+- Make sure you're using `daphne -p 8000 backend.asgi:application`
+- Check that Redis is running (required for WebSocket)
+
+#### 6. "npm: command not found"
+
+**Problem**: Node.js is not installed or not in PATH.
+
+**Solution**:
+- Install Node.js from [nodejs.org](https://nodejs.org/)
+- Restart your terminal after installation
+
+#### 7. Frontend shows "Network Error" or "Failed to fetch"
+
+**Problem**: Backend is not running or wrong URL.
+
+**Solution**:
+- Make sure backend is running on `http://localhost:8000`
+- Check browser console for exact error
+- Verify CORS settings in `backend/backend/settings.py`
+
+#### 8. Images don't upload / "Cloudinary error"
+
+**Problem**: Cloudinary credentials not configured.
+
+**Solution**:
+- Set `USE_CLOUDINARY=False` in `.env` to use local storage for development
+- Or configure Cloudinary credentials (see Environment Variables section)
+
+#### 9. "Port 8000 is already in use"
+
+**Problem**: Another process is using port 8000.
+
+**Solution**:
+```bash
+# On macOS/Linux:
+lsof -ti:8000 | xargs kill -9
+
+# On Windows:
+netstat -ano | findstr :8000
+taskkill /PID <PID> /F
+
+# Or use a different port:
+daphne -p 8001 backend.asgi:application
+```
+
+#### 10. Virtual environment not activating
+
+**Problem**: Wrong activation command or permission issues.
+
+**Solution**:
+```bash
+# On macOS/Linux:
+source venv/bin/activate
+
+# On Windows (Command Prompt):
+venv\Scripts\activate.bat
+
+# On Windows (PowerShell):
+venv\Scripts\Activate.ps1
+
+# If PowerShell gives execution policy error:
+Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser
+```
+
+### Getting Additional Help
+
+If you encounter other issues:
+
+1. Check the terminal/console for detailed error messages
+2. Verify all prerequisites are installed correctly
+3. Make sure all services (PostgreSQL, Redis) are running
+4. Check that environment variables are set correctly in `.env`
+5. Review the detailed setup instructions in CLOUDINARY_SETUP.md and GOOGLE_MAPS_SETUP.md
 
 ## Deployment
 
