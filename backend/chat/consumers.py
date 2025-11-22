@@ -38,6 +38,13 @@ class ChatConsumer(AsyncWebsocketConsumer):
 
             print(f"[WebSocket] User authenticated: {user.username} (ID: {user.id})")
 
+            # Ensure user has access to this plan's chat
+            has_access = await self.db.user_has_plan_access(self.plan_id, user)
+            if not has_access:
+                print(f"[WebSocket] Access denied for user {user.username} to plan {self.plan_id}")
+                await self._reject_connection('Please join this plan before accessing its chat.')
+                return
+
             # Get or create chat thread
             thread = await self.db.get_or_create_thread(self.plan_id, user)
             if not thread:
@@ -47,6 +54,7 @@ class ChatConsumer(AsyncWebsocketConsumer):
             
             print(f"[WebSocket] Thread found/created: {thread.id}")
             self.thread_id = thread.id
+            self.thread = thread
             self.message_handler = MessageHandler(self)
 
             # Add user as chat member
@@ -111,6 +119,8 @@ class ChatConsumer(AsyncWebsocketConsumer):
                 await self.message_handler.handle_delete_message(text_data_json, user)
             elif action == 'edit_message':
                 await self.message_handler.handle_edit_message(text_data_json, user)
+            elif action == 'mark_read':
+                await self.message_handler.handle_mark_read(text_data_json, user)
             else:  # Default to send_message
                 await self.message_handler.handle_send_message(text_data_json, user)
 
@@ -127,12 +137,28 @@ class ChatConsumer(AsyncWebsocketConsumer):
                 'message_id': event['message_id'],
                 'user': event['user'],
                 'user_id': event['user_id'],
+                'username': event.get('username'),
+                'profile_picture': event.get('profile_picture'),
                 'message': event['message'],
+                'read_receipts': event.get('read_receipts', []),
                 'timestamp': event.get('timestamp')
             }))
         except Exception as e:
             await self.send(json.dumps({
                 'error': f'Display message error: {str(e)}'
+            }))
+
+    async def read_receipt(self, event):
+        """Handle read receipt broadcast."""
+        try:
+            await self.send(json.dumps({
+                'type': 'read_receipt',
+                'message_id': event.get('message_id'),
+                'receipts': event.get('receipts', []),
+            }))
+        except Exception as e:
+            await self.send(json.dumps({
+                'error': f'Read receipt error: {str(e)}'
             }))
 
     async def message_deleted(self, event):
@@ -171,7 +197,7 @@ class ChatConsumer(AsyncWebsocketConsumer):
             if hasattr(self, 'channel_layer') and self.channel_name:
                 # Try to accept first (required before sending messages)
                 try:
-        await self.accept()
+                    await self.accept()
                     print("[WebSocket] Connection accepted for rejection")
                 except Exception as accept_error:
                     print(f"[WebSocket] Error accepting connection for rejection: {accept_error}")
@@ -180,7 +206,7 @@ class ChatConsumer(AsyncWebsocketConsumer):
                 
                 # Send error message before closing
                 try:
-        await self.send(json.dumps({'error': error_message}))
+                    await self.send(json.dumps({'error': error_message}))
                     print("[WebSocket] Error message sent")
                 except Exception as send_error:
                     print(f"[WebSocket] Error sending error message: {send_error}")

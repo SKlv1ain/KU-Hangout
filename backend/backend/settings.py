@@ -9,14 +9,21 @@ https://docs.djangoproject.com/en/5.1/topics/settings/
 For the full list of settings and their values, see
 https://docs.djangoproject.com/en/5.1/ref/settings/
 """
+import logging
 import os
+import sys
 from datetime import timedelta
 from dotenv import load_dotenv
 from pathlib import Path
 
-# Build paths inside the project like this: BASE_DIR / 'subdir'.
-BASE_DIR = Path(__file__).resolve().parent.parent
+# Base directories
+BASE_DIR = Path(__file__).resolve().parent.parent  # backend/backend
+PROJECT_ROOT = BASE_DIR.parent  # KU-HANGOUT
 
+# Load .env from project root
+load_dotenv(PROJECT_ROOT / '.env')
+
+logger = logging.getLogger(__name__)
 
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/5.1/howto/deployment/checklist/
@@ -47,6 +54,8 @@ INSTALLED_APPS = [
     'rest_framework',
     'rest_framework_simplejwt',
     'corsheaders',
+    'cloudinary',
+    'cloudinary_storage',
     # Local apps
     'accounts',
     "users",
@@ -54,6 +63,8 @@ INSTALLED_APPS = [
     'tags',
     'participants',
     'chat',
+    'notifications.apps.NotificationsConfig',
+    'reviews',
     #chanel for chat
     "channels",
 ]
@@ -108,7 +119,7 @@ DATABASES = {
         ),
         'PORT': (
             os.getenv('POSTGRES_PORT')
-            or '5433'
+            or '5432'
         ),
     }
 }
@@ -220,12 +231,83 @@ CORS_ALLOW_METHODS = [
 MEDIA_URL = '/media/'
 MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 
-# Redis backend for Channels
+USE_CLOUDINARY = os.getenv('USE_CLOUDINARY', 'False') == 'True'
+
+if USE_CLOUDINARY:
+    # Cloudinary configuration
+    CLOUDINARY_STORAGE = {
+        'CLOUD_NAME': os.getenv('CLOUDINARY_CLOUD_NAME'),
+        'API_KEY': os.getenv('CLOUDINARY_API_KEY'),
+        'API_SECRET': os.getenv('CLOUDINARY_API_SECRET'),
+    }
+    
+    # Ensure these are set for Cloudinary
+    DEFAULT_FILE_STORAGE = 'cloudinary_storage.storage.MediaCloudinaryStorage'
+    STATICFILES_STORAGE = 'cloudinary_storage.storage.StaticCloudinaryStorage'
+    
+    # Cloudinary URLs
+    MEDIA_URL = '/media/'
+    STATIC_URL = '/static/'
+    
+    if DEBUG:
+        logger.debug("Cloudinary storage enabled")
+else:
+    # Local storage
+    MEDIA_URL = '/media/'
+    MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
+    STATIC_URL = '/static/'
+    STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
+    
+    DEFAULT_FILE_STORAGE = 'django.core.files.storage.FileSystemStorage'
+    if DEBUG:
+        logger.debug("Local file storage enabled")
+
+# ==================== END FILE STORAGE CONFIGURATION ====================
+
+
+# Redis backend for Channels (configurable via env for Docker/local usage)
+REDIS_HOST = os.getenv("REDIS_HOST", "127.0.0.1")
+REDIS_PORT = int(os.getenv("REDIS_PORT", "6379"))
+REDIS_PASSWORD = os.getenv("REDIS_PASSWORD")
+REDIS_USE_SSL = os.getenv("REDIS_USE_SSL", "false").lower() == "true"
+
+_redis_scheme = "rediss" if REDIS_USE_SSL else "redis"
+if REDIS_PASSWORD:
+    _redis_host = f"{_redis_scheme}://:{REDIS_PASSWORD}@{REDIS_HOST}:{REDIS_PORT}/0"
+else:
+    _redis_host = f"{_redis_scheme}://{REDIS_HOST}:{REDIS_PORT}/0"
+
 CHANNEL_LAYERS = {
     "default": {
         "BACKEND": "channels_redis.core.RedisChannelLayer",
         "CONFIG": {
-            "hosts": [("127.0.0.1", 6379)],
+            "hosts": [_redis_host],
         },
     },
 }
+
+# ==================== FORCE CLOUDINARY STORAGE MONKEY PATCH ====================
+
+if USE_CLOUDINARY:
+    # Import required modules
+    import django.core.files.storage
+    from cloudinary_storage.storage import MediaCloudinaryStorage
+    
+    # Create a new Cloudinary storage instance
+    cloudinary_storage = MediaCloudinaryStorage()
+    
+    # Monkey patch the default_storage at module level
+    django.core.files.storage.default_storage = cloudinary_storage
+    
+    # Also update the storage module in sys.modules to ensure it's cached correctly
+    if 'django.core.files.storage' in sys.modules:
+        storage_module = sys.modules['django.core.files.storage']
+        storage_module.default_storage = cloudinary_storage
+    
+    if DEBUG:
+        logger.debug(
+            "Cloudinary storage monkey patched to %s",
+            django.core.files.storage.default_storage.__class__.__name__,
+        )
+
+# ==================== END FORCE CLOUDINARY STORAGE MONKEY PATCH ====================

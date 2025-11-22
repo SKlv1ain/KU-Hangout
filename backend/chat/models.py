@@ -28,3 +28,12 @@ class chat_messages(models.Model):
     class Meta:
         ordering = ['create_at']  # Default ordering
 
+
+class chat_message_reads(models.Model):
+    message = models.ForeignKey(chat_messages, on_delete=models.CASCADE, related_name="read_receipts")
+    user = models.ForeignKey(Users, on_delete=models.CASCADE, related_name="message_reads")
+    read_at = models.DateTimeField(auto_now_add=True, db_index=True)
+
+    class Meta:
+        unique_together = ("message", "user")
+        ordering = ["-read_at"]

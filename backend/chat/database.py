@@ -25,7 +25,7 @@ class ChatDatabase:
                 plan=plan,
                 defaults={
                     'title': f'Chat for {plan.title}',
-                    'created_by': user
+                    'created_by': plan.leader_id
                 }
             )
             return thread
@@ -45,19 +45,40 @@ class ChatDatabase:
 
     @staticmethod
     @database_sync_to_async
+    def user_has_plan_access(plan_id, user):
+        """Check whether the user is allowed to access the plan's chat."""
+        from plans.models import Plans
+        from participants.models import Participants
+
+        try:
+            plan_id_int = int(plan_id) if not isinstance(plan_id, int) else plan_id
+            plan = Plans.objects.get(id=plan_id_int)
+        except Plans.DoesNotExist:
+            return False
+
+        if plan.leader_id_id == user.id:
+            return True
+
+        return Participants.objects.filter(plan=plan, user=user).exists()
+
+    @staticmethod
+    @database_sync_to_async
     def get_chat_history(thread):
         """Retrieve all messages for this thread with Bangkok timestamps."""
         from chat.models import chat_messages
         
         messages = chat_messages.objects.filter(
             thread=thread
-        ).select_related('sender').order_by('create_at')
+        ).select_related('sender').prefetch_related('read_receipts__user').order_by('create_at')
         
         return [
             {
                 'id': msg.id,
                 'user': ChatDatabase._get_display_name(msg.sender),
                 'user_id': msg.sender.id,
+                'username': getattr(msg.sender, "username", None),
+                'profile_picture': getattr(msg.sender, "profile_picture", None) or None,
+                'read_receipts': ChatDatabase._serialize_read_receipts(msg),
                 'message': msg.body,
                 'timestamp': timezone.localtime(msg.create_at, BANGKOK_TZ).strftime("%Y-%m-%d %H:%M:%S")
             }
@@ -69,14 +90,17 @@ class ChatDatabase:
     def save_message(thread_id, user, message_body):
         """Save a new message to the database with Bangkok timestamp."""
         from chat.models import chat_messages, chat_threads
+        from django.db import transaction
         
         try:
             thread = chat_threads.objects.get(id=thread_id)
-            message = chat_messages.objects.create(
-                thread=thread,
-                sender=user,
-                body=message_body
-            )
+            with transaction.atomic():
+                message = chat_messages.objects.create(
+                    thread=thread,
+                    sender=user,
+                    body=message_body
+                )
+                ChatDatabase._create_chat_notifications(thread, message)
 
             bangkok_time = timezone.localtime(message.create_at, BANGKOK_TZ)
             formatted_time = bangkok_time.strftime("%Y-%m-%d %H:%M:%S")
@@ -88,6 +112,62 @@ class ChatDatabase:
         except Exception as e:
             print(f"Error saving message: {e}")
             return None
+
+    @staticmethod
+    def _create_chat_notifications(thread, chat_message):
+        """Create notification records for new chat messages."""
+        try:
+            from chat.models import chat_member
+            from notifications.models import Notification
+            from participants.models import Participants
+
+            recipients_qs = chat_member.objects.filter(thread=thread).select_related("user")
+            recipient_users = {member.user_id: member.user for member in recipients_qs}
+
+            plan = getattr(thread, "plan", None)
+            if plan:
+                participant_qs = Participants.objects.filter(plan=plan).select_related("user")
+                for participant in participant_qs:
+                    recipient_users.setdefault(participant.user_id, participant.user)
+
+                leader = getattr(plan, "leader_id", None)
+                if leader:
+                    recipient_users.setdefault(leader.id, leader)
+
+            sender = chat_message.sender
+            sender_name = getattr(sender, "display_name", None) or getattr(sender, "username", "") or "Someone"
+            preview = chat_message.body.strip()
+            if len(preview) > 140:
+                preview = preview[:137].rstrip() + "..."
+
+            action_url = None
+            if plan:
+                action_url = f"/messages?planId={plan.id}"
+
+            for user_id, recipient in recipient_users.items():
+                if user_id == sender.id:
+                    continue
+
+                Notification.objects.create(
+                    user=recipient,
+                    actor=sender,
+                    notification_type="NEW_MESSAGE",
+                    topic="CHAT",
+                    plan=plan,
+                    chat_thread=thread,
+                    chat_message=chat_message,
+                    message=f"{sender_name}: {preview}",
+                    action_url=action_url,
+                    metadata={
+                        "thread_id": thread.id,
+                        "plan_id": plan.id if plan else None,
+                        "plan_title": plan.title if plan else None,
+                        "sender_id": sender.id,
+                        "message_id": chat_message.id,
+                    },
+                )
+        except Exception as exc:  # pragma: no cover - notification failures shouldn't block chat
+            print(f"[ChatDatabase] Failed to create chat notifications: {exc}")
 
     @staticmethod
     @database_sync_to_async
@@ -120,6 +200,59 @@ class ChatDatabase:
                 'success': False,
                 'error': 'Failed to delete message.'
             }
+
+    @staticmethod
+    @database_sync_to_async
+    def mark_messages_read(thread, user, message_ids):
+        """Mark messages as read by the given user."""
+        from chat.models import chat_messages, chat_message_reads
+
+        if not message_ids:
+            return []
+
+        normalized_ids = []
+        for mid in message_ids:
+            try:
+                normalized_ids.append(int(mid))
+            except (TypeError, ValueError):
+                continue
+
+        if not normalized_ids:
+            return []
+
+        messages = chat_messages.objects.filter(thread=thread, id__in=normalized_ids).select_related(
+            "sender"
+        ).prefetch_related("read_receipts__user")
+
+        results = []
+        for message in messages:
+            # Skip creating receipt for own messages but still return current receipts
+            if message.sender_id != user.id:
+                chat_message_reads.objects.get_or_create(message=message, user=user)
+
+            receipts = ChatDatabase._serialize_read_receipts(message)
+            results.append({
+                "message_id": message.id,
+                "receipts": receipts,
+            })
+
+        return results
+
+    @staticmethod
+    def _serialize_read_receipts(message):
+        """Serialize read receipts for a message, ordered by latest read time."""
+        from chat.models import chat_message_reads
+
+        receipts_qs = chat_message_reads.objects.filter(message=message).select_related("user").order_by("-read_at")
+        return [
+            {
+                "username": getattr(receipt.user, "username", None),
+                "display_name": ChatDatabase._get_display_name(receipt.user),
+                "profile_picture": getattr(receipt.user, "profile_picture", None) or None,
+                "read_at": timezone.localtime(receipt.read_at, BANGKOK_TZ).isoformat(),
+            }
+            for receipt in receipts_qs
+        ]
     
     @staticmethod
     @database_sync_to_async
