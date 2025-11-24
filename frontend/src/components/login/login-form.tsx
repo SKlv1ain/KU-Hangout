@@ -3,11 +3,13 @@ import { useForm } from "react-hook-form"
 import { z } from "zod"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { useNavigate } from "react-router-dom"
+import { useGoogleLogin } from "@react-oauth/google"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { Field } from "@/components/ui/field"
 import { useAuth } from "@/context/AuthContext"
 import { toast } from "sonner"
+import { isGoogleAuthConfigured } from "@/lib/googleAuth"
 import {
   AuthFormLayout,
   AuthInputField,
@@ -31,10 +33,12 @@ export function LoginForm({
   onSignUp,
   ...props
 }: LoginFormProps) {
-  const { login } = useAuth();
+  const { login, loginWithGoogle } = useAuth();
   const navigate = useNavigate();
   const [serverError, setServerError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isGoogleLoading, setIsGoogleLoading] = useState(false);
+  const isGoogleConfigured = isGoogleAuthConfigured();
 
   const {
     register,
@@ -61,6 +65,49 @@ export function LoginForm({
     }
   };
 
+  const googleLogin = useGoogleLogin({
+    flow: "implicit",
+    scope: "openid email profile",
+    onSuccess: async (tokenResponse) => {
+      try {
+        if (!tokenResponse.access_token) {
+          throw new Error("Google ไม่ส่ง access token กลับมา");
+        }
+
+        await loginWithGoogle(tokenResponse.access_token);
+        toast.success("Login successful!");
+        navigate("/home");
+      } catch (err: unknown) {
+        const error = err as { response?: { data?: { detail?: string; error?: string } }; message?: string };
+        const errorMessage = error?.response?.data?.detail || error?.response?.data?.error || error?.message || "Google login failed";
+        setServerError(errorMessage);
+        toast.error(errorMessage);
+      } finally {
+        setIsGoogleLoading(false);
+      }
+    },
+    onError: (errorResponse) => {
+      setIsGoogleLoading(false);
+      const message = errorResponse.error ?? "ไม่สามารถเริ่ม Google login ได้";
+      toast.error(message);
+    },
+  });
+
+  const handleGoogleLogin = () => {
+    if (!isGoogleConfigured) {
+      toast.error("ยังไม่ได้ตั้งค่า GOOGLE_CLIENT_ID");
+      return;
+    }
+    setServerError("");
+    setIsGoogleLoading(true);
+    try {
+      googleLogin();
+    } catch {
+      setIsGoogleLoading(false);
+      toast.error("ไม่สามารถเปิดหน้าต่าง Google login ได้");
+    }
+  };
+
   return (
     <form className={cn("flex flex-col gap-6", className)} onSubmit={handleSubmit(onSubmit)} {...props}>
       <AuthFormLayout
@@ -69,7 +116,13 @@ export function LoginForm({
         serverError={serverError}
         footer={(
           <AuthFormFooter
-            socialButton={<GoogleAuthButton label="Login with Google" />}
+            socialButton={
+              <GoogleAuthButton
+                label={isGoogleLoading ? "Connecting..." : "Login with Google"}
+                disabled={isGoogleLoading}
+                onClick={handleGoogleLogin}
+              />
+            }
             prompt={{
               message: "Don't have an account?",
               actionLabel: "Sign up",

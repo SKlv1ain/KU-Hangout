@@ -18,6 +18,11 @@ export async function loginUser(payload: { username: string; password: string })
   return data;
 }
 
+export async function loginWithGoogle(accessToken: string) {
+  const data = await api.post("/api/oauth/google", { access_token: accessToken });
+  return data;
+}
+
 // ดึงข้อมูลตัวเองหลังล็อกอิน → { user }
 export async function fetchMe() {
   const data = await api.get("/api/users/me");
@@ -28,7 +33,7 @@ export async function fetchMe() {
 export async function logoutUser() {
   try { 
     await api.post("/api/auth/logout", {});
-  } catch (error) {
+  } catch {
     // Don't throw error, let AuthContext handle token removal
     // Token removal is handled by AuthContext regardless of API call success
   }

@@ -1,5 +1,5 @@
 import { createContext, useContext, useEffect, useState, useCallback, ReactNode } from "react";
-import { fetchMe, loginUser, registerUser, logoutUser } from "../services/authService";
+import { fetchMe, loginUser, registerUser, logoutUser, loginWithGoogle as loginWithGoogleService } from "../services/authService";
 
 // User type based on backend UserPublicSerializer
 export interface User {
@@ -23,6 +23,7 @@ interface AuthContextType {
   role: string | null;
   isAdmin: boolean;
   login: (username: string, password: string) => Promise<User>;
+  loginWithGoogle: (accessToken: string) => Promise<User>;
   register: (data: {
     username: string;
     email: string;
@@ -78,6 +79,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return u as User;
   }, []);
 
+  const loginWithGoogle = useCallback(async (accessToken: string): Promise<User> => {
+    const data = await loginWithGoogleService(accessToken);
+    if (data?.token) localStorage.setItem("kh_token", data.token);
+    const u = (data as any)?.user ?? null;
+    setUser(u as User);
+    setRole((u as User)?.role ?? "user");
+    return u as User;
+  }, []);
+
   // ฟังก์ชันสมัครสมาชิก: ส่งทุกฟิลด์ที่ backend ต้องการ
   const register = useCallback(async ({
     username,
@@ -118,7 +128,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   // ให้ทุกหน้าที่อยู่ใต้ AuthProvider ใช้ค่าเหล่านี้ได้ผ่าน useAuth()
   return (
-    <AuthContext.Provider value={{ user, role, isAdmin, login, register, logout, loading }}>
+    <AuthContext.Provider value={{ user, role, isAdmin, login, loginWithGoogle, register, logout, loading }}>
       {children}
     </AuthContext.Provider>
   );

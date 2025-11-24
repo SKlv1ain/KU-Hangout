@@ -68,7 +68,7 @@ export function CommandSearch(props: CommandSearchProps) {
           label: "Messages",
           icon: MessageSquare,
           shortcut: "⌘M",
-          action: () => console.log("Open Messages"),
+          action: () => navigate("/messages"),
         },
         {
           label: "Notifications",
@@ -92,7 +92,7 @@ export function CommandSearch(props: CommandSearchProps) {
           label: "Profile",
           icon: User,
           shortcut: "⌘P",
-          action: () => console.log("Navigate to Profile"),
+          action: () => navigate("/profile"),
         },
         {
           label: "Settings",
