@@ -242,6 +242,15 @@ Frontend will be available at `http://localhost:5173`
 #### Step 8: Access the Application
 Open your browser and go to `http://localhost:5173`
 
+## UI Preview
+
+High-level glimpse of KU-Hangout for demos, onboarding decks, or product teasers
+
+![Login Landing Page](https://github.com/user-attachments/assets/46e4965c-1a65-42f4-b12a-843284700899)
+![Feed Page](https://github.com/user-attachments/assets/191796cd-8726-4d05-9fab-d9153f27e640)
+
+See the full gallery with descriptions in the [UI Showcase (Wiki)](https://github.com/SKlv1ain/KU-Hangout/wiki/UI-Showcase)
+
 ### Prerequisites
 
 Before you begin, ensure you have the following installed:
